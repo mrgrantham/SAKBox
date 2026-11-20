@@ -552,4 +552,31 @@ CardPlayShow::Step CardPlayShow::update(double now) {
   return step;
 }
 
+// ---------------------------------------------------------------- Picking
+
+void PickShow::show(std::optional<Resource> resource, double now) {
+  if (resource == shown_)
+    return;
+  if (!resource) { // (the choice made, or gone)
+    shown_.reset();
+    leaving_.reset();
+    return;
+  }
+  // (the first: in from below the middle; then from the side moved to)
+  direction_ = shown_ && static_cast<int>(*resource) < static_cast<int>(*shown_) ? -1 : 1;
+  leaving_ = shown_;
+  shown_ = resource;
+  since_ = now;
+}
+
+std::optional<PickShow::Moment> PickShow::at(double now) const {
+  if (!shown_)
+    return std::nullopt;
+  const float t = std::clamp(static_cast<float>(now - since_) / kSecondsSlide, 0.0f, 1.0f);
+  return Moment{*shown_, t < 1 ? leaving_ : std::nullopt, Motion::along(Motion::Curve::EaseOut, t),
+                direction_};
+}
+
+bool PickShow::moving(double now) const { return shown_ && now - since_ < kSecondsSlide; }
+
 } // namespace CosmicHex::Handheld

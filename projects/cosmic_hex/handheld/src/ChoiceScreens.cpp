@@ -206,8 +206,11 @@ void drawResources(Canvas &canvas, const Pickers::ResourceChoice &choice,
   }
   if (canGoBack)
     button(canvas, backBox(canvas.width()), "Back", kRow, kEdge);
+  // (Take always there, the user's: dim until enough are picked)
   if (static_cast<int>(picked.size()) == choice.howMany && choice.actionFor(picked))
     button(canvas, confirmBox(canvas.width()), "Take", kConfirm, kConfirmEdge);
+  else
+    button(canvas, confirmBox(canvas.width()), "Take", kRow, kEdge);
 }
 
 std::optional<Touch> resourcesTouch(int width, int x, int y) {

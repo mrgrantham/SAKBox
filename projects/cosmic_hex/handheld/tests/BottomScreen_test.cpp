@@ -148,8 +148,9 @@ TEST(BottomScreenTest, TouchAShipThenWhereItGoes) {
   }
 }
 
-// The D-pad, A and B on a choosing screen: the home's
-// pay picked with Right, Right, A and taken with A; B leaves the build screen
+// The D-pad, A and B on a choosing screen: the home's pay's card in focus
+// is the one picked, Right, Right to Fuel, and A takes it at once (the
+// user's: one press); B leaves the build screen
 TEST(BottomScreenTest, TheButtonsWorkTheChoosingScreens) {
   const State state = playUntil([](const State &s) {
     return s.phase == Phase::HomeIncome && Game::currentPlayer(s) != GameBots::kDealer;
@@ -158,9 +159,10 @@ TEST(BottomScreenTest, TheButtonsWorkTheChoosingScreens) {
   BottomScreen screen(kWidth, kHeight);
   screen.update(state, Game::legalActions(state), true);
   using Key = BottomScreen::Key;
+  EXPECT_EQ(screen.resourceInFocus(), Resource::Minerals);
   screen.press(Key::Right);
   screen.press(Key::Right);
-  EXPECT_FALSE(screen.press(Key::Confirm).play.has_value()); // (picked)
+  EXPECT_EQ(screen.resourceInFocus(), Resource::Fuel);
   const auto taken = screen.press(Key::Confirm);
   ASSERT_TRUE(taken.play.has_value());
   if (taken.play) {

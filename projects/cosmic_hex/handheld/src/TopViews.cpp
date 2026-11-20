@@ -13,6 +13,7 @@
 #include <ScratchPadd/Scene/TextWrap.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <string>
 #include <tuple>
@@ -556,6 +557,79 @@ void drawRollPay(const TopFrame &f, const RollPayShow &show, const State &state,
                    : p.resources[static_cast<std::size_t>(card.resource)],
             x - size / 2, y - size * 52 / 63 / 2, size, size * 52 / 63);
   }
+}
+
+// ---------------------------------------------------------------- Picking
+
+void drawPick(const TopFrame &f, const PickShow &show, std::string_view title,
+              const Resources &held, const Settings &settings, Scene::Colour yours) {
+  const auto m = show.at(f.now);
+  if (!m)
+    return;
+  const float k = f.k();
+  backdrop(f, 0, {8, 12, 22}, 12);
+  // The card big in the middle, the next sliding in from the side moved to
+  // and the last out of the other
+  const float w = 84 * k, h = w * 52 / 63;
+  const float midX = f.width / 2, midY = f.height * 0.42f, travel = f.width * 0.75f;
+  const auto card = [&](Resource r, float x) {
+    picture(f, f.pictures.resourceSquare, f.pictures.resources[static_cast<std::size_t>(r)],
+            x - w / 2, midY - h / 2, w, h);
+  };
+  const auto dir = static_cast<float>(m->direction);
+  if (m->leaving)
+    card(*m->leaving, midX - dir * travel * m->in);
+  const float x = midX + dir * travel * (1 - m->in);
+  card(m->shown, x);
+  if (m->in >= 1) {
+    f.overlay.textCentred(x, midY - h / 2 + h * 11 / 52, std::string(GameWords::of(m->shown)),
+                          Palette::kWords, 1.5f * k);
+  }
+  f.overlay.textCentred(f.width / 2, 12 * k, std::string(title), Palette::kWords, k);
+  // What you could build with it: a ship, a station, a colony, a card,
+  // each dimmed when you couldn't even with this one
+  Resources after = held;
+  ++after[static_cast<std::size_t>(m->shown)];
+  const auto canAfford = [&](const Resources &cost) {
+    for (std::size_t r = 0; r < after.size(); ++r)
+      if (after[r] < cost[r])
+        return false;
+    return true;
+  };
+  constexpr Scene::Colour kDim{70, 78, 96};
+  struct Thing {
+    std::string_view name;
+    const Resources &cost;
+    int shape;
+  };
+  const std::array<Thing, 4> things{{{"Ship", settings.shipCost, 0},
+                                     {"Station", settings.stationCost, 1},
+                                     {"Colony", settings.colonyCost, 2},
+                                     {"Card", settings.contractCost, 3}}};
+  const float rowY = midY + h / 2 + 26 * k, gap = 52 * k;
+  for (std::size_t i = 0; i < things.size(); ++i) {
+    const Thing &thing = things[i];
+    const bool can = canAfford(thing.cost);
+    const Scene::Colour c = can ? yours : kDim;
+    const float tx = f.width / 2 + (static_cast<float>(i) - 1.5f) * gap, ty = rowY;
+    switch (thing.shape) {
+    case 0: // (a ship: the board's dart, from above)
+      f.overlay.triangle(tx, ty - 6 * k, tx - 5 * k, ty + 5 * k, tx + 5 * k, ty + 5 * k, c);
+      break;
+    case 1: // (a station)
+      f.overlay.rectangle(tx - 4 * k, ty - 4 * k, 8 * k, 8 * k, c);
+      break;
+    case 2: // (a colony: bigger, a window in it)
+      f.overlay.rectangle(tx - 6 * k, ty - 6 * k, 12 * k, 12 * k, c);
+      f.overlay.rectangle(tx - 2 * k, ty - 2 * k, 4 * k, 4 * k, {20, 22, 30});
+      break;
+    default: // (a card)
+      f.overlay.rectangle(tx - 4 * k, ty - 6 * k, 8 * k, 12 * k, can ? Palette::kWords : kDim);
+      break;
+    }
+    f.overlay.textCentred(tx, ty + 14 * k, thing.name, can ? Palette::kWords : kDim, k);
+  }
+  f.overlay.textCentred(f.width / 2, rowY + 30 * k, "A takes it", Palette::kDimWords, k);
 }
 
 // ---------------------------------------------------------------- Home pay

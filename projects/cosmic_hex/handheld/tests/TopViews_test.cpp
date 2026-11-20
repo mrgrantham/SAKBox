@@ -139,3 +139,13 @@ TEST_F(TopViewsTest, ACardPlayedFromStartToEnd) {
     });
   }
 }
+
+TEST_F(TopViewsTest, APickFromStartToEnd) {
+  PickShow pick;
+  pick.show(Resource::Food, 0);
+  frames(every(0, 1, 0.05), [&](const TopFrame &f) {
+    if (f.now > 0.5)
+      pick.show(Resource::Crystals, f.now);
+    drawPick(f, pick, "Your home pays 1", state.player[0].resources, state.settings, {255, 80, 80});
+  });
+}

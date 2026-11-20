@@ -286,3 +286,23 @@ TEST(TopShowsTest, ACardPlayedIsShown) {
   EXPECT_TRUE(show.update(5 + 2 * CardPlayShow::kSeconds + 0.01).letGo);
   EXPECT_FALSE(show.moving(5 + 2 * CardPlayShow::kSeconds + 0.02));
 }
+
+// Choosing a resource: the card in focus slides in from the side moved
+// to, the last one out; gone when the choice is
+TEST(TopShowsTest, APickSlidesWithTheFocus) {
+  PickShow pick;
+  EXPECT_FALSE(pick.at(0).has_value());
+  pick.show(Resource::Food, 1);
+  ASSERT_TRUE(pick.at(1).has_value());
+  EXPECT_FLOAT_EQ(pick.at(1)->in, 0);
+  EXPECT_FLOAT_EQ(pick.at(1 + PickShow::kSecondsSlide)->in, 1);
+  pick.show(Resource::Fuel, 2); // (right: in from the right)
+  EXPECT_EQ(pick.at(2.1)->direction, 1);
+  EXPECT_EQ(pick.at(2.1)->leaving, Resource::Food);
+  EXPECT_TRUE(pick.moving(2.1));
+  pick.show(Resource::Minerals, 3); // (left)
+  EXPECT_EQ(pick.at(3.1)->direction, -1);
+  EXPECT_FALSE(pick.at(4)->leaving.has_value());
+  pick.show(std::nullopt, 5);
+  EXPECT_FALSE(pick.at(5).has_value());
+}

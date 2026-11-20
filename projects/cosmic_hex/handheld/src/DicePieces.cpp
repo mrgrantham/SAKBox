@@ -189,7 +189,9 @@ Scene::MeshBuilder homeDie(const std::array<Scene::Colour, 5> &resources, Scene:
   constexpr float kApothem = 0.5f;                      // (1 across its sides)
   const float corner = kApothem / std::cos(kSixth / 2); // (its corners' radius)
   constexpr float kLength = 1.3f;                       // (along x)
-  constexpr Scene::Colour kWhite{244, 242, 236};
+  // (a warm grey, not white, the user's: in the light, white washed out the
+  // yellow star and the paler sides)
+  constexpr Scene::Colour kBody{196, 188, 172};
   const float a = kLength / 2;
   Scene::MeshBuilder m;
   for (int side = 0; side < 6; ++side) {
@@ -197,10 +199,10 @@ Scene::MeshBuilder homeDie(const std::array<Scene::Colour, 5> &resources, Scene:
     const float l = mid - kSixth / 2, r = mid + kSixth / 2;
     // The side: a long white quad, facing out (its normal at `mid`)
     m.quad(aroundX(-a, r, corner), aroundX(a, r, corner), aroundX(a, l, corner),
-           aroundX(-a, l, corner), kWhite);
+           aroundX(-a, l, corner), kBody);
     // The ends: a triangle of each white hexagon cap
-    m.triangle({a, 0, 0}, aroundX(a, l, corner), aroundX(a, r, corner), kWhite);
-    m.triangle({-a, 0, 0}, aroundX(-a, r, corner), aroundX(-a, l, corner), kWhite);
+    m.triangle({a, 0, 0}, aroundX(a, l, corner), aroundX(a, r, corner), kBody);
+    m.triangle({-a, 0, 0}, aroundX(-a, r, corner), aroundX(-a, l, corner), kBody);
     // On the side, just proud of it: a coloured hexagon (a resource) or the
     // star, in the side's own plane
     // (a twentieth of its width proud: closer, the DS's depth buffer mixed

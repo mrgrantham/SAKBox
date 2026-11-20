@@ -621,6 +621,7 @@ private:
     updateHomePay();
     updateRollPay();
     updateCardPlay();
+    updatePick();
     updateCelebration();
     // The two cards dealt, drawn sharp before they're thrown in (on a DS
     // about a quarter of a second, while the screen is still)
@@ -945,7 +946,12 @@ private:
       drawOtherPlayer(frame, viewOf(latest_->state, others_.which()), others_.down(showsNow()));
     else if (discovery_.moving(showsNow()))
       drawDiscovery(frame, discovery_, closeUpFace_);
-    else if (homePay_.moving(showsNow()) && latest_)
+    else if (pick_.at(showsNow()) && latest_ && bottomScreen_ && bottomScreen_->resourceChoice()) {
+      drawPick(frame, pick_, bottomScreen_->resourceChoice()->title,
+               latest_->state.player[static_cast<std::size_t>(latest_->state.turn)].resources,
+               latest_->state.settings, BoardColours::ofPlayer(latest_->state.turn));
+      drawBanner(renderer_->overlay());
+    } else if (homePay_.moving(showsNow()) && latest_)
       drawHomePay(frame, homePay_, latest_->state,
                   mode_ == Mode::Playing && homePay_.current()->player == 0, closeUpCards_[0]);
     else if (cardPlay_.moving(showsNow()) && latest_)
@@ -1928,6 +1934,17 @@ private:
   // Each frame: the home's pay held over the game; its card drawn sharp
   // (into the first dealt card's slot: the two never show together, and
   // the DS has no texture memory for another)
+  // Each frame: while you choose a resource on the picker, the card in
+  // focus shown big on top (PickShow), the banner as the choice opens
+  void updatePick() {
+    const bool choosing = mode_ == Mode::Playing && latest_ && latest_->yourMove && bottomScreen_ &&
+                          bottomScreen_->mode() == BottomScreen::Mode::Resources;
+    const auto focus = choosing ? bottomScreen_->resourceInFocus() : std::nullopt;
+    if (focus && !pick_.at(showsNow()) && bottomScreen_->resourceChoice())
+      banner_.start(gameClock_.seconds(), "CHOOSE A RESOURCE",
+                    std::string(bottomScreen_->resourceChoice()->title), Palette::kHighlight);
+    pick_.show(focus, showsNow());
+  }
   void updateCardPlay() {
     const CardPlayShow::Step step = cardPlay_.update(showsNow());
     if (step.hold || step.letGo)
@@ -1992,7 +2009,8 @@ private:
     if (shownInfo_ != BottomScreen::Info::None || cards_.moving(showsNow()) || outlineMovedAt_)
       return true; // (an info view coming in or going, the points' outline)
     // (the views over the board: each says)
-    if (scorePops_.popping(showsNow()) || cardPlay_.moving(showsNow()) || celebration_)
+    if (scorePops_.popping(showsNow()) || cardPlay_.moving(showsNow()) || celebration_ ||
+        pick_.moving(showsNow()))
       return true; // (points or badges popping in, a card played)
     if (dealt_.moving() || others_.moving(showsNow()) || discovery_.moving(showsNow()) ||
         homePay_.moving(showsNow()) || rollPay_.moving(showsNow()))
@@ -2094,6 +2112,7 @@ private:
   RollPayShow rollPay_;             // (a roll's pay, card by card)
   ScorePops scorePops_;             // (points and badges won, popping in)
   CardPlayShow cardPlay_;           // (an action card played, a Charter revealed)
+  PickShow pick_;                   // (choosing a resource: the card in focus, big)
   ScratchPadd::StillFrames still_;  // (when the top screen can hold its last frame)
   bool youPaused_ = false;          // (watching: paused with A, so the PAUSED band shows)
   // Why the game is held, if it is: one bit each. The table is told to hold

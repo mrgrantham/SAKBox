@@ -26,7 +26,7 @@ struct DicePieces {
   Scene::MeshBuilder die;
 };
 
-// The home die (the user's): an extruded white hexagon, a long prism
+// The home die (the user's): an extruded hexagon, a warm grey, a long prism
 // lying along x, a coloured hexagon inset on each of its six sides: side
 // i (0 to 4) in `resources[i]`, side 5 the star in `star`. Side i faces
 // +z after turning it homeDieTurn(i) about x; 1 across its sides

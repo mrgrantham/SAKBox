@@ -129,7 +129,7 @@ TEST(DicePiecesTest, TheHomeDieShowsEachSide) {
     Scene::Colour seen{};
     for (const Scene::Vertex &v : mesh.vertices) {
       const float z = v.normal.y * std::sin(turn) + v.normal.z * std::cos(turn);
-      if (z > best + 1e-4f && !(v.colour == Scene::Colour{244, 242, 236})) {
+      if (z > best + 1e-4f && !(v.colour == Scene::Colour{196, 188, 172})) {
         best = z;
         seen = v.colour;
       }

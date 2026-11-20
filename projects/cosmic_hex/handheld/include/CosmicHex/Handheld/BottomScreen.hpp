@@ -65,6 +65,11 @@ public:
   Outcome press(Key key);
 
   Mode mode() const { return mode_; }
+  // The resource picker's card in focus (the one a single pick takes), for
+  // the top screen to show big; nothing when it isn't open
+  std::optional<Resource> resourceInFocus() const;
+  // The picker's choice, while it's open (its title: "Your home pays 1")
+  const std::optional<Pickers::ResourceChoice> &resourceChoice() const { return resources_; }
 
   // What's shown on the top screen for looking at, any time (// the user's: they pause the game
   // while open): your resources and cards (Show resources); another tap closes it
@@ -151,7 +156,9 @@ private:
   bool resourcesCanGoBack_ = false;
   std::optional<Pickers::PlayerChoice> players_;
   int playerChosen_ = -1, cardChosen_ = -1;
-  int resourceFocus_ = 0;      // (the D-pad's card on the resource picker)
+  int resourceFocus_ = 0; // (the D-pad's card on the resource picker)
+  void openPicker(Pickers::ResourceChoice choice, bool canGoBack);
+  void focusNextResource(int direction);
   std::vector<HeldCard> held_; // (the cards screen: your cards)
   int heldChosen_ = -1;
   std::optional<KeepChoice> keep_; // (after buying: the two to keep one of)

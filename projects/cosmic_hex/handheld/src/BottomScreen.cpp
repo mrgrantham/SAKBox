@@ -68,12 +68,8 @@ void BottomScreen::follow(const State &state, const std::vector<Action> &legal, 
   }
   // A choice of resources the rules ask for now: the picker, by itself
   if (auto choice = Pickers::resourceChoiceOf(state, legal)) {
-    if (mode_ != Mode::Resources || !resources_ || resources_->title != choice->title) {
-      resources_ = std::move(choice);
-      picked_.clear();
-      resourcesCanGoBack_ = false;
-      mode_ = Mode::Resources;
-    }
+    if (mode_ != Mode::Resources || !resources_ || resources_->title != choice->title)
+      openPicker(std::move(*choice), false);
     return;
   }
   if (mode_ == Mode::Resources && !resourcesCanGoBack_)
@@ -289,6 +285,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
     } else if (touch->what == What::Item) {
       const auto resource = static_cast<Resource>(touch->item);
       if (resources_->offers(resource)) {
+        resourceFocus_ = touch->item;
         if (resources_->howMany == 1 || static_cast<int>(picked_.size()) >= resources_->howMany)
           picked_.clear();
         picked_.push_back(resource);
@@ -428,10 +425,7 @@ BottomScreen::Outcome BottomScreen::useChosenCard() {
   // The Cartel's resource or the Supply drop's two: the picker, which can go
   // back to the cards
   if (auto choice = Pickers::cardChoiceOf(legal_, held.kind)) {
-    resources_ = std::move(choice);
-    picked_.clear();
-    resourcesCanGoBack_ = true;
-    mode_ = Mode::Resources;
+    openPicker(std::move(*choice), true);
     return {std::nullopt, true};
   }
   // Shipyard Surplus: your colonies marked, one touched for the ships
@@ -496,7 +490,7 @@ BottomScreen::Outcome BottomScreen::press(Key key) {
     if (!resources_)
       return {std::nullopt, true};
     if (key == Key::Left || key == Key::Right) {
-      resourceFocus_ = step(resourceFocus_, key == Key::Left ? -1 : 1, kResources);
+      focusNextResource(key == Key::Left ? -1 : 1);
     } else if (key == Key::Back && resourcesCanGoBack_) {
       mode_ = Mode::Cards; // (opened from the cards screen: back to it)
     } else if (key == Key::Confirm) {
@@ -749,6 +743,37 @@ bool BottomScreen::prepare() {
       return false;
     }
   return true;
+}
+
+void BottomScreen::openPicker(Pickers::ResourceChoice choice, bool canGoBack) {
+  resources_ = std::move(choice);
+  picked_.clear();
+  resourcesCanGoBack_ = canGoBack;
+  mode_ = Mode::Resources;
+  // (the focus on the first card it offers; for a single card, that card
+  // picked: A takes it at once, the user's)
+  resourceFocus_ = kResources - 1;
+  focusNextResource(1);
+}
+
+void BottomScreen::focusNextResource(int direction) {
+  if (!resources_)
+    return;
+  // (on to the next card offered, round and round; a single card's choice
+  // follows the focus)
+  for (int tries = 0; tries < kResources; ++tries) {
+    resourceFocus_ = (resourceFocus_ + direction + kResources) % kResources;
+    if (resources_->offers(static_cast<Resource>(resourceFocus_)))
+      break;
+  }
+  if (resources_->howMany == 1)
+    picked_ = {static_cast<Resource>(resourceFocus_)};
+}
+
+std::optional<Resource> BottomScreen::resourceInFocus() const {
+  if (mode_ != Mode::Resources || !resources_)
+    return std::nullopt;
+  return static_cast<Resource>(resourceFocus_);
 }
 
 } // namespace CosmicHex::Handheld

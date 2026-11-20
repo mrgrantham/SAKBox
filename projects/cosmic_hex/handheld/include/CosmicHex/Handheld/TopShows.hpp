@@ -352,4 +352,31 @@ private:
   bool held_ = false;
 };
 
+// ---------------------------------------------------------------------------
+// Choosing a resource (the user's): the card in focus on the picker shown
+// big, the next sliding in as you move to it and the last sliding out, from
+// the side you moved towards
+
+class PickShow {
+public:
+  static constexpr float kSecondsSlide = 0.3f;
+
+  // Each frame: the card in focus now (nothing: no choice open)
+  void show(std::optional<Resource> resource, double now);
+
+  struct Moment {
+    Resource shown;
+    std::optional<Resource> leaving;
+    float in;      // (0 just arrived at the side, 1 in the middle)
+    int direction; // (1: moving right, so in from the right)
+  };
+  std::optional<Moment> at(double now) const;
+  bool moving(double now) const;
+
+private:
+  std::optional<Resource> shown_, leaving_;
+  double since_ = 0;
+  int direction_ = 1;
+};
+
 } // namespace CosmicHex::Handheld

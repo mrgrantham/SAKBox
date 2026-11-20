@@ -74,6 +74,13 @@ void drawOtherPlayer(const TopFrame &frame, const PlayerView &view, float down);
 // its player, turning over, held big to be read, then away
 void drawCardPlay(const TopFrame &f, const CardPlayShow &show, const State &state, int you);
 
+// Choosing a resource (PickShow): the card in focus big, sliding in as the
+// picker's focus moves, `title` over it ("Your home pays 1"); under it what
+// you could build, each dimmed when even with this card you couldn't
+// (`held`: your resources now; `settings`: the costs)
+void drawPick(const TopFrame &f, const PickShow &show, std::string_view title,
+              const Resources &held, const Settings &settings, ScratchPadd::Scene::Colour yours);
+
 // Who goes first: each player's die in the glass in their colour, their
 // numbers by their names as they land, then the order by name
 void drawFirstRoll(const TopFrame &frame, const FirstRoll &roll, const FirstRollShow &show);
