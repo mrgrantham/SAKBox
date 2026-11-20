@@ -7,16 +7,105 @@ bazel run -c opt //projects/cosmic_hex/balance_lab
 bazel run -c opt //projects/cosmic_hex/balance_lab -- --layout R2 --games 200 --run
 ```
 
-- **Settings** (left): the layout as a thumbnail with its empty-space corners (where a deep-space start may put a ship), **Choose a layout...** for every layout as thumbnails (the repo's [`../layouts/layouts.txt`](../layouts/layouts.txt) and the lab's own saved ones), corners and edges (on by default), the deep-space start, finds beside the small systems, players, games, how hard the bots think, points to win, a ship's move and fuel boost (each showing the number the games use: 2 and 1 along edges, the rules' hex moves without; ticking corners and edges switches them unless you changed them), the home-world boost, the Imperial Tithe, moons, alien outposts, free stations (and the ship costing a food more), the planet mix (a weight for each kind). Run starts a batch; Stop stops handing out games (those being played finish).
-- **The board** (middle): the chosen layout, large: H homes, P planets, the core's star, F the finds' places, and with the deep-space start the empty-space corners. Click a corner to see how far a ship gets from there in a turn (filled) and with fuel (rings), by the move and boost the settings give (along edges with corners, hex to hex without); it starts from the first home. **Edit planets and finds**: a click turns a hex from empty to a planet, a planet to a find, a find to empty (homes stay). **Save as a new layout** writes it to `projects/cosmic_hex/layouts/saved_layouts.txt` (commit it to keep it), where Choose finds it; a batch can also run an edited layout unsaved.
-- **Charts** (right, [ImPlot](https://github.com/epezent/implot)): wins by turn position and by home, each against a fair share and the band a fair game's result falls in 95% of the time; how many rounds games take; where winners' points came from (stations, colonies, Core Control, badges, Charters, the Embargo: each one's average a win, and in what share of wins it gave any); where stations end up (singles, pairs, threes). Below them, a table of the game's flow and trading, the winner's beside the average player's: lead changes, the round the winner took the lead for good, the most the winner was behind, 7s rolled and those on which the Imperial Tithe took someone's resources, Enforcers and Interstellar Cartels played, and trades at the bank, at alien outposts by ship and by station, and with other players (how many, the resources that changed hands, offers made). The batch's CSV has the same, per game.
-- **Saved as it goes:** every game is a line of `balance_lab_runs/<time>-<variant>.csv` in the repository (git-ignored), with the simulator's columns, so the command-line tools read it too.
-- **Replays** (the board column's Replay tab): watch any game, step by step. Each batch saves every game's action log as it finishes (`balance_lab_runs/<the batch>/game_0001.log`, beside its CSV), and the **Games** tab (right) lists the batch's games (sortable by winner, their turn order, rounds) with **Watch** on each. The replay shows the board as it was at that point: planets not yet found (?), found ones in their kind's colour with their number (6 and 8 in red), the zone's finds (S salvage, R ruins, A alien station, P pirates), stations and colonies (ringed) on their corners, ships, the blockade (X), with white rings on whatever the last action changed. Below: the last few actions in words, each player's points, badges, stations and resources, and their points through the game (click the chart to jump there). Step an action or a turn at a time, either way, or Play at a chosen speed. **Open** takes any Cosmic Hex log file: the lab's, the simulator's `--logs`, and later a real game's.
-- **Command line:** `--layout`, `--layouts FILE`, `--edges no` (the older hex-to-hex rules), `--finds usual` (the finds in the usual places; beside the small systems is the rule), `--games`, `--iterations`, `--players`, `--run` to start at once, `--choose` to open the layouts' thumbnails, and `--replay FILE` (with `--at N`, from action N) to open a game's log in the Replay tab.
+## The window
 
-How it works: the window is a padd on the main thread (`LabWindowPadd`), and eight `SimulationPadd`s each play a game when sent one (`PlayGame`) and reply with what came of it (`GamePlayed`); the window hands each the next game as it reports one done, so the cores stay busy and stopping is simply not handing out more. The games themselves are the simulator's, from [`../simulate/Batch.hpp`](../simulate/Batch.hpp): the same seed and settings give the same game in the simulator and the lab.
+### Settings (left)
 
-Next steps (not built): suggestions; real games in the replays once the game is playable (they'll be action logs too, so Open already takes them).
+- **The layout,** as a thumbnail with its empty-space corners (where a deep-space start may put a ship). **Choose a layout...** shows every layout as thumbnails: the repo's [`../layouts/layouts.txt`](../layouts/layouts.txt) and the lab's own saved ones.
+- **The rules:**
+  - corners and edges (on by default), the deep-space start, finds beside the small systems;
+  - players, games, how hard the bots think, points to win;
+  - a ship's move and fuel boost, each showing the number the games use (2 and 1 along edges, the rules' hex moves without; ticking corners and edges switches them unless you changed them);
+  - the home-world boost, the Imperial Tithe, moons, alien outposts;
+  - free stations (and the ship costing a food more);
+  - the planet mix (a weight for each kind).
+- **Run** starts a batch; **Stop** stops handing out games (those being played finish).
+
+### The board (middle)
+
+The chosen layout, large: H homes, P planets, the core's star, F the finds' places, and with the deep-space start the empty-space corners.
+
+- **Click a corner** to see how far a ship gets from there in a turn (filled) and with fuel (rings), by the move and boost the settings give (along edges with corners, hex to hex without). It starts from the first home.
+- **Edit planets and finds:** a click turns a hex from empty to a planet, a planet to a find, a find to empty (homes stay).
+- **Save as a new layout** writes it to `projects/cosmic_hex/layouts/saved_layouts.txt` (commit it to keep it), where Choose finds it. A batch can also run an edited layout unsaved.
+
+### Charts (right)
+
+Drawn with [ImPlot](https://github.com/epezent/implot):
+
+- wins by turn position and by home, each against a fair share and the band a fair game's result falls in 95% of the time;
+- how many rounds games take;
+- where winners' points came from (stations, colonies, Core Control, badges, Charters, the Embargo): each one's average a win, and in what share of wins it gave any;
+- where stations end up (singles, pairs, threes).
+
+Below them, a table of the game's flow and trading, the winner's beside the average player's:
+
+- lead changes, the round the winner took the lead for good, the most the winner was behind;
+- 7s rolled, and those on which the Imperial Tithe took someone's resources;
+- Enforcers and Interstellar Cartels played;
+- trades at the bank, at alien outposts by ship and by station, and with other players (how many, the resources that changed hands, offers made).
+
+The batch's CSV has the same, per game.
+
+### Saved as it goes
+
+Every game is a line of `balance_lab_runs/<time>-<variant>.csv` in the repository (git-ignored), with the simulator's columns, so the command-line tools read it too. Every game's action log is saved as it finishes, beside the CSV: `balance_lab_runs/<the batch>/game_0001.log`.
+
+### Replays
+
+1. The **Games** tab (right) lists the batch's games, sortable by winner, their turn order and rounds, with **Watch** on each.
+2. The board column's **Replay** tab shows the board as it was at that point:
+   - planets not yet found (?), found ones in their kind's colour with their number (6 and 8 in red);
+   - the zone's finds (S salvage, R ruins, A alien station, P pirates);
+   - stations and colonies (ringed) on their corners, ships, the blockade (X);
+   - white rings on whatever the last action changed.
+3. Below it: the last few actions in words; each player's points, badges, stations and resources; and their points through the game (click the chart to jump there).
+4. Step an action or a turn at a time, either way, or Play at a chosen speed.
+
+**Open** takes any Cosmic Hex log file: the lab's, the simulator's `--logs`, and later a real game's.
+
+### The layout solver's tab
+
+Beside the Layout tab, **Solver** runs the [layout solver](../README.md#the-layout-solver):
+
+- homes on the edge or the corners;
+- how many singles, pairs, threes and finds (each a floor and a ceiling; the same for an exact count);
+- whether there's a planet at the centre;
+- whether the board is the same from opposite homes, and clusters never touch;
+- the menu of constraints: finds never touching clusters of N or more; threes farther from every home than pairs and singles; each home's nearest single, pair and three within a floor and ceiling of ship moves; every home with a floor and ceiling of planets within so many moves; every home with the same planets within each distance up to so many moves.
+
+**Solve** shows the boards found, the most equal access first, with their singles, pairs, threes and access spread. Clicking one makes it the lab's layout, to save and simulate as any other.
+
+**Prove them by playing:** equal access alone doesn't say a board is fair, so **Prove** plays the first few solved boards (how many, beside it):
+
+1. each plays 300 games;
+2. one fair by both turn position and home (chi-square under the 5% line: 7.81 for four players, 5.99 for three) plays 1,800 more, since a few hundred games flatter a board;
+3. each board's results show under it, green if fair and red if not.
+
+The batches are the lab's own (CSV and logs in `balance_lab_runs/`). The queue is `BoardProving`.
+
+## Command line
+
+| Flag | What it does |
+| --- | --- |
+| `--layout NAME`, `--layouts FILE` | The layout, and the file of layouts |
+| `--edges no` | The older hex-to-hex rules |
+| `--finds usual` | The finds in the usual places (beside the small systems is the rule) |
+| `--games N`, `--iterations N`, `--players N` | The batch |
+| `--run` | Start at once |
+| `--choose` | Open the layouts' thumbnails |
+| `--replay FILE`, `--at N` | Open a game's log in the Replay tab, from action N |
+| `--solve` | Open the Solver tab having solved once |
+| `--prove N` | Solve and prove N boards at the start, unattended |
+
+## How it works
+
+- The window is a padd on the main thread (`LabWindowPadd`).
+- Eight `SimulationPadd`s each play a game when sent one (`PlayGame`) and reply with what came of it (`GamePlayed`).
+- The window hands each the next game as it reports one done, so the cores stay busy, and stopping is simply not handing out more.
+- The games themselves are the simulator's, from [`../simulate/Batch.hpp`](../simulate/Batch.hpp): the same seed and settings give the same game in the simulator and the lab.
+
+Next steps (not built): suggestions; real games in the replays (they'll be action logs too, so Open already takes them).
 
 ## Tests
 
@@ -25,9 +114,3 @@ Next steps (not built): suggestions; real games in the replays once the game is 
 | `LabLayouts_test` | The repo's layouts read; a hex cycled (empty, planet, find, empty) with homes left alone; the usual finds' places; empty-space corners; a layout written, read back, and read by the batch |
 | `BoardProving_test` | Proving the solver's boards: chi-squares from wins by turn position and by home, each board screened and the fair ones played deep |
 | `Tally_test` | Wins counted by turn position (from who went first) and by home, shares, the fair share's margin, rounds and stations by system |
-
-## The layout solver's tab
-
-Beside the Layout tab, **Solver** runs the layout solver (`../solver`): homes on the edge or the corners, how many singles, pairs, threes and finds (each a floor and a ceiling; the same for an exact count), whether there's a planet at the centre, whether the board is the same from opposite homes and clusters never touch, and the menu of constraints (finds never touching clusters of N or more; threes farther from every home than pairs and singles; each home's nearest single, pair and three within a floor and ceiling of ship moves; every home with a floor and ceiling of planets within so many moves; every home with the same planets within each distance up to so many moves). **Solve** shows the boards found, the most equal access first, with their singles/pairs/threes and access spread; clicking one makes it the lab's layout, to save and simulate as any other. `--solve` opens the tab having solved once.
-
-**Prove them by playing**: Prove plays the first few solved boards (how many, beside it) to see which are fair, as equal access alone doesn't say: each plays 300 games, and one fair by both turn position and home (chi-square under the 5% line: 7.81 for four players, 5.99 for three) plays 1,800 more, since a few hundred games flatter a board. Each board's results show under it, green if fair and red if not; the batches are the lab's own (CSV and logs in `balance_lab_runs/`). `--prove N` solves and proves N boards at the start, unattended. The queue is `BoardProving` (tested in `BoardProving_test`).
