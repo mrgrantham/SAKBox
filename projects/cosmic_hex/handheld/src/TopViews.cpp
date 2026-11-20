@@ -147,13 +147,49 @@ void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
 
 // ------------------------------------------------------------------- Dealt
 
+namespace {
+// An action card's face, `w` wide with its top left at (x, y), turned over
+// `turned` of the way (its width through |cos|: past halfway, its face):
+// its picture (sharp when `closeUp` shows it), its body, and once flat its
+// title and words
+void actionCardFace(const TopFrame &f, Art::Card card, float x, float y, float w, float turned,
+                    const ScratchPadd::PictureSlot *closeUp) {
+  const float k = f.k();
+  const float pictureH = w * 52 / 63, cardH = w * 88 / 63;
+  const float across = std::abs(std::cos(turned * kPi));
+  const float cw = w * across, cx = x + w * (1 - across) / 2;
+  const bool sharp = closeUp && closeUp->showing(static_cast<int>(card));
+  picture(f, sharp ? f.pictures.closeUpCardSquare : f.pictures.pictureSquare,
+          sharp ? closeUp->texture() : f.pictures.cards[static_cast<std::size_t>(card)], cx, y, cw,
+          pictureH);
+  // The card's body under its picture, and once flat, its words
+  f.overlay.rectangle(cx, y + pictureH, cw, cardH - pictureH, {236, 232, 220, 255});
+  if (turned < 1)
+    return;
+  const Art::CardWords words = Art::wordsOf(card);
+  // (the title white, centred on the label band, 3 to 19 of the card's
+  // 88 units, as large as fits its width: the user's)
+  float titleScale = 2 * k;
+  while (titleScale > k && Scene::Overlay::textWidth(words.shortTitle, titleScale) > w * 54 / 63)
+    titleScale -= 0.25f * k;
+  f.overlay.textCentred(x + w / 2, y + w * 11 / 63, words.shortTitle, Palette::kWords, titleScale);
+  // (wrapped by the width the letters take as drawn, spacing included)
+  const auto lines = Scene::wrapText(words.words, w - 8 * k, [k](std::string_view line) {
+    return Scene::Overlay::textWidth(line, k);
+  });
+  for (std::size_t l = 0; l < lines.size() && l < 6; ++l)
+    f.overlay.text(x + 4 * k, y + pictureH + (3 + 9 * static_cast<float>(l)) * k, lines[l],
+                   {40, 40, 48}, k);
+}
+} // namespace
+
 void drawDealtCards(const TopFrame &f, const DealtShow &show, int chosen,
                     const std::array<ScratchPadd::PictureSlot, 2> &closeUps) {
   const std::vector<Art::Card> &cards = show.cards();
   if (!show.on() || cards.empty())
     return;
   const float k = f.k();
-  const float w = 100 * k, pictureH = w * 52 / 63, cardH = w * 88 / 63, gap = 16 * k;
+  const float w = 100 * k, cardH = w * 88 / 63, gap = 16 * k;
   const auto count = static_cast<float>(cards.size());
   const float left = (f.width - (count * w + (count - 1) * gap)) / 2, top = 8 * k;
   f.overlay.textCentred(f.width / 2, f.height - 6 * k, "Keep one: touch it below",
@@ -175,29 +211,10 @@ void drawDealtCards(const TopFrame &f, const DealtShow &show, int chosen,
       continue;
     }
     const Art::Card card = cards[i];
-    const bool sharp = i < closeUps.size() && closeUps[i].showing(static_cast<int>(card));
-    picture(f, sharp ? f.pictures.closeUpCardSquare : f.pictures.pictureSquare,
-            sharp ? closeUps[i].texture() : f.pictures.cards[static_cast<std::size_t>(card)], cx, y,
-            cw, pictureH);
-    // The card's body under its picture, and once flat, its words
-    f.overlay.rectangle(cx, y + pictureH, cw, cardH - pictureH, {236, 232, 220, 255});
+    const ScratchPadd::PictureSlot *closeUp = i < closeUps.size() ? &closeUps[i] : nullptr;
+    actionCardFace(f, card, x, y, w, turned, closeUp);
     if (turned < 1)
       continue;
-    const Art::CardWords words = Art::wordsOf(card);
-    // (the title white, centred on the label band, 3 to 19 of the card's
-    // 88 units, as large as fits its width: the user's)
-    float titleScale = 2 * k;
-    while (titleScale > k && Scene::Overlay::textWidth(words.shortTitle, titleScale) > w * 54 / 63)
-      titleScale -= 0.25f * k;
-    f.overlay.textCentred(x + w / 2, y + w * 11 / 63, words.shortTitle, Palette::kWords,
-                          titleScale);
-    // (wrapped by the width the letters take as drawn, spacing included)
-    const auto lines = Scene::wrapText(words.words, w - 8 * k, [k](std::string_view line) {
-      return Scene::Overlay::textWidth(line, k);
-    });
-    for (std::size_t l = 0; l < lines.size() && l < 6; ++l)
-      f.overlay.text(x + 4 * k, y + pictureH + (3 + 9 * static_cast<float>(l)) * k, lines[l],
-                     {40, 40, 48}, k);
     if (static_cast<int>(i) == chosen) {
       f.overlay.rectangle(x - 3 * k, y - 3 * k, w + 6 * k, 2 * k, Palette::kHighlight);
       f.overlay.rectangle(x - 3 * k, y + cardH + k, w + 6 * k, 2 * k, Palette::kHighlight);
@@ -205,6 +222,48 @@ void drawDealtCards(const TopFrame &f, const DealtShow &show, int chosen,
       f.overlay.rectangle(x + w + k, y - 3 * k, 2 * k, cardH + 6 * k, Palette::kHighlight);
     }
   }
+}
+
+// -------------------------------------------------------------- Card play
+
+void drawCardPlay(const TopFrame &f, const CardPlayShow &show, const State &state, int you) {
+  const auto m = show.at(f.now);
+  const CardPlayShow::Play *play = show.current();
+  if (!m || !play)
+    return;
+  const float k = f.k();
+  backdrop(f, 0, {8, 12, 22}, 12 * std::min(1.0f, m->up * 2) * (1 - m->away));
+  // From its player (your hand below, or their row of the points bars) up
+  // to the middle, face down until it turns; then off up and away
+  const float w = 90 * k, cardH = w * 88 / 63;
+  const float fromX = play->player == you ? f.width * 0.7f : f.width - 20 * k;
+  const float fromY = play->player == you
+                          ? f.height + cardH
+                          : PointsBars::kTop + static_cast<float>(play->player) *
+                                                   (PointsBars::kRowHeight + PointsBars::kRowGap);
+  const float midX = f.width / 2, midY = f.height / 2 + 6 * k;
+  const float cx =
+      Motion::arc(Motion::arc(fromX, midX, -10 * k, m->up), f.width + w, 0.0f, m->away);
+  const float cy = Motion::arc(Motion::arc(fromY, midY, -20 * k, m->up), -cardH, -20 * k, m->away);
+  const float size = std::max(0.2f, std::min(1.0f, m->up)) * (1 - 0.5f * m->away);
+  const float cw = w * size;
+  const float x = cx - cw / 2, y = cy - cw * 88 / 63 / 2;
+  if (m->turned < 0.5f) {
+    const float across = std::abs(std::cos(m->turned * kPi));
+    picture(f, f.pictures.backSquare, f.pictures.backs[static_cast<std::size_t>(Art::kActionBack)],
+            x + cw * (1 - across) / 2, y, cw * across, cw * 88 / 63);
+  } else {
+    actionCardFace(f, play->card, x, y, cw, m->away > 0 ? 0.999f : m->turned, nullptr);
+  }
+  if (m->away <= 0) {
+    const bool charter = play->card >= Art::Card::CharterThreeOfAKind;
+    const std::string who = play->player == you ? "You" : f.names[play->player];
+    f.overlay.textCentred(f.width / 2, 8 * k,
+                          who + (charter ? " reveal" : " play") + (play->player == you ? "" : "s") +
+                              (charter ? " a Charter" : ""),
+                          BoardColours::ofPlayer(play->player), k);
+  }
+  (void)state;
 }
 
 // --------------------------------------------------------- Show resources

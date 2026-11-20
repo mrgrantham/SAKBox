@@ -1,5 +1,7 @@
 #include <CosmicHex/Handheld/TopShows.hpp>
 
+#include <CosmicHex/Handheld/CardsHeld.hpp>
+
 #include <algorithm>
 
 namespace CosmicHex::Handheld {
@@ -469,6 +471,75 @@ RollPayShow::Step RollPayShow::update(double now) {
     return step;
   cards_.clear();
   held_ = started_ = false;
+  step.letGo = true;
+  return step;
+}
+
+// --------------------------------------------------------------- Card play
+
+void CardPlayShow::saw(const std::vector<TableGame::Played> &moves, double now) {
+  for (const TableGame::Played &move : moves) {
+    std::optional<Art::Card> card;
+    switch (move.action.kind) {
+    case Action::Kind::PlayEnforcer:
+      card = Art::Card::Enforcer;
+      break;
+    case Action::Kind::PlayCartel:
+      card = Art::Card::InterstellarCartel;
+      break;
+    case Action::Kind::PlayShipyard:
+      card = Art::Card::ShipyardSurplus;
+      break;
+    case Action::Kind::PlaySupplyDrop:
+      card = Art::Card::SupplyDrop;
+      break;
+    case Action::Kind::RevealContract:
+      card = cardOf(move.action.a);
+      break;
+    default:
+      break;
+    }
+    if (!card)
+      continue;
+    queue_.push_back({move.player, *card});
+    if (!startedAt_)
+      startedAt_ = now;
+  }
+}
+
+std::optional<CardPlayShow::Moment> CardPlayShow::at(double now) const {
+  if (queue_.empty() || !startedAt_ || now < *startedAt_)
+    return std::nullopt;
+  const auto s = static_cast<float>(now - *startedAt_);
+  if (s >= kSeconds)
+    return std::nullopt;
+  const auto part = [s](float from, float length) {
+    return std::clamp((s - from) / length, 0.0f, 1.0f);
+  };
+  return Moment{
+      .up = Motion::along(Motion::Curve::Settle, part(0, kSecondsUp)),
+      .turned = Motion::along(Motion::Curve::EaseInOut, part(kSecondsUp * 0.3f, kSecondsUp)),
+      .away =
+          Motion::along(Motion::Curve::Anticipate, part(kSecondsUp + kSecondsHold, kSecondsAway))};
+}
+
+CardPlayShow::Step CardPlayShow::update(double now) {
+  Step step;
+  if (queue_.empty() || !startedAt_ || now < *startedAt_)
+    return step;
+  if (!held_) {
+    held_ = true;
+    step.hold = true;
+  }
+  if (now - *startedAt_ < kSeconds)
+    return step;
+  queue_.erase(queue_.begin());
+  if (!queue_.empty()) {
+    startedAt_ = now;
+    return step;
+  }
+  startedAt_.reset();
+  held_ = false;
   step.letGo = true;
   return step;
 }

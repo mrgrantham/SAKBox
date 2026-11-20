@@ -128,3 +128,14 @@ TEST_F(TopViewsTest, ARollsPayFromStartToEnd) {
     drawRollPay(f, show, state, 0);
   });
 }
+
+TEST_F(TopViewsTest, ACardPlayedFromStartToEnd) {
+  for (const int player : {0, 2}) {
+    CardPlayShow show;
+    show.saw({{player, Action{Action::Kind::PlaySupplyDrop, 0, 1}}}, 0);
+    frames(every(-0.2, CardPlayShow::kSeconds + 0.2), [&](const TopFrame &f) {
+      show.update(f.now);
+      drawCardPlay(f, show, state, 0);
+    });
+  }
+}

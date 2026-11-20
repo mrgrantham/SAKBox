@@ -264,3 +264,21 @@ TEST(TopShowsTest, TradesCross) {
   EXPECT_EQ(bank.cards().front().player, RollPayShow::kBank);
   EXPECT_EQ(bank.cards().back().from, RollPayShow::kBank);
 }
+
+// A card played: shown from when it's seen, rising, turning over, held,
+// then away; the next after it; the game held meanwhile
+TEST(TopShowsTest, ACardPlayedIsShown) {
+  CardPlayShow show;
+  show.saw({{1, Action{Action::Kind::PlayCartel, 2}}, {3, Action{Action::Kind::PlayEnforcer}}}, 5);
+  ASSERT_NE(show.current(), nullptr);
+  EXPECT_EQ(show.current()->card, Art::Card::InterstellarCartel);
+  EXPECT_TRUE(show.update(5).hold);
+  const auto held = show.at(5 + CardPlayShow::kSecondsUp + 0.5);
+  ASSERT_TRUE(held.has_value());
+  EXPECT_FLOAT_EQ(held->turned, 1);
+  EXPECT_FLOAT_EQ(held->away, 0);
+  show.update(5 + CardPlayShow::kSeconds);
+  EXPECT_EQ(show.current()->card, Art::Card::Enforcer);
+  EXPECT_TRUE(show.update(5 + 2 * CardPlayShow::kSeconds + 0.01).letGo);
+  EXPECT_FALSE(show.moving(5 + 2 * CardPlayShow::kSeconds + 0.02));
+}

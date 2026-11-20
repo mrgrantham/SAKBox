@@ -70,6 +70,10 @@ void drawDealtCards(const TopFrame &frame, const DealtShow &show, int chosen,
 void drawResources(const TopFrame &frame, const Player &player, const CardsShow &show);
 // What everyone can see of a player, on a panel sliding down from the top
 void drawOtherPlayer(const TopFrame &frame, const PlayerView &view, float down);
+// An action card played or a Charter revealed (CardPlayShow): rising from
+// its player, turning over, held big to be read, then away
+void drawCardPlay(const TopFrame &f, const CardPlayShow &show, const State &state, int you);
+
 // Who goes first: each player's die in the glass in their colour, their
 // numbers by their names as they land, then the order by name
 void drawFirstRoll(const TopFrame &frame, const FirstRoll &roll, const FirstRollShow &show);

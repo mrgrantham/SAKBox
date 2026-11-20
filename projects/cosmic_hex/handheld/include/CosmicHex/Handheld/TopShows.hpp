@@ -312,4 +312,42 @@ private:
   bool started_ = false, held_ = false;
 };
 
+// ---------------------------------------------------------------------------
+// An action card played, or a Charter revealed: the card rises from its
+// player (your hand, or their row of the points bars) face down, turning
+// over as it comes, held big in the middle to be read, then off up and
+// away (to the discards); one after another, the game held meanwhile
+
+class CardPlayShow {
+public:
+  static constexpr float kSecondsUp = 0.5f, kSecondsHold = 1.4f, kSecondsAway = 0.4f;
+  static constexpr float kSeconds = kSecondsUp + kSecondsHold + kSecondsAway;
+
+  struct Play {
+    int player = 0;
+    Art::Card card{};
+  };
+  // The moves made since the last look: each card played or Charter revealed
+  void saw(const std::vector<TableGame::Played> &moves, double now);
+
+  const Play *current() const { return queue_.empty() ? nullptr : &queue_.front(); }
+  // The current one's moment: risen (0 to 1), turned over (0 to 1), gone
+  // (0 to 1); nothing when none shows
+  struct Moment {
+    float up, turned, away;
+  };
+  std::optional<Moment> at(double now) const;
+  bool moving(double now) const { return at(now).has_value(); }
+
+  struct Step {
+    bool hold = false, letGo = false;
+  };
+  Step update(double now);
+
+private:
+  std::vector<Play> queue_;
+  std::optional<double> startedAt_;
+  bool held_ = false;
+};
+
 } // namespace CosmicHex::Handheld

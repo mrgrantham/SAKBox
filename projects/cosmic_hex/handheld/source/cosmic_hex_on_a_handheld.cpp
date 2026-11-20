@@ -392,6 +392,8 @@ public:
       // A roll's pay: once the dice are pulled away (RollPayShow)
       if (latest_)
         rollPay_.saw(snapshot.played, latest_->state);
+      // An action card played, or a Charter revealed: shown big (CardPlayShow)
+      cardPlay_.saw(snapshot.played, showsNow());
       // Your two cards dealt after buying: thrown onto the top screen
       {
         const bool keeping = mode_ == Mode::Playing && snapshot.yourMove &&
@@ -614,6 +616,7 @@ private:
     updateDiscovery();
     updateHomePay();
     updateRollPay();
+    updateCardPlay();
     // The two cards dealt, drawn sharp before they're thrown in (on a DS
     // about a quarter of a second, while the screen is still)
     if (dealt_.needsCloseUp()) {
@@ -933,6 +936,8 @@ private:
     else if (homePay_.moving(showsNow()) && latest_)
       drawHomePay(frame, homePay_, latest_->state,
                   mode_ == Mode::Playing && homePay_.current()->player == 0, closeUpCards_[0]);
+    else if (cardPlay_.moving(showsNow()) && latest_)
+      drawCardPlay(frame, cardPlay_, latest_->state, mode_ == Mode::Playing ? 0 : -1);
     else if (dealt_.on())
       drawDealtCards(frame, dealt_, bottomScreen_ ? bottomScreen_->keepChosen() : -1,
                      closeUpCards_);
@@ -1866,6 +1871,11 @@ private:
   // Each frame: the home's pay held over the game; its card drawn sharp
   // (into the first dealt card's slot: the two never show together, and
   // the DS has no texture memory for another)
+  void updateCardPlay() {
+    const CardPlayShow::Step step = cardPlay_.update(showsNow());
+    if (step.hold || step.letGo)
+      holdFor(Hold::CardPlay, step.hold);
+  }
   void updateHomePay() {
     if (const HomePayShow::Pay *pay = homePay_.current(); pay && pay->resource) {
       const auto card = static_cast<CosmicHex::Art::Card>(*pay->resource);
@@ -1925,8 +1935,8 @@ private:
     if (shownInfo_ != BottomScreen::Info::None || cards_.moving(showsNow()) || outlineMovedAt_)
       return true; // (an info view coming in or going, the points' outline)
     // (the views over the board: each says)
-    if (scorePops_.popping(showsNow()))
-      return true; // (points or badges popping in)
+    if (scorePops_.popping(showsNow()) || cardPlay_.moving(showsNow()))
+      return true; // (points or badges popping in, a card played)
     if (dealt_.moving() || others_.moving(showsNow()) || discovery_.moving(showsNow()) ||
         homePay_.moving(showsNow()) || rollPay_.moving(showsNow()))
       return true;
@@ -2026,6 +2036,7 @@ private:
   HomePayShow homePay_;             // (a home's pay on its die)
   RollPayShow rollPay_;             // (a roll's pay, card by card)
   ScorePops scorePops_;             // (points and badges won, popping in)
+  CardPlayShow cardPlay_;           // (an action card played, a Charter revealed)
   ScratchPadd::StillFrames still_;  // (when the top screen can hold its last frame)
   bool youPaused_ = false;          // (watching: paused with A, so the PAUSED band shows)
   // Why the game is held, if it is: one bit each. The table is told to hold
@@ -2036,7 +2047,8 @@ private:
     Info = 4,      // (Show resources, another player's panel)
     Discovery = 8, // (a tile shown big)
     HomePay = 16,  // (a home's pay)
-    RollPay = 32   // (a roll's pay)
+    RollPay = 32,  // (a roll's pay)
+    CardPlay = 64  // (an action card played)
   };
   std::uint8_t holds_ = 0;
   void holdFor(Hold why, bool on) {
@@ -2106,7 +2118,8 @@ private:
     const double t = showsNow();
     const bool dealing =
         dealt_.on() && !dealt_.cards().empty() && dealt_.turned(dealt_.cards().size() - 1, t) < 1;
-    return dealing || discovery_.moving(t) || homePay_.moving(t) || rollPay_.moving(t);
+    return dealing || discovery_.moving(t) || homePay_.moving(t) || rollPay_.moving(t) ||
+           cardPlay_.moving(t);
   }
   // Every animation straight to its end frame (the user's: B, or every
   // frame when Animations is Off)
