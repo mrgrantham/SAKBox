@@ -81,6 +81,10 @@ void drawCardPlay(const TopFrame &f, const CardPlayShow &show, const State &stat
 void drawPick(const TopFrame &f, const PickShow &show, std::string_view title,
               const Resources &held, const Settings &settings, ScratchPadd::Scene::Colour yours);
 
+// Cards gained (HandShow): your piles, `held` (the new cards counted in),
+// rising into view, the new ones dropping into the backs of their piles
+void drawGained(const TopFrame &f, const Resources &held, const HandShow &show);
+
 // Who goes first: each player's die in the glass in their colour, their
 // numbers by their names as they land, then the order by name
 void drawFirstRoll(const TopFrame &frame, const FirstRoll &roll, const FirstRollShow &show);

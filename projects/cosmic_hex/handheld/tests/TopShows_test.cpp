@@ -306,3 +306,24 @@ TEST(TopShowsTest, APickSlidesWithTheFocus) {
   pick.show(std::nullopt, 5);
   EXPECT_FALSE(pick.at(5).has_value());
 }
+
+// Cards gained: queued until started, the piles up, each new card dropping
+// in after the last, then the piles down and gone
+TEST(TopShowsTest, CardsGainedDropIntoTheHand) {
+  HandShow hand;
+  Resources added{};
+  added[1] = 2;
+  hand.gained(added);
+  EXPECT_TRUE(hand.waiting());
+  EXPECT_FALSE(hand.showing(0));
+  hand.start(10);
+  EXPECT_FALSE(hand.waiting());
+  EXPECT_FLOAT_EQ(hand.piles(10), 0);
+  EXPECT_FLOAT_EQ(hand.piles(10 + HandShow::kSecondsPiles), 1);
+  const double first = 10 + HandShow::kSecondsPiles;
+  EXPECT_NEAR(hand.card(Resource::Food, 0, first), 0, 1e-4);
+  EXPECT_GT(hand.card(Resource::Food, 0, first + 0.2), hand.card(Resource::Food, 1, first + 0.2));
+  EXPECT_FLOAT_EQ(hand.card(Resource::Food, 1, first + 2), 1);
+  EXPECT_TRUE(hand.showing(first + 1));
+  EXPECT_FALSE(hand.showing(20));
+}

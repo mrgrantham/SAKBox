@@ -22,17 +22,29 @@ public:
     Colour colour;
   };
 
+  // Where text may show (points): what falls outside is cut off. Its
+  // default lets everything show
+  struct Clip {
+    float left = -1e9f, top = -1e9f, right = 1e9f, bottom = 1e9f;
+    bool operator==(const Clip &) const = default;
+  };
+
   struct Text {
     float x, y; // its top-left, points
     std::string text;
     Colour colour;
     float scale;
+    Clip clip = {};
   };
+
+  // The text added from now on cut to `clip` (a number rolling up into a
+  // window, say); clipText({}) to show it all again
+  void clipText(Clip clip) { clip_ = clip; }
 
   // `text` with its top-left at (x, y), `scale` times its usual size (on
   // the DS, each glyph scaled to whole pixels). '\n' starts a new line.
   void text(float x, float y, std::string_view text, Colour colour, float scale = 1) {
-    texts_.push_back({x, y, std::string(text), colour, scale});
+    texts_.push_back({x, y, std::string(text), colour, scale, clip_});
   }
   // How wide `text`'s widest line is drawn, in points, at `scale`, and how
   // tall a line is: the backend's font (each backend defines them)
@@ -80,11 +92,13 @@ public:
   void clear() {
     triangles_.clear();
     texts_.clear();
+    clip_ = {};
   }
 
 private:
   std::vector<Vertex> triangles_;
   std::vector<Text> texts_;
+  Clip clip_;
 };
 
 } // namespace ScratchPadd::Scene

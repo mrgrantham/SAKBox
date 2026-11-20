@@ -73,10 +73,15 @@ void appendTextTriangles(const Overlay::Text &text, std::vector<Overlay::Vertex>
   fontRectangles(text.text, strokes);
   triangles.reserve(triangles.size() + strokes.size() * 6);
   for (const FontRectangle &r : strokes) {
-    const float x = text.x + static_cast<float>(r.x) * text.scale,
-                y = text.y + static_cast<float>(r.y) * text.scale;
-    const float right = x + static_cast<float>(r.width) * text.scale,
-                bottom = y + static_cast<float>(r.height) * text.scale;
+    // (each stroke cut to the text's clip; nothing left, nothing drawn)
+    const float x = std::max(text.clip.left, text.x + static_cast<float>(r.x) * text.scale),
+                y = std::max(text.clip.top, text.y + static_cast<float>(r.y) * text.scale);
+    const float right = std::min(text.clip.right,
+                                 text.x + static_cast<float>(r.x + r.width) * text.scale),
+                bottom = std::min(text.clip.bottom,
+                                  text.y + static_cast<float>(r.y + r.height) * text.scale);
+    if (right <= x || bottom <= y)
+      continue;
     const Overlay::Vertex a{x, y, text.colour}, b{right, y, text.colour},
         c{right, bottom, text.colour}, d{x, bottom, text.colour};
     triangles.insert(triangles.end(), {a, b, c, a, c, d});

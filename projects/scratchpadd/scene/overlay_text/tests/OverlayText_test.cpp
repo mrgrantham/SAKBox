@@ -124,3 +124,18 @@ TEST(OverlayTextTest, FontRectanglesMatchStbEasyFont) {
     EXPECT_EQ(r.height, corner[2].y - corner[0].y) << q;
   }
 }
+
+// Clipped text: strokes cut to the clip, those outside it gone
+TEST(OverlayTextTest, ClippedTextIsCut) {
+  Overlay overlay;
+  overlay.clipText({.left = 0, .top = 0, .right = 100, .bottom = 4});
+  overlay.text(10, 0, "8", {255, 255, 255}, 1);
+  overlay.clipText({});
+  overlay.text(10, 0, "8", {255, 255, 255}, 1);
+  std::vector<Overlay::Vertex> clipped, whole;
+  appendTextTriangles(overlay.texts().at(0), clipped);
+  appendTextTriangles(overlay.texts().at(1), whole);
+  EXPECT_LT(clipped.size(), whole.size());
+  for (const Overlay::Vertex &v : clipped)
+    EXPECT_LE(v.y, 4);
+}

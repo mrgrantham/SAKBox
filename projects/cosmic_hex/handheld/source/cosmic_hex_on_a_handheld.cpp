@@ -418,6 +418,18 @@ public:
       gameClock_.setPaused(snapshot.paused);
       if (moved)
         motionStarted_ = gameClock_.seconds();
+      // Your cards gained: your hand shown, the new ones dropping in (HandShow)
+      if (latest_ && mode_ == Mode::Playing) {
+        CosmicHex::Resources added{};
+        bool any = false;
+        for (std::size_t r = 0; r < added.size(); ++r) {
+          added[r] = std::max(0, snapshot.state.player[0].resources[r] -
+                                     latest_->state.player[0].resources[r]);
+          any = any || added[r] > 0;
+        }
+        if (any)
+          hand_.gained(added);
+      }
       // Points and badges won: popping in (ScorePops)
       {
         std::vector<int> points, badges;
@@ -624,6 +636,7 @@ private:
     updateRollPay();
     updateCardPlay();
     updatePick();
+    updateHand();
     updateCelebration();
     // The two cards dealt, drawn sharp before they're thrown in (on a DS
     // about a quarter of a second, while the screen is still)
@@ -951,6 +964,9 @@ private:
     // bots' cards fly to their rows of the points bars)
     if (latest_ && rollPay_.moving(showsNow()))
       drawRollPay(frame, rollPay_, latest_->state, mode_ == Mode::Playing ? 0 : -1);
+    // (your cards gained, as Show resources shows them)
+    if (latest_ && hand_.showing(showsNow()) && !cards_.showing(showsNow()))
+      drawGained(frame, latest_->state.player[0].resources, hand_);
     // (Show resources, over the board, under the views below)
     if (latest_ && cards_.showing(showsNow()))
       drawResources(frame,
@@ -1961,6 +1977,19 @@ private:
                     std::string(bottomScreen_->resourceChoice()->title), Palette::kHighlight);
     pick_.show(focus, showsNow());
   }
+  // Each frame: your cards gained shown once nothing that brings them is
+  // still showing (the roll's pay, the home's, choosing one, a discovery)
+  void updateHand() {
+    const double t = showsNow();
+    // (the board's pieces moving count too: a discovery comes once they've
+    // stopped)
+    const bool busy = dice_ != DiceStage::Idle || rollPay_.moving(t) || rollPay_.waiting() ||
+                      gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving ||
+                      homePay_.moving(t) || pick_.at(t) || discovery_.moving(t) || dealt_.on() ||
+                      cardPlay_.moving(t) || cards_.showing(t) || firstRoll_.on();
+    if (hand_.waiting() && !busy)
+      hand_.start(t);
+  }
   void updateCardPlay() {
     const CardPlayShow::Step step = cardPlay_.update(showsNow());
     if (step.hold || step.letGo)
@@ -2026,7 +2055,7 @@ private:
       return true; // (an info view coming in or going, the points' outline)
     // (the views over the board: each says)
     if (scorePops_.popping(showsNow()) || cardPlay_.moving(showsNow()) || celebration_ ||
-        pick_.moving(showsNow()))
+        pick_.moving(showsNow()) || hand_.moving(showsNow()))
       return true; // (points or badges popping in, a card played)
     if (dealt_.moving() || others_.moving(showsNow()) || discovery_.moving(showsNow()) ||
         homePay_.moving(showsNow()) || rollPay_.moving(showsNow()))
@@ -2130,6 +2159,7 @@ private:
   ScorePops scorePops_;             // (points and badges won, popping in)
   CardPlayShow cardPlay_;           // (an action card played, a Charter revealed)
   PickShow pick_;                   // (choosing a resource: the card in focus, big)
+  HandShow hand_;                   // (your cards gained, dropping into your hand)
   ScratchPadd::StillFrames still_;  // (when the top screen can hold its last frame)
   bool youPaused_ = false;          // (watching: paused with A, so the PAUSED band shows)
   // Why the game is held, if it is: one bit each. The table is told to hold

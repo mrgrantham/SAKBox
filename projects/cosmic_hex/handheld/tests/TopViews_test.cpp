@@ -149,3 +149,14 @@ TEST_F(TopViewsTest, APickFromStartToEnd) {
     drawPick(f, pick, "Your home pays 1", state.player[0].resources, state.settings, {255, 80, 80});
   });
 }
+
+TEST_F(TopViewsTest, CardsGainedFromStartToEnd) {
+  HandShow hand;
+  Resources added{};
+  added[0] = 1;
+  added[3] = 2;
+  hand.gained(added);
+  hand.start(0);
+  Resources held{2, 0, 1, 4, 0};
+  frames(every(-0.1, 2.5, 0.05), [&](const TopFrame &f) { drawGained(f, held, hand); });
+}

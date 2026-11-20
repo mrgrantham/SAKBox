@@ -119,7 +119,7 @@ bool sameShape(const Overlay::Vertex *a, const Overlay::Vertex *b) {
 bool sameText(const std::vector<Overlay::Text> &a, const std::vector<Overlay::Text> &b) {
   return std::ranges::equal(a, b, [](const Overlay::Text &x, const Overlay::Text &y) {
     return x.x == y.x && x.y == y.y && x.text == y.text && x.colour == y.colour &&
-           x.scale == y.scale;
+           x.scale == y.scale && x.clip == y.clip;
   });
 }
 
@@ -387,11 +387,18 @@ void Renderer::Backend::drawOverlayText(const Overlay &overlay) {
       const int x0 = pixel(left + r.x * scale), y0 = pixel(top + r.y * scale);
       const int x1 = std::max(x0 + 1, pixel(left + (r.x + r.width) * scale));
       const int y1 = std::max(y0 + 1, pixel(top + (r.y + r.height) * scale));
-      textRowsFrom = std::min(textRowsFrom, std::max(0, y0));
-      textRowsTo = std::max(textRowsTo, std::min(y1, kTextHeight));
-      for (int y = std::max(0, y0); y < std::min(y1, kTextHeight); ++y) {
+      // (cut to the text's clip, and the layer)
+      const int fromY = std::max({0, y0, static_cast<int>(std::ceil(text.clip.top))});
+      const int toY = std::min({y1, kTextHeight, static_cast<int>(std::floor(text.clip.bottom))});
+      const int fromX = std::max({0, x0, static_cast<int>(std::ceil(text.clip.left))});
+      const int toX = std::min({x1, kTextWidth, static_cast<int>(std::floor(text.clip.right))});
+      if (toY <= fromY || toX <= fromX)
+        continue;
+      textRowsFrom = std::min(textRowsFrom, fromY);
+      textRowsTo = std::max(textRowsTo, toY);
+      for (int y = fromY; y < toY; ++y) {
         std::uint8_t *line = &textPixels[static_cast<std::size_t>(y) * kTextWidth];
-        for (int x = std::max(0, x0); x < std::min(x1, kTextWidth); ++x)
+        for (int x = fromX; x < toX; ++x)
           line[x] = entry;
       }
     }

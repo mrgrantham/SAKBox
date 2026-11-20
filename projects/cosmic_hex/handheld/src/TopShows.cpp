@@ -592,4 +592,58 @@ std::optional<PickShow::Moment> PickShow::at(double now) const {
 
 bool PickShow::moving(double now) const { return shown_ && now - since_ < kSecondsSlide; }
 
+// ------------------------------------------------------------- Cards gained
+
+void HandShow::gained(const Resources &added) {
+  for (std::size_t r = 0; r < queued_.size(); ++r)
+    queued_[r] += added[r];
+}
+
+bool HandShow::waiting() const {
+  return !startedAt_ && std::any_of(queued_.begin(), queued_.end(), [](int n) { return n > 0; });
+}
+
+void HandShow::start(double now) {
+  if (!waiting())
+    return;
+  added_ = queued_;
+  queued_ = {};
+  startedAt_ = now;
+}
+
+float HandShow::seconds() const {
+  int cards = 0;
+  for (const int n : added_)
+    cards += n;
+  return 2 * kSecondsPiles + kStagger * static_cast<float>(std::max(0, cards - 1)) + kSecondsCard +
+         kSecondsHold;
+}
+
+bool HandShow::showing(double now) const {
+  return startedAt_ && now >= *startedAt_ && now - *startedAt_ < seconds();
+}
+
+float HandShow::piles(double now) const {
+  if (!showing(now))
+    return 0;
+  const auto t = static_cast<float>(now - *startedAt_);
+  if (t < kSecondsPiles)
+    return Motion::along(Motion::Curve::EaseOut, t / kSecondsPiles);
+  const float leaving = (t - (seconds() - kSecondsPiles)) / kSecondsPiles;
+  return leaving > 0 ? 1 - Motion::along(Motion::Curve::EaseIn, leaving) : 1;
+}
+
+float HandShow::card(Resource r, int index, double now) const {
+  if (!startedAt_ || index < 0)
+    return 1;
+  // (the gained cards in order: all of one resource, then the next)
+  int order = 0;
+  for (int q = 0; q < static_cast<int>(r); ++q)
+    order += added_[static_cast<std::size_t>(q)];
+  order += index;
+  const auto t =
+      static_cast<float>(now - *startedAt_) - kSecondsPiles - kStagger * static_cast<float>(order);
+  return Motion::along(Motion::Curve::Settle, std::clamp(t / kSecondsCard, 0.0f, 1.0f));
+}
+
 } // namespace CosmicHex::Handheld

@@ -383,4 +383,36 @@ private:
   int direction_ = 1;
 };
 
+// ---------------------------------------------------------------------------
+// Cards gained (the user's): your hand shown as Show resources shows it, the
+// piles rising into view, each new card sliding down from above into the
+// back of its pile, one after another; a moment to see them, then the piles
+// going back down
+
+class HandShow {
+public:
+  static constexpr float kSecondsPiles = 0.3f; // (the piles in, and out)
+  static constexpr float kSecondsCard = 0.35f, kStagger = 0.12f;
+  static constexpr float kSecondsHold = 0.6f;
+
+  // Cards gained: queued, shown from `start` (when the top screen is free)
+  void gained(const Resources &added);
+  void start(double now);
+  bool waiting() const;
+  bool showing(double now) const;
+  bool moving(double now) const { return showing(now); }
+
+  // How far the piles are up (0 below the screen, 1 in place)
+  float piles(double now) const;
+  // How far gained card `index` of resource `r` has slid in (0 above the
+  // screen, 1 in its pile); 1 for cards held before
+  float card(Resource r, int index, double now) const;
+  const Resources &added() const { return added_; }
+
+private:
+  float seconds() const; // (all told)
+  Resources added_{}, queued_{};
+  std::optional<double> startedAt_;
+};
+
 } // namespace CosmicHex::Handheld

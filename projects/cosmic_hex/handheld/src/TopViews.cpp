@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <functional>
 #include <string>
 #include <tuple>
 
@@ -269,9 +270,14 @@ void drawCardPlay(const TopFrame &f, const CardPlayShow &show, const State &stat
 
 // --------------------------------------------------------- Show resources
 
-void drawResources(const TopFrame &f, const Player &player, const CardsShow &show) {
-  if (!show.showing(f.now))
-    return;
+namespace {
+// The five piles of resource cards along the bottom (Show resources' and
+// cards gained's): `heldOf` each; each card's height by `showSlid` (0 below
+// the screen, 1 in place: by its order across the piles), and a pile's
+// newest `fresh` cards, at its back, by `dropped` (0 above the screen, 1
+// in place). The order counted on past the piles, for what's drawn next
+int drawPiles(const TopFrame &f, const Resources &heldOf, const std::function<float(int)> &showSlid,
+              const Resources &fresh, const std::function<float(Resource, int)> &dropped) {
   const float k = f.k();
   const TopPictures &p = f.pictures;
   const auto rw = static_cast<float>(p.resourceWidth), rh = rw * 52 / 63;
@@ -284,13 +290,17 @@ void drawResources(const TopFrame &f, const Player &player, const CardsShow &sho
   const float u = rw / Art::kCardWidth;
   int order = 0;
   for (int r = 0; r < kResources; ++r) {
-    const int held = player.resources[static_cast<std::size_t>(r)];
+    const int held = heldOf[static_cast<std::size_t>(r)];
     const int shown = std::max(1, std::min(held, 5));
     const float x = pilesLeft + static_cast<float>(r) * (rw + pileGap);
+    const int newest = std::min(fresh[static_cast<std::size_t>(r)], shown);
     for (int j = shown - 1; j >= 0; --j) {
       // (each card under the front one 5 pixels higher: its band shows)
       const float y = pileY - static_cast<float>(j) * kPileStep * k;
-      const float slid = y + (1 - show.arrived(order++, f.now)) * (f.height - y + 4);
+      float slid = y + (1 - showSlid(order++)) * (f.height - y + 4);
+      // (a newly gained card, at the back: dropping down into its place)
+      if (j >= shown - newest)
+        slid -= (1 - dropped(static_cast<Resource>(r), shown - 1 - j)) * (slid + rh + 4);
       f.renderer.draw(p.resourceSquare,
                       onScreenAt(f.camera, f.width, f.height, x, slid, rw, rh,
                                  kPictureDistance - 0.02f * static_cast<float>(shown - j)),
@@ -300,7 +310,7 @@ void drawResources(const TopFrame &f, const Player &player, const CardsShow &sho
     }
     // The title in the front card's band, dark on a light band, faint when
     // there are none; past five, how many in a badge above the pile
-    const float front = pileY + (1 - show.arrived(order - 1, f.now)) * (f.height - pileY + 4);
+    const float front = pileY + (1 - showSlid(order - 1)) * (f.height - pileY + 4);
     const Scene::Colour band = p.resourceBands[static_cast<std::size_t>(r)];
     const float light = 0.2126f * band.r + 0.7152f * band.g + 0.0722f * band.b;
     const Scene::Colour ink = held == 0     ? Scene::Colour{120, 128, 145}
@@ -315,6 +325,18 @@ void drawResources(const TopFrame &f, const Player &player, const CardsShow &sho
       f.overlay.textCentred(x + rw / 2, by + bh / 2, std::to_string(held), Palette::kWords);
     }
   }
+  return order;
+}
+} // namespace
+
+void drawResources(const TopFrame &f, const Player &player, const CardsShow &show) {
+  if (!show.showing(f.now))
+    return;
+  const float k = f.k();
+  const TopPictures &p = f.pictures;
+  int order = drawPiles(
+      f, player.resources, [&](int o) { return show.arrived(o, f.now); }, Resources{},
+      [](Resource, int) { return 1.0f; });
   // The action cards across the top, smaller, each easing down, their
   // short titles under them
   std::vector<Art::Card> actions;
@@ -331,6 +353,15 @@ void drawResources(const TopFrame &f, const Player &player, const CardsShow &sho
     f.overlay.textCentred(x + w / 2, y + h + 6 * k, Art::wordsOf(actions[i]).shortTitle,
                           Palette::kWords);
   }
+}
+
+void drawGained(const TopFrame &f, const Resources &held, const HandShow &show) {
+  if (!show.showing(f.now))
+    return;
+  const float up = show.piles(f.now);
+  drawPiles(
+      f, held, [up](int) { return up; }, show.added(),
+      [&](Resource r, int index) { return show.card(r, index, f.now); });
 }
 
 // ------------------------------------------------------------ Other player
@@ -425,27 +456,20 @@ void drawOtherPlayer(const TopFrame &f, const PlayerView &view, float down) {
 // -------------------------------------------------------------- First roll
 
 namespace {
-// A number rolling up into place like an odometer (the user's): 1, 2, ...
-// up to `value`, each sliding up through a window a line high, slowing as
-// it comes to `value`, over half a second from `seconds` 0. The window's
-// edges are masked in the first roll's backdrop colour (the overlay draws
-// whatever it's given: no clipping), so draw what's over it after
+// A number rolling up into place (the user's): the number rolled sliding
+// up into a window just its own height, past where it settles and back
+// (Settle's overshoot), over 0.4 s from `seconds` 0, cut to the window
+// (Overlay::clipText)
 void odometer(const TopFrame &f, float x, float y, int value, float seconds, Scene::Colour colour) {
   const float k = f.k(), scale = std::round(1.5f * k);
-  const float line = Scene::Overlay::inkOf("8", scale).height + 4 * k;
-  constexpr float kSeconds = 0.5f;
-  // (q: how far it's rolled, -1 nothing yet to value - 1 at rest)
+  const float high = Scene::Overlay::inkOf("8", scale).height;
+  constexpr float kSeconds = 0.4f;
   const float t = std::clamp(seconds / kSeconds, 0.0f, 1.0f);
-  const float q = -1 + Motion::along(Motion::Curve::EaseOut, t) * static_cast<float>(value);
-  for (int d = 1; d <= value; ++d) {
-    const float offset = static_cast<float>(d - 1) - q; // (in lines: 0 in the window)
-    if (offset > -1 && offset < 1)
-      f.overlay.textCentred(x, y + offset * line, std::to_string(d), colour, scale);
-  }
-  constexpr Scene::Colour kBackdrop{10, 15, 26}; // (drawFirstRoll's)
-  const float w = 12 * k;
-  f.overlay.rectangle(x - w, y - 1.6f * line, 2 * w, 1.1f * line, kBackdrop);
-  f.overlay.rectangle(x - w, y + 0.5f * line, 2 * w, 1.1f * line, kBackdrop);
+  // (from a line below to its place: past 1, a little above it)
+  const float below = (1 - Motion::along(Motion::Curve::Settle, t)) * (high + 3 * k);
+  f.overlay.clipText({.top = y - high / 2 - 1 * k, .bottom = y + high / 2 + 1 * k});
+  f.overlay.textCentred(x, y + below, std::to_string(value), colour, scale);
+  f.overlay.clipText({});
 }
 } // namespace
 
