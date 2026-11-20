@@ -191,8 +191,10 @@ struct TableSnapshot {
   bool waitingForDice = false;
   std::uint64_t diceSeed = 0;
   CosmicHex::Handheld::FirstRoll firstRoll; // (the dice that chose who goes first)
-  int botGames = 0;                         // (the last bot move's simulated games, for measuring)
-  GameBots::SearchTimes botSearch;          // (and where its time went)
+  // The moves made since the last snapshot, as made (the home die's face)
+  std::vector<CosmicHex::Handheld::TableGame::Played> played;
+  int botGames = 0;                // (the last bot move's simulated games, for measuring)
+  GameBots::SearchTimes botSearch; // (and where its time went)
 };
 
 // ScreenPadd to TablePadd: start a game (you against three bots, or four
@@ -242,6 +244,7 @@ public:
       settings.botArithmetic = kThisPlatform.botArithmetic;
       settings.measureSearch = kWatchAtStart; // (the -watch builds show it)
       seed_ = settings.seed;
+      playedSent_ = 0;
       paused_ = start.held;
       game_.emplace(settings);
       sendSnapshot();
@@ -296,32 +299,46 @@ private:
   static std::uint64_t startingSeed() {
     return static_cast<std::uint64_t>(Clock::now().time_since_epoch().count());
   }
+  // The table as it is, to the screen. Made in the message itself
+  // (sendMade): a snapshot holds the whole game, over a kilobyte, and its
+  // copies on this thread's stack overflowed it on a DS (the game froze)
   void sendSnapshot() {
     const auto &history = game_->history();
     const std::size_t shown = std::min<std::size_t>(history.size(), 8);
-    TableSnapshot snapshot{.state = game_->state(),
+    const auto &played = game_->played();
+    const std::size_t from = std::min(playedSent_, played.size());
+    playedSent_ = played.size();
+    const bool dice = game_->waitingForDice(), person = game_->waitingForPerson();
+    sendMade<TableSnapshot>([&] {
+      std::vector<CosmicHex::Action> moves;
+      std::vector<std::string> moveText;
+      if (person) {
+        moves = game_->personMoves();
+        for (const CosmicHex::Action &move : moves)
+          moveText.push_back(CosmicHex::describe(game_->state(), move));
+      }
+      return TableSnapshot{.state = game_->state(),
                            .lastMoves = std::vector<std::string>(
                                history.end() - static_cast<long>(shown), history.end()),
                            .lastThinkSeconds = lastThinkSeconds_,
                            .paused = paused_,
+                           .yourMove = person,
+                           .moves = std::move(moves),
+                           .moveText = std::move(moveText),
+                           .waitingForDice = dice,
+                           // (the game's seed and how far it's got: the same game throws the same)
+                           .diceSeed = dice ? seed_ * 1000003u + history.size() : 0,
                            .firstRoll = game_->firstRoll(),
+                           // (the moves since the last snapshot)
+                           .played = std::vector<CosmicHex::Handheld::TableGame::Played>(
+                               played.begin() + static_cast<long>(from), played.end()),
                            .botGames = game_->lastBotIterations(),
                            .botSearch = game_->lastSearch()};
-    if (game_->waitingForDice()) {
-      snapshot.waitingForDice = true;
-      // (the game's seed and how far it's got: the same game throws the same)
-      snapshot.diceSeed = seed_ * 1000003u + history.size();
-    }
-    if (game_->waitingForPerson()) {
-      snapshot.yourMove = true;
-      snapshot.moves = game_->personMoves();
-      for (const CosmicHex::Action &move : snapshot.moves)
-        snapshot.moveText.push_back(CosmicHex::describe(game_->state(), move));
-    }
-    send(std::move(snapshot));
+    });
   }
 
   std::optional<TableGame> game_;
+  std::size_t playedSent_ = 0; // (moves already sent in a snapshot)
   std::uint64_t seed_ = 0;
   bool paused_ = false;
   double lastThinkSeconds_ = 0;
@@ -354,6 +371,8 @@ public:
         banner_.start(gameClock_.seconds(), yours ? "YOUR TURN" : names_.upperOf(turn) + "'S TURN",
                       yours ? "roll the dice" : "thinking...", BoardColours::ofPlayer(turn));
       }
+      // A home's pay on its die: after the turn's banner (HomePayShow)
+      homePay_.saw(snapshot.played, now() + banner_.remaining(gameClock_.seconds()));
       // Your two cards dealt after buying: thrown onto the top screen
       {
         const bool keeping = mode_ == Mode::Playing && snapshot.yourMove &&
@@ -560,6 +579,7 @@ private:
     }
     measureMemory();
     updateDiscovery();
+    updateHomePay();
     // The two cards dealt, drawn sharp before they're thrown in (on a DS
     // about a quarter of a second, while the screen is still)
     if (dealt_.needsCloseUp()) {
@@ -687,7 +707,9 @@ private:
     // Yours when you say (Roll, or A); a bot's once its turn's banner has
     // gone (the user's)
     const bool ready =
-        latest_ && (yourRollWaits(*latest_) ? rollAsked_ : !banner_.showing(gameClock_.seconds()));
+        latest_ &&
+        (yourRollWaits(*latest_) ? rollAsked_ : !banner_.showing(gameClock_.seconds())) &&
+        !homePay_.moving(now()); // (and the home's pay shown first)
     if (dice_ == DiceStage::Idle && latest_ && latest_->waitingForDice &&
         latest_->diceSeed != thrownSeed_ && ready) {
       rollAsked_ = false;
@@ -862,6 +884,9 @@ private:
       drawOtherPlayer(frame, viewOf(latest_->state, others_.which()), others_.down(now()));
     else if (discovery_.moving(now()))
       drawDiscovery(frame, discovery_, closeUpFace_);
+    else if (homePay_.moving(now()) && latest_)
+      drawHomePay(frame, homePay_, latest_->state,
+                  mode_ == Mode::Playing && homePay_.current()->player == 0, closeUpCards_[0]);
     else if (dealt_.on())
       drawDealtCards(frame, dealt_, bottomScreen_ ? bottomScreen_->keepChosen() : -1,
                      closeUpCards_);
@@ -1199,11 +1224,11 @@ private:
         const float y = place.y - static_cast<float>(j) * kPileStep * k;
         const float in = cardArrived(order++);
         const float slid = y + (1 - in) * (screenH - y + 4);
-        renderer_->draw(resourceSquare_,
+        renderer_->draw(pictures_.resourceSquare,
                         onScreenAt(camera, screenW, screenH, place.x, slid, rw, rh,
                                    kPictureDistance - 0.02f * static_cast<float>(shown - j)),
                         {.shading = Scene::Material::Shading::Unlit,
-                         .texture = resourcePictures_[static_cast<std::size_t>(r)],
+                         .texture = pictures_.resources[static_cast<std::size_t>(r)],
                          .alpha = static_cast<std::uint8_t>(held == 0 ? 10 : 31)});
       }
     }
@@ -1616,23 +1641,11 @@ private:
             auto timing = profile_.time(kProfileMap);
             // Tiles turned over still face down on the map until the top
             // screen has shown them, then each fades in (Discovery)
-            if (!discovery_.waiting()) {
-              picture_->draw(latest_->state, marks);
-            } else {
-              CosmicHex::State waiting = latest_->state;
-              for (const CosmicHex::Hex hex : discovery_.waitingAfterCurrent()) {
-                for (CosmicHex::Planet &planet : waiting.planets)
-                  if (planet.hex == hex)
-                    planet.flipped = false;
-                for (CosmicHex::ZoneSite &site : waiting.zone)
-                  if (site.hex == hex)
-                    site.flipped = false;
-              }
-              if (const auto revealing = discovery_.revealing(now()))
-                marks.revealing = BoardPicture::Marks::Revealing{.hex = revealing->hex,
-                                                                 .shown = revealing->shown};
-              picture_->draw(waiting, marks);
-            }
+            marks.faceDown = discovery_.waitingAfterCurrent();
+            if (const auto revealing = discovery_.revealing(now()))
+              marks.revealing =
+                  BoardPicture::Marks::Revealing{.hex = revealing->hex, .shown = revealing->shown};
+            picture_->draw(latest_->state, marks);
           }
           auto timing = profile_.time(kProfileButtons);
           Canvas board = Canvas::over(picture_->pixelsToDrawOver(), kBottomWidth, kBottomHeight);
@@ -1737,9 +1750,9 @@ private:
     };
     float uMax = 1, vMax = 1;
     for (int r = 0; r < CosmicHex::kResources; ++r)
-      resourcePictures_[static_cast<std::size_t>(r)] =
+      pictures_.resources[static_cast<std::size_t>(r)] =
           load(static_cast<CosmicHex::Art::Card>(r), resourceWidth_, uMax, vMax);
-    resourceSquare_ = renderer_->load(pictureSquare(uMax, vMax).data());
+    pictures_.resourceSquare = renderer_->load(pictureSquare(uMax, vMax).data());
     for (int c = CosmicHex::kResources; c < CosmicHex::Art::kCards; ++c)
       pictures_.cards[static_cast<std::size_t>(c)] =
           load(static_cast<CosmicHex::Art::Card>(c), cardWidth_, uMax, vMax);
@@ -1846,6 +1859,26 @@ private:
         return square;
       });
   }
+  // Each frame: the home's pay held over the game; its card drawn sharp
+  // (into the first dealt card's slot: the two never show together, and
+  // the DS has no texture memory for another)
+  void updateHomePay() {
+    if (const HomePayShow::Pay *pay = homePay_.current(); pay && pay->resource) {
+      const auto card = static_cast<CosmicHex::Art::Card>(*pay->resource);
+      if (!closeUpCards_[0].showing(static_cast<int>(card)))
+        closeUpCards({card});
+    }
+    const HomePayShow::Step step = homePay_.update(now());
+    if (step.hold && latest_ && !latest_->paused) {
+      send(SetHold{true});
+      heldForHomePay_ = true;
+    }
+    if (step.letGo && heldForHomePay_) {
+      heldForHomePay_ = false;
+      if (!heldForInfo_ && !heldForDiscovery_)
+        send(SetHold{false});
+    }
+  }
   // Each frame: a discovery's close-up drawn before it starts, the game
   // held while one shows and let go after the last (unless a view holds
   // it too), the bottom map drawn again as its tile fades in
@@ -1858,7 +1891,7 @@ private:
     }
     if (step.letGo && heldForDiscovery_) {
       heldForDiscovery_ = false;
-      if (!heldForInfo_)
+      if (!heldForInfo_ && !heldForHomePay_)
         send(SetHold{false});
     }
     if (step.redrawMap)
@@ -1902,7 +1935,8 @@ private:
     if (shownInfo_ != BottomScreen::Info::None || infoClosingAt_ || outlineMovedAt_)
       return true; // (an info view coming in or going, the points' outline)
     // (the views over the board: each says)
-    if (dealt_.moving() || others_.moving(now()) || discovery_.moving(now()))
+    if (dealt_.moving() || others_.moving(now()) || discovery_.moving(now()) ||
+        homePay_.moving(now()))
       return true;
     return false;
   }
@@ -1937,7 +1971,8 @@ private:
       spdlog::info("frames: {}", profileLine_);
     }
     // (not over a view that fills the screen: its words would be lost)
-    if (firstRoll_.on() || others_.showing(now()) || dealt_.on() || discovery_.moving(now()))
+    if (firstRoll_.on() || others_.showing(now()) || dealt_.on() || discovery_.moving(now()) ||
+        homePay_.moving(now()))
       return;
     // (three lines where the screen's narrow)
     for (std::size_t from = 0, row = 0; from < profileLine_.size() && row < 4;
@@ -1994,6 +2029,8 @@ private:
   DealtShow dealt_;                 // (the two cards dealt)
   PanelShow others_{kSecondsPanel}; // (another player's panel)
   FirstRollShow firstRoll_;         // (who goes first)
+  HomePayShow homePay_;             // (a home's pay on its die)
+  bool heldForHomePay_ = false;     // (and the game held for it)
   ScratchPadd::StillFrames still_;  // (when the top screen can hold its last frame)
   bool youPaused_ = false;          // (watching: paused with A, so the PAUSED band shows)
   // Who's who: your name (the console's owner's), the bots' (PlayerNames),
@@ -2008,7 +2045,6 @@ private:
   // Show resources' pictures (the resource cards, bigger)
   std::array<Scene::Texture, CosmicHex::kResources> resourcePictures_{};
   std::array<Scene::Colour, CosmicHex::kResources> resourceBands_{};
-  Scene::Mesh resourceSquare_;
   int cardWidth_ = 32, resourceWidth_ = 44;
   static constexpr float kPileStep = 5; // (pixels between a pile's cards: their bands show)
   std::optional<ConsoleScreens::BottomScreen> bottom_;

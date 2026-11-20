@@ -168,4 +168,74 @@ bool FirstRollShow::settled(const FirstRoll &roll, float seconds) {
   return rounds > 0 && seconds >= kSecondsRound * static_cast<float>(rounds - 1) + kSecondsTumble;
 }
 
+// --------------------------------------------------------------- Home pay
+
+void HomePayShow::saw(const std::vector<TableGame::Played> &moves, double now) {
+  for (const TableGame::Played &move : moves) {
+    if (move.action.kind == Action::Kind::RollHomeDie) {
+      Pay pay{.player = move.player, .face = move.action.a};
+      if (move.action.a >= 0 && move.action.a < kResources)
+        pay.resource = static_cast<Resource>(move.action.a);
+      queue_.push_back(pay);
+    } else if (move.action.kind == Action::Kind::ChooseHome) {
+      // (the star's choice, made: the latest of the player's still open)
+      for (auto it = queue_.rbegin(); it != queue_.rend(); ++it)
+        if (it->player == move.player && !it->resource) {
+          it->resource = static_cast<Resource>(move.action.a);
+          break;
+        }
+    }
+  }
+  if (!queue_.empty() && !startedAt_)
+    startedAt_ = now;
+}
+
+std::optional<float> HomePayShow::seconds(double now) const {
+  if (queue_.empty() || !startedAt_ || now < *startedAt_)
+    return std::nullopt;
+  return static_cast<float>(now - *startedAt_);
+}
+
+HomePayShow::Moment HomePayShow::at(float s) const {
+  const auto part = [s](float from, float length) {
+    return std::clamp((s - from) / length, 0.0f, 1.0f);
+  };
+  const bool choosing = current() && !current()->resource;
+  // (waiting for the star's choice: the die stays settled until it's made)
+  const float cardFrom = kDieSeconds;
+  return {.up = part(0, kSecondsUp),
+          .tumble = part(kSecondsUp, kSecondsTumble),
+          .settle = part(kSecondsUp + kSecondsTumble, kSecondsSettle),
+          .card = choosing ? 0 : part(cardFrom, kSecondsCard),
+          .away = choosing ? 0 : part(cardFrom + kSecondsCard + kSecondsHold, kSecondsAway),
+          .waitingForChoice = choosing && s >= kDieSeconds};
+}
+
+HomePayShow::Step HomePayShow::update(double now) {
+  Step step;
+  const auto s = seconds(now);
+  if (!s)
+    return step;
+  if (!held_) {
+    held_ = true;
+    step.hold = true;
+  }
+  // The star waiting for its choice: the clock stops at the die settled
+  if (!current()->resource && *s > kDieSeconds) {
+    startedAt_ = now - kDieSeconds;
+    return step;
+  }
+  if (*s < kSeconds)
+    return step;
+  queue_.erase(queue_.begin());
+  if (!queue_.empty()) {
+    startedAt_ = now;
+    return step;
+  }
+  startedAt_.reset();
+  held_ = false;
+  step.letGo = true;
+  return step;
+}
+
 } // namespace CosmicHex::Handheld

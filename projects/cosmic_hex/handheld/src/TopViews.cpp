@@ -1,6 +1,7 @@
 #include <CosmicHex/Handheld/TopViews.hpp>
 
 #include <CosmicHex/Handheld/BoardPieces.hpp>
+#include <CosmicHex/Handheld/GameWords.hpp>
 #include <CosmicHex/Handheld/Palette.hpp>
 #include <CosmicHex/Handheld/ScreenPictures.hpp>
 
@@ -329,6 +330,111 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, float since) {
   overlay.textCentred(f.width / 2, bottom + 16 * k, homes, Palette::kWords, k);
   overlay.textCentred(f.width / 2, bottom + 28 * k, ships + " (back again)", Palette::kSoftWords,
                       k);
+}
+
+// ---------------------------------------------------------------- Home pay
+
+namespace {
+// A five-pointed star (the home die's "your choice" face), from triangles
+void star(Scene::Overlay &overlay, float x, float y, float r, Scene::Colour colour) {
+  std::array<std::array<float, 2>, 10> p{};
+  for (int i = 0; i < 10; ++i) {
+    const float a = -kPi / 2 + static_cast<float>(i) * kPi / 5;
+    const float d = i % 2 == 0 ? r : r * 0.42f;
+    p[static_cast<std::size_t>(i)] = {x + d * std::cos(a), y + d * std::sin(a)};
+  }
+  for (int i = 0; i < 10; ++i) {
+    const auto &a = p[static_cast<std::size_t>(i)];
+    const auto &b = p[static_cast<std::size_t>((i + 1) % 10)];
+    overlay.triangle(x, y, a[0], a[1], b[0], b[1], colour);
+  }
+}
+// A home die's face: a resource's colour as a disc, or the star
+void dieFace(Scene::Overlay &overlay, float x, float y, float half, int face) {
+  if (face >= kResources)
+    star(overlay, x, y, half * 0.75f, Palette::kHighlight);
+  else
+    overlay.hexagon(x, y, half * 0.6f, BoardColours::ofKind(static_cast<PlanetKind>(face)), true);
+}
+} // namespace
+
+void drawHomePay(const TopFrame &f, const HomePayShow &show, const State &state, bool yours,
+                 const ScratchPadd::PictureSlot &closeUp) {
+  const auto seconds = show.seconds(f.now);
+  const HomePayShow::Pay *pay = show.current();
+  if (!seconds || !pay)
+    return;
+  const float k = f.k();
+  const HomePayShow::Moment m = show.at(*seconds);
+  Scene::Overlay &overlay = f.overlay;
+  // Where the die starts: the home on the board, on the screen
+  float homeX = f.width / 2, homeY = f.height * 0.7f;
+  for (const Planet &planet : state.planets)
+    if (planet.homeOf == pay->player || planet.formerHomeOf == pay->player) {
+      float x = 0, y = 0;
+      if (f.renderer.toScreen(BoardPieces::centre(planet.hex), x, y)) {
+        homeX = x;
+        homeY = y;
+      }
+    }
+  backdrop(f, 0, {8, 12, 22}, 12 * std::min(1.0f, m.up * 2) * (1 - m.away));
+  // The die: out of the home along an arc, winding up first (Anticipate:
+  // it dips into the home before it leaps), growing as it comes
+  const float topX = f.width / 2, topY = 46 * k;
+  const float rise = Motion::along(Motion::Curve::Anticipate, m.up);
+  const float dieX = Motion::arc(homeX, topX, -10 * k, rise);
+  const float dieY = Motion::arc(homeY, topY, -26 * k, rise);
+  // Tumbling: turning less and less, its faces flickering; landing on its
+  // face with a small pop (Settle: a small thing may squash a little)
+  const float landed = Motion::along(Motion::Curve::Settle, m.settle);
+  const float half =
+      (6 + 10 * std::min(1.0f, m.up)) * k * (m.settle > 0 ? 0.85f + 0.15f * landed : 1);
+  const float angle = (1 - m.tumble) * (1 - m.tumble) * 7 + (1 - m.up) * 2;
+  const bool showsFace = m.tumble >= 1;
+  const int face =
+      showsFace ? pay->face : (pay->face + 1 + static_cast<int>(*seconds * 12)) % (kResources + 1);
+  if (m.away < 1) {
+    turnedSquare(overlay, dieX, dieY, half + 1.5f * k, angle, BoardColours::ofPlayer(pay->player));
+    turnedSquare(overlay, dieX, dieY, half, angle, {244, 242, 236, 255});
+    dieFace(overlay, dieX, dieY, half, face);
+  }
+  const std::string whose = yours ? "Your home" : f.names[pay->player] + "'s home";
+  if (m.up > 0 && m.away <= 0)
+    overlay.textCentred(f.width / 2, 8 * k, whose + " pays", BoardColours::ofPlayer(pay->player),
+                        k);
+  if (m.waitingForChoice) {
+    overlay.textCentred(f.width / 2, topY + 28 * k, yours ? "Your choice: below" : "Choosing...",
+                        Palette::kHighlight, 1.5f * k);
+    return;
+  }
+  if (m.card <= 0 || !pay->resource)
+    return;
+  // The card: out of the die with a pop (Settle), held big with its name,
+  // then winding up and off along an arc to the hand, shrinking
+  const auto r = static_cast<std::size_t>(*pay->resource);
+  const float grown = Motion::along(Motion::Curve::Settle, m.card);
+  const float leave = Motion::along(Motion::Curve::Anticipate, m.away);
+  const float bigW = 70 * k, bigH = bigW * 52 / 63;
+  const float w = bigW * grown * (1 - 0.8f * std::max(0.0f, leave));
+  const float h = w * 52 / 63;
+  const float heldX = f.width / 2, heldY = topY + 22 * k + bigH / 2;
+  const float toX = yours ? f.width - 30 * k : f.width / 2;
+  const float toY = yours ? f.height + 40 * k : -40 * k;
+  const float cx = Motion::arc(heldX, toX, yours ? 18 * k : -24 * k, leave);
+  const float cy = Motion::arc(heldY, toY, yours ? -30 * k : 0, leave);
+  const bool sharp = closeUp.showing(static_cast<int>(*pay->resource));
+  if (w > 1)
+    picture(f, sharp ? f.pictures.closeUpCardSquare : f.pictures.resourceSquare,
+            sharp ? closeUp.texture() : f.pictures.resources[r], cx - w / 2, cy - h / 2, w, h);
+  // (its name on its label band, 3 to 19 of the card's 52-unit picture,
+  // once it's full size)
+  if (m.away <= 0 && m.card >= 1)
+    overlay.textCentred(cx, cy - h / 2 + h * 11 / 52, std::string(GameWords::of(*pay->resource)),
+                        Palette::kWords, 1.5f * k);
+  if (m.away <= 0 && m.card >= 1)
+    overlay.textCentred(f.width / 2, heldY + bigH / 2 + 10 * k,
+                        "+1 " + std::string(GameWords::of(*pay->resource)), Palette::kWords,
+                        1.5f * k);
 }
 
 } // namespace CosmicHex::Handheld

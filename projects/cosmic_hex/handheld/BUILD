@@ -341,3 +341,18 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+# The views over the board drawn through their timelines on a desktop's
+# renderer (it needs a window): none may crash at any moment
+cc_test(
+    name = "TopViews_test",
+    size = "small",
+    srcs = ["tests/TopViews_test.cpp"],
+    tags = ["display"],
+    deps = [
+        ":handheld",
+        "//projects/expected_capabilities",
+        "//projects/scratchpadd/scene/desktop",
+        "@gtest//:gtest_main",
+    ],
+)

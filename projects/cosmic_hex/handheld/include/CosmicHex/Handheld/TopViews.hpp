@@ -34,6 +34,8 @@ struct TopPictures {
   std::array<ScratchPadd::Scene::Texture, Art::kFaces> faces{};
   std::array<ScratchPadd::Scene::Texture, Art::kHighestChip + 1> chips{}; // (by number)
   std::array<ScratchPadd::Scene::Texture, Art::kCards> cards{};           // (action cards')
+  std::array<ScratchPadd::Scene::Texture, kResources> resources{};        // (resource cards')
+  ScratchPadd::Scene::Mesh resourceSquare;                                // (and their square)
   std::array<ScratchPadd::Scene::Texture, 2> backs{};                     // (by Art::CardBack)
 };
 
@@ -62,5 +64,11 @@ void drawOtherPlayer(const TopFrame &frame, const PlayerView &view, float down);
 // Who goes first: the dice of each round, tumbling and settling, then the
 // order by name
 void drawFirstRoll(const TopFrame &frame, const FirstRoll &roll, float seconds);
+// A home's pay: its die out of the home on `state`'s board, its face, the
+// card big (`closeUp` when it holds the resource's card: PictureSlot id,
+// the card), then off to the hand (yours: `yours`, down to the bottom
+// screen; a bot's, up and away)
+void drawHomePay(const TopFrame &frame, const HomePayShow &show, const State &state, bool yours,
+                 const ScratchPadd::PictureSlot &closeUp);
 
 } // namespace CosmicHex::Handheld

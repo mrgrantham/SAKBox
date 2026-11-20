@@ -105,6 +105,10 @@ public:
       float shown = 0;
     };
     std::optional<Revealing> revealing;
+    // Tiles turned over but still waiting their turn on the top screen:
+    // shown face down (no copy of the state needed: the DS's main stack is
+    // small)
+    std::vector<Hex> faceDown;
   };
   // An area of the picture, in pixels
   struct Area {

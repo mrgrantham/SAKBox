@@ -34,10 +34,19 @@ public:
   virtual bool triviallyCopyable() const = 0;
 };
 
+// A message's contents made by `make` (a function returning them), where
+// the message keeps them: never copied onto the sender's stack. For big
+// contents on a thread with a small stack (a DS's: a game state's copies
+// there overflowed it). C++17 builds a returned value in place.
+template <typename Make> struct MadeBy {
+  Make make;
+};
+
 // A message holding a T.
 template <typename T> class MessageOf : public MessageBase {
 public:
   explicit MessageOf(T contents) : value(std::move(contents)) {}
+  template <typename Make> explicit MessageOf(MadeBy<Make> by) : value(by.make()) {}
   std::type_index type() const override { return typeid(T); }
   // (Base::send logs this for every message, so it's demangled once, not
   // per call; the arguments of a debug log are built even when debug
@@ -58,6 +67,11 @@ using Message = std::shared_ptr<const MessageBase>;
 // Wraps `contents` in a Message.
 template <typename T> Message makeMessage(T contents) {
   return std::make_shared<const MessageOf<std::decay_t<T>>>(std::move(contents));
+}
+
+// A message whose T is made by `make` in the message itself (MadeBy)
+template <typename T, typename Make> Message makeMessageBy(Make make) {
+  return std::make_shared<const MessageOf<T>>(MadeBy<Make>{std::move(make)});
 }
 
 // The contents of `message` if it holds a T, or nullptr.

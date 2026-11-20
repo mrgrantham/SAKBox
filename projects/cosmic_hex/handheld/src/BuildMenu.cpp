@@ -1,6 +1,8 @@
 #include <CosmicHex/Handheld/BuildMenu.hpp>
 #include <CosmicHex/Handheld/GameWords.hpp>
 
+#include <memory>
+
 #include <algorithm>
 #include <array>
 
@@ -112,10 +114,14 @@ std::vector<BuildRow> buildRows(const State &given) {
   // While the turn's offers to players are open: the rows as they'll be
   // once they're over (building ends them first: BuildRow::endsTrading)
   const bool trading = given.phase == Phase::Trading;
-  State afterTrading = given;
-  if (trading)
-    Game::apply(afterTrading, Action{Action::Kind::EndTrading});
-  const State &state = trading ? afterTrading : given;
+  // (copies on the heap: a state is over a kilobyte, and the DS's main
+  // stack is small)
+  std::unique_ptr<State> afterTrading;
+  if (trading) {
+    afterTrading = std::make_unique<State>(given);
+    Game::apply(*afterTrading, Action{Action::Kind::EndTrading});
+  }
+  const State &state = trading ? *afterTrading : given;
   const std::vector<Action> legal = Game::legalActions(state);
   const Resources &held = state.player[static_cast<std::size_t>(state.turn)].resources;
   std::vector<BuildRow> rows;
@@ -131,12 +137,12 @@ std::vector<BuildRow> buildRows(const State &given) {
     } else {
       // With its cost added to your cards: somewhere to put it, so only the
       // resources are missing; or nowhere, resources or not
-      State richer = state;
-      Resources &more = richer.player[static_cast<std::size_t>(state.turn)].resources;
+      const auto richer = std::make_unique<State>(state);
+      Resources &more = richer->player[static_cast<std::size_t>(state.turn)].resources;
       for (std::size_t r = 0; r < more.size(); ++r)
         more[r] += row.cost[r];
-      row.note = actionsOf(Game::legalActions(richer), what).empty() ? nowhereFor(state, what)
-                                                                     : missingFrom(held, row.cost);
+      row.note = actionsOf(Game::legalActions(*richer), what).empty() ? nowhereFor(state, what)
+                                                                      : missingFrom(held, row.cost);
     }
     rows.push_back(std::move(row));
   }

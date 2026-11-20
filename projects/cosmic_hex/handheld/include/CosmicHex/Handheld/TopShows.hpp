@@ -9,6 +9,8 @@
 //   PanelShow      a view sliding down over the board and back up (another
 //                  player's)
 //   FirstRollShow  who goes first: every player's die thrown, ties again
+//   HomePayShow    a home's pay on the home die: the die out of the home,
+//                  its face, the card big, then off to the player's hand
 //
 // Times are seconds on one clock the app keeps (real time: these run while
 // the game is held). Each answers moving(now); the app's frame asks them all.
@@ -152,6 +154,63 @@ public:
 
 private:
   ScratchPadd::Motion::Showing shown_;
+};
+
+// ---------------------------------------------------------------------------
+// A home's pay, when the home die is on (Settings::homeDie): its die springs
+// out of the home (a wind-up, then up along an arc), tumbles, settles on a
+// face (a resource, or the star: the player's choice); the resource's card
+// grows out of it, big, with what it is; then flies to the player's hand.
+// Grounded in docs/research/animation-whimsy.md (anticipation, arcs,
+// follow-through, timing)
+
+class HomePayShow {
+public:
+  // The parts, in seconds
+  static constexpr float kSecondsUp = 0.55f;     // out of the home, along an arc
+  static constexpr float kSecondsTumble = 0.8f;  // turning, faces flickering
+  static constexpr float kSecondsSettle = 0.35f; // landing on its face (Settle)
+  static constexpr float kSecondsCard = 0.4f;    // the card growing out of the die
+  static constexpr float kSecondsHold = 1.1f;    // read it
+  static constexpr float kSecondsAway = 0.5f;    // the card off to the hand
+  static constexpr float kDieSeconds = kSecondsUp + kSecondsTumble + kSecondsSettle;
+  static constexpr float kSeconds = kDieSeconds + kSecondsCard + kSecondsHold + kSecondsAway;
+
+  // A pay: whose home, the die's face (0 to kResources - 1 a resource,
+  // kResources the star), and the resource once known (the star's: when
+  // the player has chosen)
+  struct Pay {
+    int player = 0;
+    int face = 0;
+    std::optional<Resource> resource;
+  };
+  // The moves made since the last look (TableGame::played): home die rolls
+  // queued, a choice after the star filling it in
+  void saw(const std::vector<TableGame::Played> &moves, double now);
+
+  // Each frame: what the app should do (hold the game while one shows,
+  // let it go after the last)
+  struct Step {
+    bool hold = false, letGo = false;
+  };
+  Step update(double now);
+
+  const Pay *current() const { return queue_.empty() ? nullptr : &queue_.front(); }
+  // Where the show is: seconds since it started; nothing when none shows
+  std::optional<float> seconds(double now) const;
+  bool moving(double now) const { return seconds(now).has_value(); }
+
+  // The parts' progress at `seconds`, each 0 to 1
+  struct Moment {
+    float up, tumble, settle, card, away;
+    bool waitingForChoice; // (the star, its resource not chosen yet: held)
+  };
+  Moment at(float seconds) const;
+
+private:
+  std::vector<Pay> queue_;
+  std::optional<double> startedAt_;
+  bool held_ = false;
 };
 
 } // namespace CosmicHex::Handheld

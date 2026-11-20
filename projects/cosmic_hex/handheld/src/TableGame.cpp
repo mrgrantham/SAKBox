@@ -160,6 +160,7 @@ bool TableGame::play(const Action &move) {
 
 void TableGame::record(const State &before, const Action &move) {
   history_.push_back(describe(before, move));
+  played_.push_back({before.turn, move});
 }
 
 } // namespace CosmicHex::Handheld

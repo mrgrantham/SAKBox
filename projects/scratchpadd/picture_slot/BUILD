@@ -22,17 +22,16 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
-# (on the Mac's Metal renderer: it needs a real one)
+# (on a desktop's renderer: it needs a real one)
 cc_test(
     name = "PictureSlot_test",
     size = "small",
     srcs = ["tests/PictureSlot_test.cpp"],
     tags = ["display"],
-    target_compatible_with = ["@platforms//os:macos"],
     deps = [
         ":picture_slot",
         "//projects/expected_capabilities",
-        "//projects/scratchpadd/scene/metal",
+        "//projects/scratchpadd/scene/desktop",
         "@gtest//:gtest_main",
     ],
 )

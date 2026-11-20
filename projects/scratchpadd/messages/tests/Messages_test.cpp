@@ -699,3 +699,26 @@ TEST(UnhandledTest, BroadcastsNobodyHandlesAreNotedOncePerType) {
                                       "(anonymous namespace)::Shape"}));
   EXPECT_EQ(running.padd<PingOnlyPadd>().pings_, 1);
 }
+
+namespace {
+// Counts its copies and moves (a big message's contents shouldn't be)
+struct Counted {
+  static inline int copies = 0, moves = 0;
+  int value = 0;
+  explicit Counted(int v) : value(v) {}
+  Counted(const Counted &other) : value(other.value) { ++copies; }
+  Counted(Counted &&other) noexcept : value(other.value) { ++moves; }
+};
+} // namespace
+
+// A message made in place: its contents built where the message keeps
+// them, never copied or moved (for big contents on a small stack)
+TEST(MessagesTest, AMessageMadeInPlaceIsNeverCopied) {
+  Counted::copies = Counted::moves = 0;
+  const ScratchPadd::Message message =
+      ScratchPadd::makeMessageBy<Counted>([] { return Counted{42}; });
+  ASSERT_NE(ScratchPadd::messageAs<Counted>(message), nullptr);
+  EXPECT_EQ(ScratchPadd::messageAs<Counted>(message)->value, 42);
+  EXPECT_EQ(Counted::copies, 0);
+  EXPECT_EQ(Counted::moves, 0);
+}

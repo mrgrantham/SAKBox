@@ -1,5 +1,7 @@
 #include <ScratchPadd/Banner/Banner.hpp>
 
+#include <algorithm>
+
 namespace ScratchPadd {
 
 Banner::Banner(float screenWidth) : width_(screenWidth) {
@@ -17,6 +19,10 @@ void Banner::start(double now, std::string title, std::string note, Scene::Colou
   title_ = std::move(title);
   note_ = std::move(note);
   colour_ = colour;
+}
+
+double Banner::remaining(double now) const {
+  return started_ ? std::max(0.0, *started_ + script_.seconds() - now) : 0.0;
 }
 
 bool Banner::showing(double now) const {

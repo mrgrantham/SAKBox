@@ -107,6 +107,13 @@ public:
 
   // Every move so far, in words ("Player 2 builds a station."), oldest first
   const std::vector<std::string> &history() const { return history_; }
+  // And as they were made: whose turn it was, and the move (the dealer's
+  // too: the screen shows what the dice said, the home die's face, say)
+  struct Played {
+    int player;
+    Action action;
+  };
+  const std::vector<Played> &played() const { return played_; }
 
 private:
   void record(const State &before, const Action &move);
@@ -127,6 +134,7 @@ public:
 
 private:
   std::vector<std::string> history_;
+  std::vector<Played> played_;
 };
 
 } // namespace CosmicHex::Handheld

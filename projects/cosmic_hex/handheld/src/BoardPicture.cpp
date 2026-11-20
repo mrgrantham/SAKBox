@@ -382,6 +382,8 @@ void BoardPicture::listPieces(const State &state, const Marks &marks,
   // A tile turned over, still being shown on the top screen: face down,
   // then its face fading in (eight steps: each a look of its own)
   const auto revealStep = [&](Hex hex) {
+    if (std::ranges::find(marks.faceDown, hex) != marks.faceDown.end())
+      return 0;
     if (!marks.revealing || marks.revealing->hex != hex)
       return kRevealSteps;
     return static_cast<int>(std::clamp(marks.revealing->shown, 0.0f, 1.0f) * kRevealSteps);

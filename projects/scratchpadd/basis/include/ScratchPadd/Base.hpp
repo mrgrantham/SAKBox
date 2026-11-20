@@ -242,6 +242,12 @@ protected:
   // Sends `contents` (any copyable struct) to every other padd that handles
   // its type.
   template <typename T> void send(T contents) { send(makeMessage(std::move(contents))); }
+  // Sends a T made by `make` (a function returning it) in the message
+  // itself, never copied onto this thread's stack: for big contents
+  // (makeMessageBy)
+  template <typename T, typename Make> void sendMade(Make make) {
+    send(makeMessageBy<T>(std::move(make)));
+  }
 
   // Sends `message` to every padd that handles its type, including this one.
   void sendIncludeSender(Message message) {

@@ -168,3 +168,20 @@ TEST(TableGameTest, TheHighestRollGoesFirst) {
   const TableGame game(settings);
   EXPECT_EQ(game.state().first, game.firstRoll().first);
 }
+
+// Every move made is kept as made, whose turn it was with it, in step with
+// the words
+TEST(TableGameTest, MovesAreKeptAsMade) {
+  TableSettings settings;
+  settings.seed = 5;
+  settings.botIterations = 5;
+  TableGame game(settings);
+  for (int i = 0; i < 40 && game.step(); ++i) {
+  }
+  ASSERT_FALSE(game.played().empty());
+  EXPECT_EQ(game.played().size(), game.history().size());
+  for (const TableGame::Played &move : game.played()) {
+    EXPECT_GE(move.player, 0);
+    EXPECT_LT(move.player, settings.players);
+  }
+}

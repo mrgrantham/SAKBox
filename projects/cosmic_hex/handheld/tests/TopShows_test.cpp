@@ -123,3 +123,36 @@ TEST(TopShowsTest, TheFirstRollsRoundsThenTheOrder) {
   EXPECT_FALSE(show.done(101, roll));
   EXPECT_TRUE(show.done(100 + FirstRollShow::duration(roll), roll));
 }
+
+// A home's pay: the die out, tumbling, settled; the card big, then away;
+// the game held meanwhile and let go after
+TEST(TopShowsTest, AHomePaysOnItsDie) {
+  HomePayShow show;
+  show.saw({{2, Action{Action::Kind::RollHomeDie, 3}}}, 10);
+  ASSERT_NE(show.current(), nullptr);
+  EXPECT_EQ(show.current()->player, 2);
+  EXPECT_EQ(show.current()->resource, Resource::Water);
+  EXPECT_TRUE(show.update(10).hold);
+  const auto settled = show.at(HomePayShow::kDieSeconds);
+  EXPECT_FLOAT_EQ(settled.settle, 1);
+  EXPECT_FLOAT_EQ(settled.card, 0);
+  EXPECT_FLOAT_EQ(show.at(HomePayShow::kSeconds).away, 1);
+  EXPECT_TRUE(show.update(10 + HomePayShow::kSeconds).letGo);
+  EXPECT_FALSE(show.moving(10 + HomePayShow::kSeconds));
+}
+
+// The star: held at the settled die until the choice is made, then its card
+TEST(TopShowsTest, TheStarWaitsForTheChoice) {
+  HomePayShow show;
+  show.saw({{0, Action{Action::Kind::RollHomeDie, kResources}}}, 0);
+  EXPECT_FALSE(show.current()->resource.has_value());
+  show.update(0);
+  show.update(5); // (long after the die settled: still waiting)
+  const auto waiting = show.at(*show.seconds(5));
+  EXPECT_TRUE(waiting.waitingForChoice);
+  EXPECT_FLOAT_EQ(waiting.card, 0);
+  show.saw({{0, Action{Action::Kind::ChooseHome, 1}}}, 6);
+  EXPECT_EQ(show.current()->resource, Resource::Food);
+  EXPECT_FALSE(show.at(*show.seconds(6)).waitingForChoice);
+  EXPECT_TRUE(show.update(6 + HomePayShow::kSeconds).letGo);
+}

@@ -27,6 +27,8 @@ public:
   void start(double now, std::string title, std::string note, Scene::Colour colour);
   void stop() { started_.reset(); }
   bool showing(double now) const;
+  // Seconds until it's gone (0 when it is)
+  double remaining(double now) const;
 
   struct Look {
     float bandAlpha; // 0 to 1: how strongly the band shows
