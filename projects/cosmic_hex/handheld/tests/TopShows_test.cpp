@@ -239,3 +239,28 @@ TEST(TopShowsTest, AStealFliesFromTheVictim) {
   EXPECT_EQ(pirates.cards()[0].from, 0);
   EXPECT_EQ(pirates.cards()[1].from, 3);
 }
+
+// A trade: the offer's cards cross between the two (a counter's, when it's
+// the counter that's taken); a bank trade's go to and from the bank
+TEST(TopShowsTest, TradesCross) {
+  State before;
+  before.turn = 1;
+  Resources give{}, get{};
+  give[0] = 2;
+  get[3] = 1;
+  RollPayShow show;
+  show.saw({{1, Action{Action::Kind::OfferTrade, bundleOf(give), bundleOf(get), 2}},
+            {2, Action{Action::Kind::AcceptTrade}}},
+           before);
+  ASSERT_EQ(show.cards().size(), 3u);
+  EXPECT_EQ(show.cards()[0].from, 1);
+  EXPECT_EQ(show.cards()[0].player, 2);
+  EXPECT_EQ(show.cards()[2].from, 2);
+  EXPECT_EQ(show.cards()[2].player, 1);
+  EXPECT_FALSE(show.cards()[0].secret);
+  RollPayShow bank;
+  bank.saw({{1, Action{Action::Kind::Trade, 0, 4}}}, before);
+  ASSERT_EQ(bank.cards().size(), static_cast<std::size_t>(tradeRateOf(before, 1) + 1));
+  EXPECT_EQ(bank.cards().front().player, RollPayShow::kBank);
+  EXPECT_EQ(bank.cards().back().from, RollPayShow::kBank);
+}

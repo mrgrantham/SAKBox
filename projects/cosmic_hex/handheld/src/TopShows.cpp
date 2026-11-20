@@ -362,14 +362,53 @@ HomePayShow::Step HomePayShow::update(double now) {
 void RollPayShow::saw(const std::vector<TableGame::Played> &moves, const State &before) {
   // (who's to be stolen from: as the game had it, then as the blockade
   // names them; the thief is the player whose turn it is)
-  if (!moves.empty())
+  if (!moves.empty()) {
     victims_ = before.victims;
+    offer_ = before.offer;
+  }
   for (const TableGame::Played &move : moves) {
+    switch (move.action.kind) {
+    case Action::Kind::OfferTrade:
+      offer_ = {.give = move.action.a, .get = move.action.b, .to = move.action.c};
+      counterer_ = -1;
+      break;
+    case Action::Kind::CounterTrade:
+      offer_.counterGive = move.action.a;
+      offer_.counterGet = move.action.b;
+      counterer_ = move.player;
+      break;
+    case Action::Kind::DeclineTrade:
+      offer_.counterGive = offer_.counterGet = 0;
+      break;
+    case Action::Kind::AcceptTrade:
+      // (the offerer taking a counter, or the one asked taking the offer)
+      if (offer_.counterGive != 0 && counterer_ >= 0) {
+        cross(before.turn, counterer_, offer_.counterGet);
+        cross(counterer_, before.turn, offer_.counterGive);
+      } else {
+        cross(before.turn, move.player, offer_.give);
+        cross(move.player, before.turn, offer_.get);
+      }
+      offer_ = {};
+      break;
+    case Action::Kind::Trade: { // (with the bank)
+      Resources give{};
+      give[static_cast<std::size_t>(move.action.a)] = tradeRateOf(before, before.turn);
+      cross(before.turn, kBank, bundleOf(give));
+      Resources get{};
+      get[static_cast<std::size_t>(move.action.b)] = 1;
+      cross(kBank, before.turn, bundleOf(get));
+      break;
+    }
+    default:
+      break;
+    }
     if (move.action.kind == Action::Kind::MoveBlockade && move.action.b >= 0)
       victims_ = {move.action.b};
     if (move.action.kind == Action::Kind::Steal && !victims_.empty() && move.action.a >= 0 &&
         move.action.a < kResources) {
-      cards_.push_back({-1, before.turn, static_cast<Resource>(move.action.a), victims_.front()});
+      cards_.push_back(
+          {-1, before.turn, static_cast<Resource>(move.action.a), victims_.front(), true});
       victims_.erase(victims_.begin());
     }
     if (move.action.kind != Action::Kind::Roll)
@@ -381,6 +420,13 @@ void RollPayShow::saw(const std::vector<TableGame::Played> &moves, const State &
       for (int n = 0; n < pay.count; ++n)
         cards_.push_back({pay.planet, pay.player, pay.resource});
   }
+}
+
+void RollPayShow::cross(int from, int to, int bundle) {
+  const Resources cards = resourcesOf(bundle);
+  for (int r = 0; r < kResources; ++r)
+    for (int n = 0; n < cards[static_cast<std::size_t>(r)]; ++n)
+      cards_.push_back({-1, to, static_cast<Resource>(r), from});
 }
 
 float RollPayShow::seconds() const {

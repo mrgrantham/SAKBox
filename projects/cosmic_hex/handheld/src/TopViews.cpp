@@ -463,13 +463,15 @@ void drawRollPay(const TopFrame &f, const RollPayShow &show, const State &state,
                                            (PointsBars::kDashWidth + PointsBars::kDashGap)) /
                                               2;
     const auto placeOf = [&](int player) {
+      if (player == RollPayShow::kBank) // (the bank: off the top of the screen's middle)
+        return std::pair{f.width / 2, -16 * k};
       return player == you
                  ? std::pair{f.width * 0.7f, f.height + 24 * k}
                  : std::pair{barsRight + 6 * k,
                              PointsBars::kTop + static_cast<float>(player) *
                                                     (PointsBars::kRowHeight + PointsBars::kRowGap)};
     };
-    // Where it comes from: its planet, or the player it's stolen from
+    // Where it comes from: its planet, or the player (or bank) it's from
     float fromX = f.width / 2, fromY = f.height / 2;
     if (card.planet >= 0)
       f.renderer.toScreen(
@@ -487,7 +489,7 @@ void drawRollPay(const TopFrame &f, const RollPayShow &show, const State &state,
     if (size < 1)
       continue;
     // (a card stolen between two others: face down, as at a table)
-    const bool hidden = card.from >= 0 && card.player != you && card.from != you;
+    const bool hidden = card.secret && card.player != you && card.from != you;
     picture(f, p.resourceSquare,
             hidden ? p.backs[static_cast<std::size_t>(Art::kResourceBack)]
                    : p.resources[static_cast<std::size_t>(card.resource)],

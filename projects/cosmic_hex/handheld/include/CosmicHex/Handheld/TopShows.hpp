@@ -273,13 +273,16 @@ public:
     int planet; // (its index in State::planets; -1 for one stolen)
     int player;
     Resource resource;
-    int from = -1; // (stolen: from this player, to `player`, the thief)
+    int from = -1;       // (stolen or traded: from this player, or the bank)
+    bool secret = false; // (stolen: seen only by the two players)
   };
+  static constexpr int kBank = -2; // (a card's `from` or `player`: the bank)
   // The moves made since the last look: a roll's pay queued (from `before`,
   // the game as it was when the dice were thrown), to start once `start`
   // is called (when the dice have gone: the user's, not over the roll); and
   // each steal (after the blockade moves, or the pirate hideout's), a card
-  // flying from the victim to the thief
+  // flying from the victim to the thief; and each trade, the cards crossing
+  // between the two players (or to and from the bank)
   void saw(const std::vector<TableGame::Played> &moves, const State &before);
   void start(double now);
   bool waiting() const { return !cards_.empty() && !started_; }
@@ -301,7 +304,10 @@ public:
 
 private:
   std::vector<Card> cards_;
-  std::vector<int> victims_; // (who the next steals are from, in order)
+  std::vector<int> victims_;                // (who the next steals are from, in order)
+  TradeOffer offer_;                        // (the offer standing, as the moves make it)
+  int counterer_ = -1;                      // (who made the counter standing)
+  void cross(int from, int to, int bundle); // (a bundle's cards, from one to the other)
   double startAt_ = 0;
   bool started_ = false, held_ = false;
 };
