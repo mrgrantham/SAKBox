@@ -79,14 +79,19 @@ void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
   const Scene::Vector3 facing = camera.eye + forward * distance;
   // Between: its position and axes carried from one to the other (the axes
   // made square again: Gram-Schmidt)
-  const auto between = [lifted](const Scene::Vector3 &a, const Scene::Vector3 &b) {
-    return a + (b - a) * lifted;
+  // Between: its axes carried from one to the other (made square again:
+  // Gram-Schmidt; flat while it dips or settles: it stays rigid), its
+  // place along an arc bowing up the screen (not a straight line)
+  const float turned = std::clamp(lifted, 0.0f, 1.0f);
+  const auto between = [turned](const Scene::Vector3 &a, const Scene::Vector3 &b) {
+    return a + (b - a) * turned;
   };
   const Scene::Vector3 y = between({0, 1, 0}, forward * -1).normalised();
   Scene::Vector3 z = between({0, 0, 1}, screenUp * -1);
   z = (z - y * z.dot(y)).normalised();
   const Scene::Vector3 x = y.cross(z);
-  const Scene::Transform pose = Scene::Transform::fromAxes(x, y, z, between(onBoard, facing));
+  const Scene::Vector3 place = Motion::arc(onBoard, facing, screenUp * (0.8f * radius), lifted);
+  const Scene::Transform pose = Scene::Transform::fromAxes(x, y, z, place);
   // Turning over about its x axis, as on the board: face down till halfway
   const float turn = moment->turn * kPi;
   const bool faceUp = turn > kPi / 2;
@@ -136,9 +141,11 @@ void drawDealtCards(const TopFrame &f, const DealtShow &show, int chosen,
                         Palette::kDimWords, k);
   for (std::size_t i = 0; i < cards.size(); ++i) {
     const float homeX = left + static_cast<float>(i) * (w + gap);
-    // Thrown in from the bottom left, eased to its place
+    // Thrown in from the bottom left along an arc (bowing up), landing
+    // with a settle (DealtShow::thrown)
     const float flown = show.thrown(i, f.now);
-    const float x = -w + (homeX + w) * flown, y = f.height + (top - f.height) * flown;
+    const float x = Motion::arc(-w, homeX, -6 * k, flown);
+    const float y = Motion::arc(f.height, top, -30 * k, flown);
     // Then turned over: its width through |cos|, its back until halfway
     const float turned = show.turned(i, f.now);
     const float across = std::abs(std::cos(turned * kPi));

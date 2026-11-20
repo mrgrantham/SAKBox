@@ -50,12 +50,17 @@ inline constexpr float kSeconds =
 
 // Where the show is, `seconds` in: each part 0 (not begun) to 1 (done),
 // eased (Motion)
+// (docs/research/animation-whimsy.md: a wind-up before it lifts, a settle
+// as it lands, an arc between)
 struct Moment {
-  float up = 0;   // 0 on the board, 1 facing you (Gentle)
-  float turn = 0; // face down at 0, face up at 1 (Gentle)
-  float chip = 0; // the token's drop (Settle: a small bounce)
-  float down = 0; // 0 facing you, 1 back flat on the board (Gentle)
-  float fade = 0; // the bottom screen's tile: 0 face down, 1 shown
+  float up = 0;      // 0 on the board, 1 facing you: a small dip first (the
+                     // wind-up, below 0), then Gentle
+  float turn = 0;    // face down at 0, face up at 1 (Gentle)
+  float chip = 0;    // the token's drop (Settle: a small bounce)
+  float down = 0;    // 0 facing you, 1 back flat on the board: Settle, past 1
+                     // a hair (it sinks a touch and comes back)
+  float fade = 0;    // the bottom screen's tile: 0 face down, 1 shown
+  bool back = false; // (down's time is up: it lies on the board again)
   bool done = false;
   // How far off the board it is: 0 on it, 1 facing you
   float lifted() const { return up * (1 - down); }

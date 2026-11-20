@@ -74,3 +74,21 @@ TEST(DiscoveryTest, TheGamesWordsMatchItsThings) {
   EXPECT_EQ(GameWords::of(Find::AlienStation), "Alien outpost");
   EXPECT_EQ(GameWords::kFinds_.size(), static_cast<std::size_t>(kFinds));
 }
+
+// The whimsy (docs/research/animation-whimsy.md): the tile dips into the
+// board a touch before it lifts (a wind-up), and sinks a touch past its
+// place as it lands, then settles (follow-through)
+TEST(DiscoveryTest, AWindUpBeforeAndASettleAfter) {
+  using namespace Discovery;
+  float lowestUp = 0;
+  for (float s = 0; s < kSecondsUp; s += 0.01f)
+    lowestUp = std::min(lowestUp, at(s).lifted());
+  EXPECT_LT(lowestUp, -0.03f);
+  const float downFrom = kSeconds - kSecondsFade - kSecondsDown;
+  float lowestDown = 1;
+  for (float s = downFrom; s < downFrom + kSecondsDown; s += 0.01f)
+    lowestDown = std::min(lowestDown, at(s).lifted());
+  EXPECT_LT(lowestDown, 0); // (past its place)
+  EXPECT_GT(lowestDown, -0.15f);
+  EXPECT_TRUE(at(downFrom + kSecondsDown).back);
+}

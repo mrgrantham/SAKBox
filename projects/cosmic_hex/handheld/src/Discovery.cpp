@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 
 namespace CosmicHex::Handheld::Discovery {
 
@@ -78,11 +79,18 @@ Moment at(float seconds) {
   constexpr float kChipFrom = kTurnFrom + kSecondsTurn;
   constexpr float kDownFrom = kChipFrom + kSecondsChip + kSecondsHold;
   constexpr float kFadeFrom = kDownFrom + kSecondsDown;
-  return {.up = along(Curve::Gentle, part(seconds, 0, kSecondsUp)),
+  // The lift: a dip into the board over its first fifth (the wind-up),
+  // then up, gently
+  const float lift = part(seconds, 0, kSecondsUp);
+  constexpr float kWindUp = 0.2f, kDip = 0.06f;
+  const float up = lift < kWindUp ? -kDip * std::sin(3.14159265f * lift / kWindUp)
+                                  : along(Curve::Gentle, (lift - kWindUp) / (1 - kWindUp));
+  return {.up = up,
           .turn = along(Curve::Gentle, part(seconds, kTurnFrom, kSecondsTurn)),
           .chip = along(Curve::Settle, part(seconds, kChipFrom, kSecondsChip)),
-          .down = along(Curve::Gentle, part(seconds, kDownFrom, kSecondsDown)),
+          .down = along(Curve::Settle, part(seconds, kDownFrom, kSecondsDown)),
           .fade = part(seconds, kFadeFrom, kSecondsFade),
+          .back = seconds >= kFadeFrom,
           .done = seconds >= kSeconds};
 }
 

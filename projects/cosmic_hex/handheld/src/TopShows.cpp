@@ -64,14 +64,14 @@ bool DiscoveryShow::stillToShow(Hex hex, double now) const {
     if (queue_[i].hex != hex)
       continue;
     const auto m = i == 0 ? moment(now) : std::nullopt;
-    return !m || m->down < 1;
+    return !m || !m->back;
   }
   return false;
 }
 
 bool DiscoveryShow::flying(Hex hex, double now) const {
   const auto m = moment(now);
-  return m && queue_.front().hex == hex && m->down < 1;
+  return m && queue_.front().hex == hex && !m->back;
 }
 
 bool DiscoveryShow::shownBig(Hex hex) const {
@@ -110,7 +110,7 @@ void DealtShow::closeUpDrawn(double now) {
 
 float DealtShow::thrown(std::size_t i, double now) const {
   const auto since = static_cast<float>(shown_.seconds(now));
-  return Motion::along(Motion::Curve::EaseOut,
+  return Motion::along(Motion::Curve::Settle,
                        (since - kThrowStagger * static_cast<float>(i)) / kSecondsThrow);
 }
 
