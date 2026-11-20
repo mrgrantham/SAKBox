@@ -349,16 +349,21 @@ Colour Image::at(int x, int y) const {
 }
 
 Image draw(const Recipe &recipe, int width, int height, Format format, std::string_view name,
-           Smoothing smoothing) {
+           Smoothing smoothing, Rows rows) {
+  const bool rgba = format == Format::Rgba8;
+  // The band drawn: its first row and how many (all of them for a palette)
+  const int firstRow = rgba ? std::clamp(rows.first, 0, height) : 0;
+  const int bandRows =
+      rgba && rows.count >= 0 ? std::min(rows.count, height - firstRow) : height - firstRow;
   Image image;
   image.width = width;
-  image.height = height;
+  image.height = bandRows;
   image.format = format;
-  const bool rgba = format == Format::Rgba8;
   // (samples = 1 << samplesShift a side: shifts, not divisions)
   const int samplesShift = !rgba ? 0 : smoothing == Smoothing::Fine ? 2 : 1;
   const int samples = 1 << samplesShift;
-  const std::size_t pixelCount = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
+  const std::size_t pixelCount =
+      static_cast<std::size_t>(width) * static_cast<std::size_t>(bandRows);
   image.pixels.assign(pixelCount * (rgba ? 4 : 1), 0);
   // Palette formats: each pixel's recipe colour + 1 (0 transparent), until
   // the palette is made at the end
@@ -411,7 +416,9 @@ Image draw(const Recipe &recipe, int width, int height, Format format, std::stri
     std::sort(edges.begin(), edges.end(), [](const Edge &a, const Edge &b) { return a.y0 < b.y0; });
     std::size_t nextEdge = 0;
     active.clear();
-    for (int row = 0; row < sampleHeight; ++row) {
+    // (the band's sample rows: the active list takes in every edge that
+    // reaches them, whatever row it started on)
+    for (int row = firstRow * samples; row < (firstRow + bandRows) * samples; ++row) {
       const std::int64_t centre = (std::int64_t{row} << 16) + (1 << 15);
       for (; nextEdge < edges.size() && edges[nextEdge].y0 <= centre; ++nextEdge)
         if (centre < edges[nextEdge].y1) // (one between two rows' centres is never crossed)
@@ -433,9 +440,9 @@ Image draw(const Recipe &recipe, int width, int height, Format format, std::stri
         const std::int64_t to = (crossings[i + 1].x - (1 << 15) + 0xffff) >> 16;
         for (std::int64_t column = std::max<std::int64_t>(from, 0);
              column < std::min<std::int64_t>(to, sampleWidth); ++column) {
-          const std::size_t pixel =
-              static_cast<std::size_t>(row >> samplesShift) * static_cast<std::size_t>(width) +
-              static_cast<std::size_t>(column >> samplesShift);
+          const std::size_t pixel = static_cast<std::size_t>((row >> samplesShift) - firstRow) *
+                                        static_cast<std::size_t>(width) +
+                                    static_cast<std::size_t>(column >> samplesShift);
           ++coverage[pixel];
         }
       }

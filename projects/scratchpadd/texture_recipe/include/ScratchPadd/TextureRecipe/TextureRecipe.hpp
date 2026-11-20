@@ -98,9 +98,18 @@ struct Image {
 // map). The palette formats take 1 either way.
 enum class Smoothing : std::uint8_t { Fine, Coarse };
 
+// Some of a picture's rows: from `first`, `count` of them (-1: to the bottom)
+struct Rows {
+  int first = 0, count = -1;
+};
+
 // The recipe drawn into a width x height image, the drawing stretched to fill
-// it. `name` is for the log, if its colours have to be reduced.
+// it. `name` is for the log, if its colours have to be reduced. With `rows`,
+// only those rows (Rgba8 only): the image is that band of the picture, each
+// pixel as the whole picture has it, so a big picture can be drawn a band at
+// a time on a device short of memory (a palette needs the whole picture: a
+// palette format draws it all)
 Image draw(const Recipe &recipe, int width, int height, Format format, std::string_view name = {},
-           Smoothing smoothing = Smoothing::Fine);
+           Smoothing smoothing = Smoothing::Fine, Rows rows = {});
 
 } // namespace ScratchPadd::TextureRecipe

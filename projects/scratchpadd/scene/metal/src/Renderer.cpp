@@ -319,23 +319,34 @@ MTL::VertexDescriptor *vertexLayout(NS::UInteger buffer) {
 namespace {
 // A texture of `image` (RGBA, rows from the top), with its mipmaps made by
 // the GPU, as the OpenGL backend's
+// Its smaller copies made again from it (after its picture changed)
+void regenerateMipmaps(MTL::Texture *texture) {
+  if (texture->mipmapLevelCount() <= 1)
+    return;
+  MTL::CommandBuffer *commands = Metal::queue()->commandBuffer();
+  MTL::BlitCommandEncoder *blit = commands->blitCommandEncoder();
+  blit->generateMipmaps(texture);
+  blit->endEncoding();
+  commands->commit();
+  commands->waitUntilCompleted();
+}
+
 MTL::Texture *textureOf(const TextureImage &image) {
   MTL::TextureDescriptor *describe = MTL::TextureDescriptor::texture2DDescriptor(
       MTL::PixelFormatRGBA8Unorm, static_cast<NS::UInteger>(image.width),
       static_cast<NS::UInteger>(image.height), true);
   describe->setUsage(MTL::TextureUsageShaderRead);
   MTL::Texture *texture = Metal::device()->newTexture(describe);
+  // (a blank one: see-through, filled later by replace)
+  const std::vector<Colour> clear(image.pixels.empty() ? static_cast<std::size_t>(image.width) *
+                                                             static_cast<std::size_t>(image.height)
+                                                       : 0,
+                                  Colour{0, 0, 0, 0});
   texture->replaceRegion(MTL::Region(0, 0, static_cast<NS::UInteger>(image.width),
                                      static_cast<NS::UInteger>(image.height)),
-                         0, image.pixels.data(), static_cast<NS::UInteger>(image.width) * 4);
-  if (texture->mipmapLevelCount() > 1) {
-    MTL::CommandBuffer *commands = Metal::queue()->commandBuffer();
-    MTL::BlitCommandEncoder *blit = commands->blitCommandEncoder();
-    blit->generateMipmaps(texture);
-    blit->endEncoding();
-    commands->commit();
-    commands->waitUntilCompleted();
-  }
+                         0, image.pixels.empty() ? clear.data() : image.pixels.data(),
+                         static_cast<NS::UInteger>(image.width) * 4);
+  regenerateMipmaps(texture);
   return texture;
 }
 } // namespace
@@ -603,21 +614,32 @@ Mesh Renderer::load(const MeshData &mesh) {
 
 Texture Renderer::load(const TextureImage &image) {
   if (image.width <= 0 || image.height <= 0 ||
-      image.pixels.size() <
-          static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height))
+      (!image.pixels.empty() && image.pixels.size() < static_cast<std::size_t>(image.width) *
+                                                          static_cast<std::size_t>(image.height)))
     return {};
   backend_->textures.push_back(textureOf(image));
   return {static_cast<std::uint32_t>(backend_->textures.size())};
 }
 
-bool Renderer::replace(Texture texture, const TextureImage &image) {
+bool Renderer::replace(Texture texture, const TextureImage &image, int firstRow) {
   if (!texture || texture.id > backend_->textures.size() || !backend_->textures[texture.id - 1] ||
-      image.width <= 0 || image.height <= 0 ||
+      image.width <= 0 || image.height <= 0 || firstRow < 0 ||
       image.pixels.size() <
           static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height))
     return false;
-  unload(texture);
-  backend_->textures[texture.id - 1] = textureOf(image);
+  MTL::Texture *loaded = backend_->textures[texture.id - 1];
+  if (static_cast<NS::UInteger>(image.width) != loaded->width() ||
+      static_cast<NS::UInteger>(firstRow) + static_cast<NS::UInteger>(image.height) >
+          loaded->height())
+    return false;
+  if (backend_->commands) // (a frame still being drawn may use it)
+    backend_->commands->waitUntilCompleted();
+  // (its rows, from firstRow: the whole picture, or a band of it)
+  loaded->replaceRegion(MTL::Region(0, static_cast<NS::UInteger>(firstRow),
+                                    static_cast<NS::UInteger>(image.width),
+                                    static_cast<NS::UInteger>(image.height)),
+                        0, image.pixels.data(), static_cast<NS::UInteger>(image.width) * 4);
+  regenerateMipmaps(loaded);
   return true;
 }
 

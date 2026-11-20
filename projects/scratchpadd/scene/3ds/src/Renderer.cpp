@@ -752,9 +752,10 @@ Mesh Renderer::load(const MeshData &mesh) {
 Texture Renderer::load(const TextureImage &image) {
   // The GPU's textures are 8 to 1024 a side, in powers of two
   const auto fits = [](int side) { return side >= 8 && side <= 1024 && (side & (side - 1)) == 0; };
+  const std::size_t count =
+      static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height);
   if (!fits(image.width) || !fits(image.height) ||
-      image.pixels.size() <
-          static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height))
+      (!image.pixels.empty() && image.pixels.size() < count))
     return {};
   // Its mipmap levels down to 8 a side (the smallest tile), each tiled and
   // loaded in turn
@@ -769,7 +770,13 @@ Texture Renderer::load(const TextureImage &image) {
   if (!made)
     return {};
   texture.maxLevel = static_cast<u8>(levels - 1);
-  std::vector<Colour> level(image.pixels.begin(), image.pixels.end());
+  // (a blank one: see-through, filled later by replace)
+  std::vector<Colour> level =
+      image.pixels.empty()
+          ? std::vector<Colour>(count, Colour{0, 0, 0, 0})
+          : std::vector<Colour>(image.pixels.begin(),
+                                image.pixels.begin() + static_cast<std::ptrdiff_t>(count));
+  backend_->keptPending = {image.width, image.height, level};
   int width = image.width, height = image.height;
   std::vector<std::uint8_t> tiled;
   for (int i = 0; i < levels; ++i) {
@@ -786,19 +793,33 @@ Texture Renderer::load(const TextureImage &image) {
   C3D_TexSetFilterMipmap(&texture, GPU_LINEAR);
   C3D_TexSetWrap(&texture, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
   backend_->textures.push_back(texture);
+  backend_->kept.push_back(std::move(backend_->keptPending));
   return {static_cast<std::uint32_t>(backend_->textures.size())};
 }
 
-bool Renderer::replace(Texture texture, const TextureImage &image) {
-  if (!texture || texture.id > backend_->textures.size() || !backend_->textures[texture.id - 1])
+bool Renderer::replace(Texture texture, const TextureImage &image, int firstRow) {
+  if (!texture || texture.id > backend_->textures.size() || !backend_->textures[texture.id - 1] ||
+      firstRow < 0 ||
+      image.pixels.size() <
+          static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height))
     return false;
-  // (made as a new texture, then moved into this one's place)
-  const Texture made = load(image);
+  // The band into the kept pixels; then made as a new texture from them,
+  // moved into this one's place
+  const Backend::KeptPixels &kept = backend_->kept[texture.id - 1];
+  if (image.width != kept.width || firstRow + image.height > kept.height)
+    return false;
+  std::vector<Colour> whole = kept.pixels;
+  std::copy(image.pixels.begin(),
+            image.pixels.begin() + static_cast<std::ptrdiff_t>(image.width) * image.height,
+            whole.begin() + static_cast<std::ptrdiff_t>(firstRow) * kept.width);
+  const Texture made = load({kept.width, kept.height, whole});
   if (!made)
     return false;
   unload(texture);
   backend_->textures[texture.id - 1] = backend_->textures[made.id - 1];
+  backend_->kept[texture.id - 1] = std::move(backend_->kept[made.id - 1]);
   backend_->textures.pop_back(); // (made was the last)
+  backend_->kept.pop_back();
   return true;
 }
 

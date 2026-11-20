@@ -22,6 +22,13 @@ std::vector<ScratchPadd::Scene::Colour> recipePixels(
     std::string_view recipe, int width, int height,
     ScratchPadd::TextureRecipe::Smoothing smoothing = ScratchPadd::TextureRecipe::Smoothing::Fine);
 
+// Rows `rows` of a parsed recipe drawn `width` x `height` (TextureRecipe's
+// bands: a big picture a band at a time, on a device short of memory)
+std::vector<ScratchPadd::Scene::Colour>
+recipePixels(const ScratchPadd::TextureRecipe::Recipe &recipe, int width, int height,
+             ScratchPadd::TextureRecipe::Smoothing smoothing,
+             ScratchPadd::TextureRecipe::Rows rows);
+
 // A square picture `from` pixels a side made `to` a side (no bigger), each
 // pixel the average of those it covers, weighted by how opaque they are (so
 // see-through pixels don't darken an edge): for a picture already drawn at

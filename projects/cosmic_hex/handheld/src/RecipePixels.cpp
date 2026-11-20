@@ -28,6 +28,20 @@ recipePixels(std::string_view recipe, int width, int height,
 }
 
 std::vector<ScratchPadd::Scene::Colour>
+recipePixels(const ScratchPadd::TextureRecipe::Recipe &recipe, int width, int height,
+             ScratchPadd::TextureRecipe::Smoothing smoothing,
+             ScratchPadd::TextureRecipe::Rows rows) {
+  namespace TR = ScratchPadd::TextureRecipe;
+  const TR::Image image = TR::draw(recipe, width, height, TR::Format::Rgba8, {}, smoothing, rows);
+  std::vector<ScratchPadd::Scene::Colour> pixels(static_cast<std::size_t>(image.width) *
+                                                 static_cast<std::size_t>(image.height));
+  for (std::size_t p = 0; p < pixels.size(); ++p)
+    pixels[p] = {image.pixels[p * 4], image.pixels[p * 4 + 1], image.pixels[p * 4 + 2],
+                 image.pixels[p * 4 + 3]};
+  return pixels;
+}
+
+std::vector<ScratchPadd::Scene::Colour>
 shrunk(const std::vector<ScratchPadd::Scene::Colour> &pixels, int from, int to) {
   if (to <= 0 || from < to || pixels.size() < static_cast<std::size_t>(from) * from)
     return {};

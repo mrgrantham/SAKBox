@@ -47,6 +47,10 @@ struct PlatformProfile {
   // two cards dealt) drawn again at this many pixels across, when it's
   // shown, into textures kept for it (Renderer::replace)
   int closeUpSize;
+  // ...drawn this many rows at a time (PictureSlot's bands): the DS's main
+  // memory can't hold a 128-pixel picture whole as it's drawn; elsewhere all
+  // at once
+  int closeUpBandRows;
 
   // The dice's physics: its fixed step (each proved fair by
   // dice_fairness over 20,000 throws at it), and the most steps a frame may
@@ -73,7 +77,10 @@ inline constexpr PlatformProfile kDsProfile{
     .titleStars = 110, // (two polygons each, of the DS's 2048)
     .holdStillFrames = true,
     .boardZoomBytes = 320 * 1024,
-    .closeUpSize = 64, // (8 KB each: three fit in the texture memory left)
+    // (32 KB each in video memory, banks A and B; drawn 16 rows at a time,
+    // as a picture drawn whole needed more main memory than a game has free)
+    .closeUpSize = 128,
+    .closeUpBandRows = 16,
     .diceStep = 1.0 / 30,
     .mostDiceSteps = 2,
 };
@@ -97,6 +104,7 @@ inline constexpr PlatformProfile kThreeDsProfile{
     .holdStillFrames = false,
     .boardZoomBytes = 8 * 1024 * 1024,
     .closeUpSize = 128,
+    .closeUpBandRows = 128,
     .diceStep = 1.0 / 60,
     .mostDiceSteps = 4,
 };

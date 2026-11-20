@@ -773,28 +773,45 @@ Mesh Renderer::load(const MeshData &mesh) {
 }
 
 Texture Renderer::load(const TextureImage &image) {
+  const std::size_t count =
+      static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height);
   if (image.width <= 0 || image.height <= 0 ||
       backend_->textures.size() >= Backend::kMostTextures ||
-      image.pixels.size() <
-          static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height))
+      (!image.pixels.empty() && image.pixels.size() < count))
     return {};
+  // (a blank one: see-through, filled later by replace)
+  Backend::KeptPixels kept{
+      image.width, image.height,
+      image.pixels.empty()
+          ? std::vector<Colour>(count, Colour{0, 0, 0, 0})
+          : std::vector<Colour>(image.pixels.begin(),
+                                image.pixels.begin() + static_cast<std::ptrdiff_t>(count))};
   Backend::LoadedTexture loaded =
-      backend_->makeLoadedTexture(image.width, image.height, image.pixels.data());
+      backend_->makeLoadedTexture(image.width, image.height, kept.pixels.data());
   if (!loaded.set)
     return {};
   backend_->textures.push_back(loaded);
+  backend_->kept.push_back(std::move(kept));
   return {static_cast<std::uint32_t>(backend_->textures.size())};
 }
 
-bool Renderer::replace(Texture texture, const TextureImage &image) {
+bool Renderer::replace(Texture texture, const TextureImage &image, int firstRow) {
   if (!texture || texture.id > backend_->textures.size() ||
       !backend_->textures[texture.id - 1].set || image.width <= 0 || image.height <= 0 ||
+      firstRow < 0 ||
       image.pixels.size() <
           static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height))
     return false;
+  // (the band into the kept pixels, then the texture made again from them)
+  Backend::KeptPixels &kept = backend_->kept[texture.id - 1];
+  if (image.width != kept.width || firstRow + image.height > kept.height)
+    return false;
+  std::copy(image.pixels.begin(),
+            image.pixels.begin() + static_cast<std::ptrdiff_t>(image.width) * image.height,
+            kept.pixels.begin() + static_cast<std::ptrdiff_t>(firstRow) * kept.width);
   unload(texture);
   backend_->textures[texture.id - 1] =
-      backend_->makeLoadedTexture(image.width, image.height, image.pixels.data());
+      backend_->makeLoadedTexture(kept.width, kept.height, kept.pixels.data());
   return backend_->textures[texture.id - 1].set;
 }
 

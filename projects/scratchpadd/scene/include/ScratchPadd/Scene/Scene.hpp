@@ -62,14 +62,18 @@ public:
   Mesh load(const MeshData &mesh);
   void unload(Mesh mesh);
   // Uploads an image for materials to show (Material::texture); its pixels
-  // can go afterwards. No texture if the backend can't take its size
+  // can go afterwards. No texture if the backend can't take its size. An
+  // image with no pixels makes a blank texture that size (see-through), to
+  // be filled with replace: no picture-sized buffer needed to make it
   Texture load(const TextureImage &image);
   void unload(Texture texture);
-  // `texture`'s picture changed to `image`, the same size, in its place: a
-  // texture reused for pictures that come and go (a close-up), as a DS
-  // can't give texture memory back. False if it couldn't be (another size,
-  // or no such texture)
-  bool replace(Texture texture, const TextureImage &image);
+  // `texture`'s picture changed to `image` in its place: a texture reused
+  // for pictures that come and go (a close-up), as a DS can't give texture
+  // memory back. `image` is the texture's width, and its rows go from row
+  // `firstRow`: all of them (the default), or a band, so a big picture can
+  // be drawn and sent a band at a time on a device short of memory. False
+  // if it couldn't be (another width, rows past the bottom, no such texture)
+  bool replace(Texture texture, const TextureImage &image, int firstRow = 0);
 
   // Starts a frame: clears it to the environment's background
   void beginFrame(const Camera &camera, const Environment &environment);

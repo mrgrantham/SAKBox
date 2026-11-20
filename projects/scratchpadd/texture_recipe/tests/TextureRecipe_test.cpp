@@ -235,3 +235,22 @@ TEST(TextureRecipeTest, WindowsLineEndingsReadTheSame) {
   EXPECT_EQ(windowsEndings->width, 4);
   EXPECT_EQ(windowsEndings->height, unixEndings->height);
 }
+
+// Drawn in bands of rows (a device short of memory), the bands laid one
+// under the other are the picture drawn whole, pixel for pixel
+TEST(TextureRecipeTest, BandsMakeTheWhole) {
+  const TR::Recipe recipe =
+      readOrFail(std::string_view(reinterpret_cast<const char *>(TextureRecipeExamples::kTile),
+                                  TextureRecipeExamples::kTileSize));
+  for (const TR::Smoothing smoothing : {TR::Smoothing::Fine, TR::Smoothing::Coarse}) {
+    const TR::Image whole = TR::draw(recipe, 48, 40, TR::Format::Rgba8, {}, smoothing);
+    std::vector<std::uint8_t> stitched;
+    for (int first = 0; first < 40; first += 7) { // (7 rows a band: the last one short)
+      const TR::Image band = TR::draw(recipe, 48, 40, TR::Format::Rgba8, {}, smoothing, {first, 7});
+      EXPECT_EQ(band.width, 48);
+      EXPECT_EQ(band.height, std::min(7, 40 - first));
+      stitched.insert(stitched.end(), band.pixels.begin(), band.pixels.end());
+    }
+    EXPECT_EQ(stitched, whole.pixels);
+  }
+}

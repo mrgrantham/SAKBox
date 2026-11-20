@@ -492,10 +492,14 @@ Mesh Renderer::load(const MeshData &mesh) {
 }
 
 Texture Renderer::load(const TextureImage &image) {
+  const bool blank = image.pixels.empty(); // (made see-through, filled by replace)
   if (image.width <= 0 || image.height <= 0 ||
-      image.pixels.size() <
-          static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height))
+      (!blank && image.pixels.size() < static_cast<std::size_t>(image.width) *
+                                           static_cast<std::size_t>(image.height)))
     return {};
+  const std::vector<Colour> clear(
+      blank ? static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height) : 0,
+      Colour{0, 0, 0, 0});
   GLuint texture = 0;
   glGenTextures(1, &texture);
   glBindTexture(GL_TEXTURE_2D, texture);
@@ -503,7 +507,7 @@ Texture Renderer::load(const TextureImage &image) {
   // Rows from the top, as the image has them: texture coordinate v 0 is
   // its first row
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-               image.pixels.data());
+               blank ? clear.data() : image.pixels.data());
   glGenerateMipmap(GL_TEXTURE_2D);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -513,15 +517,17 @@ Texture Renderer::load(const TextureImage &image) {
   return {static_cast<std::uint32_t>(backend_->textures.size())};
 }
 
-bool Renderer::replace(Texture texture, const TextureImage &image) {
+bool Renderer::replace(Texture texture, const TextureImage &image, int firstRow) {
   if (!texture || texture.id > backend_->textures.size() || !backend_->textures[texture.id - 1] ||
+      firstRow < 0 ||
       image.pixels.size() <
           static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height))
     return false;
   glBindTexture(GL_TEXTURE_2D, backend_->textures[texture.id - 1]);
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-               image.pixels.data());
+  // (its rows, from firstRow: the whole picture, or a band of it)
+  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, firstRow, image.width, image.height, GL_RGBA,
+                  GL_UNSIGNED_BYTE, image.pixels.data());
   glGenerateMipmap(GL_TEXTURE_2D);
   return true;
 }

@@ -37,6 +37,14 @@ struct Renderer::Backend {
 
   // Materials' textures, by Texture::id - 1 (unloaded ones empty)
   std::vector<std::optional<C3D_Tex>> textures;
+  // Each texture's pixels, kept (by Texture::id - 1): replace sends a band
+  // into them and makes the texture again from them
+  struct KeptPixels {
+    int width = 0, height = 0;
+    std::vector<Colour> pixels;
+  };
+  std::vector<KeptPixels> kept;
+  KeptPixels keptPending; // (load's, until its texture is made)
   // The combiner's texture stage for `material` (none: passed on)
   void useTexture(const Material *material);
 

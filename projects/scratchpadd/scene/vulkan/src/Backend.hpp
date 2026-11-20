@@ -107,6 +107,13 @@ struct Renderer::Backend {
   VkDescriptorPool texturePool = VK_NULL_HANDLE;
   VkSampler textureSampler = VK_NULL_HANDLE;
   std::vector<LoadedTexture> textures;
+  // Each texture's pixels, kept (by Texture::id - 1): replace sends a band
+  // into them and makes the texture again from them
+  struct KeptPixels {
+    int width = 0, height = 0;
+    std::vector<Colour> pixels;
+  };
+  std::vector<KeptPixels> kept;
   LoadedTexture blank;
   Vulkan::Buffer frameUniformBuffer; // FrameUniforms, written each frame
   std::vector<LoadedMesh> meshes;    // by Mesh::id - 1; unloaded ones have no vertices

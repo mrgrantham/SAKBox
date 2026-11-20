@@ -459,14 +459,20 @@ Texture Renderer::load(const TextureImage &image) {
   const int widthCode = sideCode(image.width), heightCode = sideCode(image.height);
   const auto bytes = static_cast<std::uint32_t>(image.width * image.height * 2);
   backend_->nextTextureOffset = roomFor(backend_->nextTextureOffset, bytes);
+  const bool blank = image.pixels.empty();
   if (widthCode < 0 || heightCode < 0 ||
-      image.pixels.size() < static_cast<std::size_t>(image.width * image.height) ||
+      (!blank && image.pixels.size() < static_cast<std::size_t>(image.width * image.height)) ||
       backend_->nextTextureOffset + bytes > kTextureBank)
     return {};
-  // Direct colour: 15 bits, the top bit opaque (more than half alpha)
+  // Direct colour: 15 bits, the top bit opaque (more than half alpha); a
+  // blank one see-through
   texturesToCpu();
   std::uint16_t *to = textureMemory(backend_->nextTextureOffset);
   for (std::size_t i = 0; i < static_cast<std::size_t>(image.width * image.height); ++i) {
+    if (blank) {
+      to[i] = 0;
+      continue;
+    }
     const Colour c = image.pixels[i];
     to[i] = static_cast<std::uint16_t>(DisplayList::rgb15(c) | (c.a >= 128 ? 0x8000 : 0));
   }
@@ -479,15 +485,18 @@ Texture Renderer::load(const TextureImage &image) {
   return {static_cast<std::uint32_t>(backend_->images.size())};
 }
 
-bool Renderer::replace(Texture texture, const TextureImage &image) {
+bool Renderer::replace(Texture texture, const TextureImage &image, int firstRow) {
   if (!texture || texture.id > backend_->images.size())
     return false;
   const auto &loaded = backend_->images[texture.id - 1];
-  if (loaded.parameter == 0 || loaded.width != image.width || loaded.height != image.height ||
+  if (loaded.parameter == 0 || loaded.width != image.width || firstRow < 0 ||
+      firstRow + image.height > loaded.height ||
       image.pixels.size() < static_cast<std::size_t>(image.width * image.height))
     return false;
-  // (where it is in the bank: the parameter's offset, in 8-byte steps)
-  const std::uint32_t offset = (loaded.parameter & 0xFFFF) * 8;
+  // (where it is in the bank: the parameter's offset, in 8-byte steps; the
+  // band from its first row, two bytes a pixel)
+  const std::uint32_t offset =
+      (loaded.parameter & 0xFFFF) * 8 + static_cast<std::uint32_t>(firstRow * image.width * 2);
   texturesToCpu();
   std::uint16_t *to = textureMemory(offset);
   for (std::size_t i = 0; i < static_cast<std::size_t>(image.width * image.height); ++i) {

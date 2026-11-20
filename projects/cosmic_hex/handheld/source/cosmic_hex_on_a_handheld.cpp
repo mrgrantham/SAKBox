@@ -1942,25 +1942,44 @@ private:
 
   // A close-up's picture drawn into its slot (PlatformProfile::closeUpSize;
   // PictureSlot: drawn only when it isn't there already)
+  // Close-ups: drawn into their slots a band of rows at a time
+  // (PlatformProfile::closeUpBandRows: on a DS, so a 128-pixel picture
+  // never has to be in memory whole), each recipe read once
   void closeUpTile(CosmicHex::Art::Face face) {
     const int size = kThisPlatform.closeUpSize;
-    closeUpFace_.show(*renderer_, static_cast<int>(face), [&] {
-      return recipePixels(CosmicHex::Art::recipeOf(face), size, kThisPlatform.recipeSmoothing);
-    });
+    const auto recipe = ScratchPadd::TextureRecipe::read(CosmicHex::Art::recipeOf(face));
+    if (!recipe)
+      return;
+    closeUpFace_.show(
+        *renderer_, static_cast<int>(face),
+        [&](int first, int rows) {
+          return recipePixels(*recipe, size, size, kThisPlatform.recipeSmoothing, {first, rows});
+        },
+        kThisPlatform.closeUpBandRows);
   }
   void closeUpCards(const std::vector<CosmicHex::Art::Card> &cards) {
     const int size = kThisPlatform.closeUpSize, height = size * 52 / 63;
-    for (std::size_t i = 0; i < cards.size() && i < closeUpCards_.size(); ++i)
-      closeUpCards_[i].show(*renderer_, static_cast<int>(cards[i]), [&] {
-        // (the card's picture: its drawing down to the picture's foot)
-        const auto whole = recipePixels(CosmicHex::Art::cardRecipeOf(cards[i]), size,
-                                        size * 88 / 63, kThisPlatform.recipeSmoothing);
-        std::vector<Scene::Colour> square(static_cast<std::size_t>(size * size));
-        if (whole.empty())
-          return std::vector<Scene::Colour>{};
-        std::copy(whole.begin(), whole.begin() + size * height, square.begin());
-        return square;
-      });
+    for (std::size_t i = 0; i < cards.size() && i < closeUpCards_.size(); ++i) {
+      const auto recipe = ScratchPadd::TextureRecipe::read(CosmicHex::Art::cardRecipeOf(cards[i]));
+      if (!recipe)
+        continue;
+      closeUpCards_[i].show(
+          *renderer_, static_cast<int>(cards[i]),
+          [&](int first, int rows) {
+            // (the card's picture: its drawing (the card's 63 x 88) down to
+            // the picture's foot, `height`; the slot's rows below it clear)
+            std::vector<Scene::Colour> band(static_cast<std::size_t>(size) *
+                                            static_cast<std::size_t>(rows));
+            const int drawn = std::clamp(height - first, 0, rows);
+            if (drawn > 0) {
+              const auto pixels = recipePixels(*recipe, size, size * 88 / 63,
+                                               kThisPlatform.recipeSmoothing, {first, drawn});
+              std::copy(pixels.begin(), pixels.end(), band.begin());
+            }
+            return band;
+          },
+          kThisPlatform.closeUpBandRows);
+    }
   }
   // Each frame: the game held while a roll's pay flies
   void updateRollPay() {
