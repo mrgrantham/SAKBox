@@ -383,7 +383,7 @@ public:
           phase == CosmicHex::Phase::PlaceColony || phase == CosmicHex::Phase::PlaceShip;
       // (the start's placing: whose it is and what, once who goes first is
       // shown)
-      if (placing && !firstRoll_.on() && !descentStarted_ &&
+      if (placing && !firstRoll_.on() && !descentStarted_ && !lookingSince_ &&
           (!latest_ || snapshot.state.turn != latest_->state.turn || phase != latest_->state.phase))
         startPlacingBanner(snapshot.state);
       if (latest_ && snapshot.state.turn != latest_->state.turn && !placing &&
@@ -620,6 +620,8 @@ private:
     profile_.frameStarted();
     if (animations_ == Animations::Off && skippable())
       skipAnimations();
+    if (lookingSince_ && secondsSince(*lookingSince_) >= kSecondsLookingAtBoard)
+      startFirstRoll();
     firstRoll_.update(showsNow());
     if (firstRoll_.done(showsNow()))
       endFirstRoll();
@@ -829,12 +831,10 @@ private:
     const float down = descent();
     if (down >= 1 && descentStarted_) {
       descentStarted_.reset();
-      // (down: who goes first, shown, the game still held; then it goes on)
+      // (down: a moment to look at the board, the game still held, then who
+      // goes first; A goes on at once)
       if (flow_.screen() == ScreenFlow::Screen::Game)
-        if (latest_) // (real time: the game's clock is held)
-          firstRoll_.start(latest_->firstRoll,
-                           static_cast<std::uint64_t>(Clock::now().time_since_epoch().count()),
-                           kThisPlatform.diceStep, showsNow());
+        lookingSince_ = Clock::now();
     }
     const Scene::Camera camera = cameraBetween(topDownCamera(), gameCamera(turn_), down);
     renderer_->beginFrame(camera, boardEnvironment(1 - down));
@@ -1256,7 +1256,11 @@ private:
       skipAnimations();
       return;
     }
-    // (A: on from who goes first)
+    // (A: on from looking at the board, and from who goes first)
+    if (lookingSince_ && pressed.pressed(confirm)) {
+      startFirstRoll();
+      return;
+    }
     if (firstRoll_.on() && pressed.pressed(confirm)) {
       firstRoll_.hurry(showsNow()); // (the next die now; once all have landed, on)
       if (firstRoll_.done(showsNow()))
@@ -1285,10 +1289,13 @@ private:
       for (const auto &[button, key] :
            {std::pair{Button::Up, Key::Up}, std::pair{Button::Down, Key::Down},
             std::pair{Button::Left, Key::Left}, std::pair{Button::Right, Key::Right},
+            std::pair{Button::L, Key::PreviousBoard}, std::pair{Button::R, Key::NextBoard},
             std::pair{confirm, Key::Confirm}, std::pair{back, Key::Back}})
         if (pressed.pressed(button) && outcome == StartMenu::Outcome::None) {
-          if (key == Key::Left || key == Key::Right)
-            slideWay_ = key == Key::Right ? 1 : -1;
+          if (key == Key::Left || key == Key::PreviousBoard)
+            slideWay_ = -1;
+          if (key == Key::Right || key == Key::NextBoard)
+            slideWay_ = 1;
           outcome = menu_.press(key);
           bottomDirty_ = true;
           updatePreview();
@@ -1885,6 +1892,15 @@ private:
   // Who goes first, over the board at the start (each player's die, those
   // tied rolling again), for firstRollSeconds or until A; then the game
   // goes on
+  // After the board comes down: who goes first, fading in over it (the
+  // user's: a moment to look at the board first)
+  void startFirstRoll() {
+    lookingSince_.reset();
+    if (flow_.screen() == ScreenFlow::Screen::Game && latest_)
+      firstRoll_.start(latest_->firstRoll,
+                       static_cast<std::uint64_t>(Clock::now().time_since_epoch().count()),
+                       kThisPlatform.diceStep, showsNow());
+  }
   void endFirstRoll() {
     firstRoll_.stop();
     if (flow_.screen() == ScreenFlow::Screen::Game)
@@ -2074,7 +2090,7 @@ private:
   bool skippable() const {
     if (flow_.screen() != ScreenFlow::Screen::Game || !latest_)
       return false;
-    if (!roll_.idle() || firstRoll_.on() || celebration_)
+    if (!roll_.idle() || firstRoll_.on() || lookingSince_ || celebration_)
       return true;
     if (gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving)
       return true;
@@ -2093,6 +2109,8 @@ private:
     static constexpr double kPastAnyShow = 30;
     showClock_.skipAhead(kPastAnyShow);
     // Who goes first: each die set down and the order read
+    if (lookingSince_)
+      startFirstRoll();
     for (int i = 0; i < 16 && firstRoll_.on() && !firstRoll_.done(showsNow()); ++i)
       firstRoll_.hurry(showsNow());
     if (firstRoll_.done(showsNow()))
@@ -2136,6 +2154,9 @@ private:
   State previewBefore_ = preview_; // (the board sliding out)
   // The start of a game: the board coming down, the bottom screen fading
   std::optional<Clock::time_point> descentStarted_;
+  // The board come down, looked at a moment before who goes first
+  std::optional<Clock::time_point> lookingSince_;
+  static constexpr double kSecondsLookingAtBoard = 2;
   bool fadeFromMenu_ = false; // (the bottom screen fading from the setup's menu)
   // What the buttons cover on the map, as last drawn; and whether the
   // bottom screen shows the map as last drawn (so only what changes needs
@@ -2266,6 +2287,7 @@ private:
     // bottom screen fades from the menu to the map)
     if (flow_.screen() == ScreenFlow::Screen::Game) {
       descentStarted_ = Clock::now();
+      lookingSince_.reset();
       fadeFromMenu_ = true;
       fading_ = false; // (the map drawn once, at the fade's first frame)
     }

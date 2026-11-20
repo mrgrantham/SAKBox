@@ -148,6 +148,52 @@ TEST(BottomScreenTest, TouchAShipThenWhereItGoes) {
   }
 }
 
+// After the roll, with the turn's offers to players open (the trading
+// phase): touching your ship still marks where it can go, and choosing one
+// ends the offers first, then moves (the user's: it did nothing). A ship
+// that can't move says why
+TEST(BottomScreenTest, AShipMovesFromTheTradingPhase) {
+  State state = playUntil([](const State &s) {
+    if (s.phase != Phase::Trading)
+      return false;
+    State after = s;
+    Game::apply(after, Action{Kind::EndTrading});
+    const auto legal = Game::legalActions(after);
+    return std::any_of(legal.begin(), legal.end(),
+                       [](const Action &a) { return a.kind == Kind::Move; });
+  });
+  ASSERT_EQ(state.phase, Phase::Trading);
+  State after = state;
+  Game::apply(after, Action{Kind::EndTrading});
+  const auto afterLegal = Game::legalActions(after);
+  const Action move = *std::find_if(afterLegal.begin(), afterLegal.end(),
+                                    [](const Action &a) { return a.kind == Kind::Move; });
+  const Corner from = state.ships[static_cast<std::size_t>(move.a)].corner;
+  BottomScreen screen(kWidth, kHeight);
+  screen.update(state, Game::legalActions(state), true);
+  EXPECT_TRUE(screen.tap(128, 96, BoardPicture::Spot{from.hex, from}).used);
+  ASSERT_EQ(screen.mode(), Mode::Placing);
+  const Corner to = boardCorners()[static_cast<std::size_t>(move.b)];
+  const auto first = screen.tap(128, 96, BoardPicture::Spot{to.hex, to});
+  ASSERT_TRUE(first.play.has_value());
+  if (first.play) {
+    EXPECT_EQ(first.play->kind, Kind::EndTrading);
+  }
+  screen.update(after, afterLegal, true); // (the offers ended: the move next)
+  const auto then = screen.nextQueued();
+  ASSERT_TRUE(then.has_value());
+  if (then) {
+    EXPECT_EQ(then->kind, Kind::Move);
+    EXPECT_EQ(then->b, move.b);
+  }
+  // Moved: touching it again says so
+  Game::apply(after, move);
+  screen.update(after, Game::legalActions(after), true);
+  const Corner now = after.ships[static_cast<std::size_t>(move.a)].corner;
+  EXPECT_TRUE(screen.tap(128, 96, BoardPicture::Spot{now.hex, now}).used);
+  EXPECT_EQ(screen.message(), "That ship has moved this turn");
+}
+
 // The D-pad, A and B on a choosing screen: the home's pay's card in focus
 // is the one picked, Right, Right to Fuel, and A takes it at once (the
 // user's: one press); B leaves the build screen

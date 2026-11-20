@@ -82,6 +82,20 @@ TEST(StartMenuTest, ButtonsMoveAndChange) {
   EXPECT_EQ(menu.boardName(), "R3");
 }
 
+// The shoulder buttons change the board whichever row is in focus (the
+// user's: L and R did nothing)
+TEST(StartMenuTest, TheShouldersChangeTheBoardFromAnyRow) {
+  StartMenu menu;
+  ASSERT_EQ(menu.focus(), Row::Players);
+  const std::string first = menu.boardName();
+  menu.press(Key::NextBoard);
+  EXPECT_NE(menu.boardName(), first);
+  EXPECT_EQ(menu.focus(), Row::Players);
+  EXPECT_EQ(menu.players(), 4);
+  menu.press(Key::PreviousBoard);
+  EXPECT_EQ(menu.boardName(), first);
+}
+
 TEST(StartMenuTest, TouchesChangeRowsAndStart) {
   for (const auto &[w, h] : {std::pair{320, 240}, std::pair{256, 192}}) {
     StartMenu menu;

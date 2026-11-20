@@ -567,11 +567,17 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow
     return;
   const float k = f.k();
   Scene::Overlay &overlay = f.overlay;
+  // Fading in over the board: the backdrop darkening, the words coming in
+  // and settling down into place (the user's: it popped up)
+  const float in = show.appeared(f.now);
+  const float drop = -12 * k * (1 - Motion::along(Motion::Curve::Settle, in));
   // A dark backdrop behind the glass (in 3D: the overlay's shapes would
   // cover the dice), in front of the board
   f.renderer.draw(f.pictures.pictureSquare,
                   onScreenAt(f.camera, f.width, f.height, 0, 0, f.width, f.height, 7.5f),
-                  {.shading = Scene::Material::Shading::Unlit, .colour = {10, 15, 26}});
+                  {.shading = Scene::Material::Shading::Unlit,
+                   .colour = {10, 15, 26},
+                   .alpha = static_cast<std::uint8_t>(std::lround(31 * in))});
   // The glass, and where a point on its floor shows on the screen
   const Scene::Transform glass =
       glassFrame(f.camera, f.width / f.height, static_cast<float>(Dice::DiceTray::kWidth),
@@ -615,7 +621,8 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow
                      {60, 72, 98}, 1);
     }
   }
-  overlay.textCentred(f.width / 2, 12 * k, "WHO GOES FIRST", Palette::kWords, 2 * k);
+  overlay.textCentred(f.width / 2, 12 * k + drop, "WHO GOES FIRST",
+                      fadedIn(Palette::kWords, in, {10, 15, 26}), 2 * k);
   // Each player's name over their lane, and under it their number rolling
   // into place as their die lands (an odometer, the user's); the numbers of
   // rounds before (the ties') small under it
@@ -635,7 +642,9 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow
     const float swung = t < 0.5f ? 0.5f * Motion::along(Motion::Curve::Anticipate, 2 * t)
                                  : 0.5f + 0.5f * Motion::along(Motion::Curve::Settle, 2 * t - 1);
     const float x = laneX(p) + (laneX(rankOf(p)) - laneX(p)) * swung;
-    const float hop = rankOf(p) == p ? 0 : -14 * k * std::sin(kPi * t);
+    // (staying put, a smaller hop in place: the order is always shown, even
+    // when the first lane's player goes first and nobody moves)
+    const float hop = (rankOf(p) == p ? -8 : -14) * k * std::sin(kPi * t);
     if (const float in = show.sortedWords(f.now, rankOf(p));
         in > 0 && rankOf(p) < static_cast<int>(kOrdinals.size()))
       overlay.textCentred(
@@ -660,7 +669,8 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow
         before += (before.empty() ? "" : " ") + std::to_string(n);
     if (!before.empty() && sorted <= 0)
       overlay.textCentred(x, 58 * k, before, Palette::kDimWords, k);
-    overlay.textCentred(x, 28 * k + hop, f.names.shortOf(p), Palette::player(p), k);
+    overlay.textCentred(x, 28 * k + hop + drop, f.names.shortOf(p),
+                        fadedIn(Palette::player(p), in, {10, 15, 26}), k);
   }
   if (show.round() > 0 && !show.allLanded())
     overlay.textCentred(f.width / 2, 70 * k, "tied: they throw again", Palette::kHighlight, k);

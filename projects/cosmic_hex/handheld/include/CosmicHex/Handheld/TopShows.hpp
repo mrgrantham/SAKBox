@@ -176,6 +176,7 @@ public:
   static constexpr float kSecondsRead = 3.2f;       // (the order: sorted, then read)
   static constexpr float kSecondsSort = 0.7f;       // (a player moving into order)
   static constexpr float kSortStagger = 0.12f;      // (each after the one before)
+  static constexpr float kSecondsIn = 0.6f;         // (fading in over the board, first)
 
   // Started for `roll`, the throws from `seed`, the physics stepped
   // `stepSeconds` at a time (PlatformProfile::diceStep)
@@ -205,6 +206,9 @@ public:
   // in turn (`order`: 0 the first to move), straight through time (the
   // view gives it its curve)
   float sorted(double now, int order = 0) const;
+  // How far it's faded in over the board (0 to 1), the first die thrown
+  // once it has (the user's: it popped up abruptly)
+  float appeared(double now) const;
   // ...and its place (1st, 2nd...) fading in once it's there
   float sortedWords(double now, int order) const;
 
@@ -222,6 +226,7 @@ private:
   std::vector<std::vector<double>> shownAt_;
   std::unique_ptr<Dice::DiceInTurn> dice_;
   std::optional<double> landedAt_, finishedAt_;
+  double startedAt_ = 0;
 };
 
 // ---------------------------------------------------------------------------

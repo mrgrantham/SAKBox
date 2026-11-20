@@ -30,7 +30,9 @@ namespace CosmicHex::Handheld {
 class StartMenu {
 public:
   enum class Row : std::uint8_t { Players, Board, End, SeatBonus, Mode, Start };
-  enum class Key : std::uint8_t { Up, Down, Left, Right, Confirm, Back };
+  // (PreviousBoard and NextBoard: the shoulder buttons, the board changed
+  // whichever row is in focus)
+  enum class Key : std::uint8_t { Up, Down, Left, Right, Confirm, Back, PreviousBoard, NextBoard };
   enum class Outcome : std::uint8_t { None, Start, Back };
 
   StartMenu();

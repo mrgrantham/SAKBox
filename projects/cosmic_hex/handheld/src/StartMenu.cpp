@@ -97,6 +97,10 @@ StartMenu::Outcome StartMenu::press(Key key) {
   case Key::Right:
     change(focus_, key == Key::Right ? 1 : -1);
     return Outcome::None;
+  case Key::PreviousBoard:
+  case Key::NextBoard:
+    change(Row::Board, key == Key::NextBoard ? 1 : -1);
+    return Outcome::None;
   case Key::Confirm:
     return focus_ == Row::Start && back_ ? Outcome::Back : Outcome::Start;
   case Key::Back:

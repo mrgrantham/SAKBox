@@ -204,8 +204,15 @@ void FirstRollShow::start(const FirstRoll &roll, std::uint64_t seed, double step
   shown_.assign(roll.rounds.size(), std::vector<int>(kMaxPlayers, 0));
   shownAt_.assign(roll.rounds.size(), std::vector<double>(kMaxPlayers, 0));
   finishedAt_.reset();
-  if (on_)
+  startedAt_ = now;
+  if (on_) {
     beginRound(0, now);
+    landedAt_ = now - kSecondsBetween + kSecondsIn; // (the first once it's faded in)
+  }
+}
+
+float FirstRollShow::appeared(double now) const {
+  return std::clamp(static_cast<float>(now - startedAt_) / kSecondsIn, 0.0f, 1.0f);
 }
 
 void FirstRollShow::stop() {

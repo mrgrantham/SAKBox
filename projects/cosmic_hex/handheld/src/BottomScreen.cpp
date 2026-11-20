@@ -225,18 +225,42 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
       mode_ = Mode::Board;
       return {std::nullopt, true};
     }
-    // One of your ships touched: where it can go, marked, to touch
+    // One of your ships touched: where it can go, marked, to touch. While
+    // the turn's offers to players are open (the trading phase, after the
+    // roll), its moves as they'll be once they end: choosing one ends them
+    // first, as a build does (the user's: touching the ship did nothing)
     if (yourMove_ && spot) {
-      std::vector<Action> moves;
-      for (const Action &a : legal_)
-        if (a.kind == Kind::Move && a.a >= 0 && a.a < static_cast<int>(state_.ships.size()) &&
-            state_.ships[static_cast<std::size_t>(a.a)].corner == spot->corner)
-          moves.push_back(a);
-      if (!moves.empty()) {
-        placing_ = std::move(moves);
-        placingEndsTrading_ = false; // (a ship's move: not a build)
-        mode_ = Mode::Placing;
-        buttons_.say({});
+      const auto shipHere =
+          std::find_if(state_.ships.begin(), state_.ships.end(), [&](const Ship &ship) {
+            return ship.owner == state_.turn && ship.corner == spot->corner;
+          });
+      if (shipHere != state_.ships.end()) {
+        const bool trading = state_.phase == Phase::Trading;
+        std::vector<Action> legal = legal_;
+        if (trading) {
+          State after = state_;
+          Game::apply(after, Action{Kind::EndTrading});
+          legal = Game::legalActions(after);
+        }
+        const auto index = static_cast<int>(shipHere - state_.ships.begin());
+        std::vector<Action> moves;
+        for (const Action &a : legal)
+          if (a.kind == Kind::Move && a.a == index)
+            moves.push_back(a);
+        if (!moves.empty()) {
+          placing_ = std::move(moves);
+          placingEndsTrading_ = trading;
+          mode_ = Mode::Placing;
+          buttons_.say({});
+          return {std::nullopt, true};
+        }
+        // (why not, rather than nothing)
+        const bool beforeRoll = state_.phase == Phase::HomeIncome ||
+                                state_.phase == Phase::HomeDieDraw ||
+                                state_.phase == Phase::RollDraw;
+        buttons_.say(beforeRoll        ? "Roll first, then move"
+                     : shipHere->moved ? "That ship has moved this turn"
+                                       : "That ship can't move now");
         return {std::nullopt, true};
       }
     }
