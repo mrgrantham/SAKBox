@@ -81,6 +81,14 @@ void BoardPicture::forEachLinePixel(HexGrid::Point a, HexGrid::Point b, int thic
   }
 }
 
+namespace {
+// A square picture's bytes, `side` pixels a side
+std::size_t squareBytes(int side) {
+  return static_cast<std::size_t>(side) * static_cast<std::size_t>(side) *
+         sizeof(ScratchPadd::Scene::Colour);
+}
+} // namespace
+
 BoardPicture::BoardPicture(int width, int height, ScratchPadd::TextureRecipe::Smoothing smoothing)
     : width_(width), height_(height), smoothing_(smoothing),
       pixels_(static_cast<std::size_t>(width) * static_cast<std::size_t>(height)) {}
@@ -180,27 +188,100 @@ bool BoardPicture::prepare() {
   if (zoom_ == 1)
     return true;
   zoomed_.startAt(facesSize(), chipsSize());
-  zoomed_.drawNext(smoothing_);
-  return zoomed_.done();
+  // The chips first, all of them (small); faces only as they're seen
+  zoomed_.next = std::max(zoomed_.next, Art::kFaces);
+  if (!zoomed_.done()) {
+    if (!roomFor(squareBytes(zoomed_.chipsSize)))
+      return false; // (the stand-ins stay)
+    zoomed_.drawNext(smoothing_);
+    return false;
+  }
+  const int face = faceToDraw();
+  if (face < 0)
+    return true;
+  std::vector<Colour> pixels =
+      recipePixels(Art::recipeOf(static_cast<Art::Face>(face)), zoomed_.facesSize, smoothing_);
+  if (pixels.empty()) // (a broken recipe: a see-through square)
+    pixels.assign(squareBytes(zoomed_.facesSize) / sizeof(Colour), Colour{0, 0, 0, 0});
+  zoomed_.faces[static_cast<std::size_t>(face)] = std::move(pixels);
+  return !faceWaiting();
+}
+
+bool BoardPicture::roomFor(std::size_t bytes) const {
+  return room_ >= reserve_ && room_ - reserve_ >= bytes;
+}
+
+int BoardPicture::faceToDraw() {
+  int wanted = -1, sharp = 0, oldest = -1;
+  for (int f = 0; f < Art::kFaces; ++f) {
+    const auto i = static_cast<std::size_t>(f);
+    const bool drawn = !zoomed_.faces[i].empty();
+    const bool onScreen = draws_ != 0 && seen_[i] == draws_;
+    sharp += drawn;
+    if (onScreen && !drawn && wanted < 0)
+      wanted = f;
+    if (drawn && !onScreen && (oldest < 0 || seen_[i] < seen_[static_cast<std::size_t>(oldest)]))
+      oldest = f;
+  }
+  if (wanted < 0 || !roomFor(squareBytes(zoomed_.facesSize)))
+    return -1;
+  if (sharp >= mostSharpFaces()) {
+    if (oldest < 0)
+      return -1; // (all those sharp are on screen: the rest stay stand-ins)
+    std::vector<Colour>().swap(zoomed_.faces[static_cast<std::size_t>(oldest)]);
+  }
+  return wanted;
+}
+
+bool BoardPicture::faceWaiting() const {
+  int sharp = 0;
+  bool wanted = false, spare = false;
+  for (int f = 0; f < Art::kFaces; ++f) {
+    const auto i = static_cast<std::size_t>(f);
+    const bool drawn = !zoomed_.faces[i].empty();
+    const bool onScreen = draws_ != 0 && seen_[i] == draws_;
+    sharp += drawn;
+    wanted |= onScreen && !drawn;
+    spare |= drawn && !onScreen;
+  }
+  return wanted && (sharp < mostSharpFaces() || spare) && roomFor(squareBytes(zoomed_.facesSize));
+}
+
+void BoardPicture::setMemoryRoom(std::size_t room, std::size_t reserve) {
+  room_ = room;
+  reserve_ = reserve;
+  if (room_ < reserve_ / 2 && zoomed_.facesSize != 0) {
+    zoomed_ = {}; // (all let go: drawn again when there's room)
+    drawnView_.reset();
+  }
 }
 
 bool BoardPicture::ready() const {
-  return whole_.done() && (zoom_ == 1 || (zoomed_.facesSize == facesSize() && zoomed_.done()));
+  return whole_.done() &&
+         (zoom_ == 1 || (zoomed_.facesSize == facesSize() && zoomed_.done() && !faceWaiting()));
 }
 
-std::size_t BoardPicture::zoomBytes(int zoom) const {
+std::size_t BoardPicture::zoomBytes(int zoom, int faces) const {
   constexpr std::size_t kChips = Art::kHighestChip - Art::kLowestChip + 1;
-  const auto square = [](int side) {
-    return static_cast<std::size_t>(side) * static_cast<std::size_t>(side) * sizeof(Colour);
-  };
-  return square(facesSizeAt(zoom)) * Art::kFaces + square(chipsSizeAt(zoom)) * kChips;
+  return squareBytes(facesSizeAt(zoom)) * static_cast<std::size_t>(faces) +
+         squareBytes(chipsSizeAt(zoom)) * kChips;
 }
 
 int BoardPicture::mostZoom() const {
   int most = kMostZoom;
-  while (most > 1 && zoomBytes(most) > zoomBudget_)
+  while (most > 1 && zoomBytes(most, kFewestSharpFaces) > zoomBudget_)
     --most;
   return most;
+}
+
+int BoardPicture::mostSharpFaces() const {
+  if (zoomBudget_ == static_cast<std::size_t>(-1))
+    return Art::kFaces;
+  const std::size_t chips = zoomBytes(zoom_, 0), face = squareBytes(facesSize());
+  if (zoomBudget_ <= chips || face == 0)
+    return 0;
+  return static_cast<int>(
+      std::min((zoomBudget_ - chips) / face, static_cast<std::size_t>(Art::kFaces)));
 }
 
 void BoardPicture::setZoomBudget(std::size_t bytes) {
@@ -577,6 +658,12 @@ void BoardPicture::draw(const State &state, const Marks &marks) {
   const Area whole{0, 0, width_, height_};
   std::swap(pieces_, drawnPieces_);
   listPieces(state, marks, pieces_);
+  // (the faces on screen: those wanted sharp, zoomed in)
+  ++draws_;
+  const Area screen{0, 0, width_, height_};
+  for (const Piece &piece : pieces_)
+    if (piece.kind == Piece::Kind::Face && overlap(piece.area, screen))
+      seen_[static_cast<std::size_t>(piece.look[0])] = draws_;
   changed_.clear();
   // All of it: the first time, or seen differently (zoomed or moved)
   const View view{zoom_, offset_.x, offset_.y};

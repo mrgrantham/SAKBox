@@ -647,6 +647,11 @@ private:
     }
     // (the map's faces at the whole board's size, and the bottom screen's
     // pictures, are drawn at the start: starting())
+    // (what memory's left, where it runs out: the zoom's sharp tiles leave
+    // the game its share)
+    if (const ScratchPadd::MemoryStats::Heap heap = ScratchPadd::MemoryStats::heap();
+        heap.roomKnown)
+      picture_->setMemoryRoom(heap.room, kThisPlatform.boardZoomReserve);
     if (flow_.screen() == ScreenFlow::Screen::Game && !picture_->ready()) {
       // Zoomed in or out: the map shows the whole board's faces scaled at
       // once, and sharpens a face a frame
@@ -740,8 +745,10 @@ private:
     const ScratchPadd::MemoryStats::Snapshot counts = memory_->take();
     const ScratchPadd::MemoryStats::Heap heap = ScratchPadd::MemoryStats::heap();
     char line[96];
-    std::snprintf(line, sizeof line, "%zuK used %zuK free/%zu %.0f/s", heap.inUse / 1024,
-                  heap.free / 1024, heap.freeChunks,
+    // (used, free in the heap and in how many pieces, and on a DS the room
+    // left to allocate)
+    std::snprintf(line, sizeof line, "%zuK used %zuK free/%zu room %zuK %.0f/s", heap.inUse / 1024,
+                  heap.free / 1024, heap.freeChunks, heap.roomKnown ? heap.room / 1024 : 0,
                   static_cast<double>(counts.all.allocations) / seconds);
     memoryLine_ = line;
     std::string busiest;

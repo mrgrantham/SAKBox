@@ -70,6 +70,11 @@ struct Heap {
   std::size_t inUse = 0;
   std::size_t free = 0;       // in the heap, not yet given back
   std::size_t freeChunks = 0; // free memory in this many pieces (0 if not known)
+  // How much more can be allocated: what's free in the heap and how far it
+  // can still grow. Known on a DS (main memory runs out there); elsewhere
+  // there's plenty, and it isn't counted
+  bool roomKnown = false;
+  std::size_t room = 0;
 };
 
 // Counts since a reader's last take(): in all, and for each padd that
@@ -224,6 +229,16 @@ private:
   std::array<Counts, Detail::kSlots> taken_{};
 };
 
+#if defined(__NDS__)
+namespace Detail {
+// libnds (nds/system.h), declared here so this header needn't include it
+extern "C" unsigned char *getHeapEnd();
+extern "C" unsigned char *getHeapLimit();
+inline const unsigned char *heapEnd() { return getHeapEnd(); }
+inline const unsigned char *heapLimit() { return getHeapLimit(); }
+} // namespace Detail
+#endif
+
 // The heap now, as the platform's allocator says
 inline Heap heap() {
   Heap out;
@@ -249,6 +264,12 @@ inline Heap heap() {
   out.inUse = static_cast<std::size_t>(info.uordblks);
   out.free = static_cast<std::size_t>(info.fordblks);
   out.freeChunks = static_cast<std::size_t>(info.ordblks);
+#if defined(__NDS__)
+  // (libnds: the heap's end now, and the most it can grow to)
+  const auto *end = Detail::heapEnd(), *limit = Detail::heapLimit();
+  out.roomKnown = true;
+  out.room = out.free + (limit > end ? static_cast<std::size_t>(limit - end) : 0);
+#endif
 #endif
   return out;
 }

@@ -40,9 +40,13 @@ struct PlatformProfile {
   int titleStars;
   bool holdStillFrames;
   // The most memory the bottom board's sharp tiles may take zoomed in
-  // (BoardPicture::setZoomBudget): the DS's zoom 2 takes about 240 KB,
-  // its zoom 3 about 530 KB, more than it has
+  // (BoardPicture::setZoomBudget: the faces on screen, as many as fit). On
+  // the DS zoom 2's chips take 11 KB and each face 12 KB, so 112 KB is 8
+  // faces at once (all 19 took 240 KB, and the game ran out of memory)
   std::size_t boardZoomBytes;
+  // ...and the memory they must leave for the rest of the game, where it's
+  // counted (BoardPicture::setMemoryRoom: the DS)
+  std::size_t boardZoomReserve;
   // Close-ups: a picture shown big for a moment (a discovered tile, the
   // two cards dealt) drawn again at this many pixels across, when it's
   // shown, into textures kept for it (Renderer::replace)
@@ -76,7 +80,8 @@ inline constexpr PlatformProfile kDsProfile{
     .recipeSmoothing = ScratchPadd::TextureRecipe::Smoothing::Coarse,
     .titleStars = 110, // (two polygons each, of the DS's 2048)
     .holdStillFrames = true,
-    .boardZoomBytes = 320 * 1024,
+    .boardZoomBytes = 112 * 1024,
+    .boardZoomReserve = 128 * 1024,
     // (32 KB each in video memory, banks A and B; drawn 16 rows at a time,
     // as a picture drawn whole needed more main memory than a game has free)
     .closeUpSize = 128,
@@ -103,6 +108,7 @@ inline constexpr PlatformProfile kThreeDsProfile{
     .titleStars = 260,
     .holdStillFrames = false,
     .boardZoomBytes = 8 * 1024 * 1024,
+    .boardZoomReserve = 0,
     .closeUpSize = 128,
     .closeUpBandRows = 128,
     .diceStep = 1.0 / 60,

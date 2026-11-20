@@ -220,6 +220,7 @@ TEST(BoardPictureTest, DrawingWhatChangedMatchesDrawingItAll) {
       // picture couldn't stand in the same ones)
       if (!kept.ready())
         continue;
+      fresh.draw(state, marks); // (what's on screen: the faces to draw sharp)
       while (!fresh.prepare()) {
       }
       fresh.draw(state, marks);
@@ -232,6 +233,54 @@ TEST(BoardPictureTest, DrawingWhatChangedMatchesDrawingItAll) {
     }
     EXPECT_GT(compared, 50);
     EXPECT_GT(small, compared / 2); // (most draws changed less than half the picture)
+  }
+}
+
+// Every mark at every corner (a placement's preview, a colony's or a ship's,
+// the corner dots, the outlined hex), at every zoom and panned to each
+// edge: all drawn inside the picture (on a DS, a preview drawn zoomed in
+// wrote past it and the game stopped)
+TEST(BoardPictureTest, MarksAnywhereStayInsideThePicture) {
+  const State state = aGame();
+  BoardPicture picture(256, 192);
+  for (int zoom = 1; zoom <= BoardPicture::kMostZoom; ++zoom)
+    for (const auto pan : {std::pair{-1000.0f, -1000.0f},
+                           {1000.0f, 1000.0f},
+                           {0.0f, 0.0f},
+                           {-1000.0f, 1000.0f},
+                           {1000.0f, -1000.0f}}) {
+      picture.setZoom(zoom);
+      picture.pan(pan.first, pan.second);
+      for (const Corner corner : boardCorners()) {
+        BoardPicture::Marks marks;
+        marks.preview = BoardPicture::Marks::Preview{corner, 1, (corner.index % 2) == 0};
+        marks.corners.push_back(corner);
+        marks.hex = corner.hex;
+        picture.draw(state, marks);
+      }
+    }
+  SUCCEED();
+}
+
+// Zoomed in within a budget, only the faces on screen are drawn sharp, no
+// more than fit: panning brings others into view, and the one seen longest
+// ago is let go for each
+TEST(BoardPictureTest, OnlyTheFacesOnScreenAreSharpWithinTheBudget) {
+  const State state = aGame();
+  BoardPicture picture(256, 192);
+  picture.setZoomBudget(kDsProfile.boardZoomBytes);
+  picture.setZoom(2);
+  EXPECT_EQ(picture.mostSharpFaces(), 8);
+  for (const auto pan :
+       {std::pair{-1000.0f, -1000.0f}, {2000.0f, 0.0f}, {0.0f, 2000.0f}, {-2000.0f, 0.0f}}) {
+    picture.pan(pan.first, pan.second);
+    picture.draw(state);
+    int frames = 0;
+    while (!picture.prepare() && frames < 200)
+      ++frames;
+    EXPECT_LT(frames, 200);
+    EXPECT_TRUE(picture.ready());
+    picture.draw(state); // (and drawn, the sharp ones and any stand-ins)
   }
 }
 
@@ -248,6 +297,32 @@ TEST(BoardPictureTest, ZoomingStopsWithinTheBudget) {
   BoardPicture threeDs(320, 240);
   threeDs.setZoomBudget(kThreeDsProfile.boardZoomBytes);
   EXPECT_EQ(threeDs.mostZoom(), BoardPicture::kMostZoom);
+}
+
+// Where memory runs short (the DS), a zoom's sharp faces are drawn only
+// while they leave the reserve, and let go if what's left falls below half
+// of it: the stand-in shown and the zoom kept, rather than running out
+TEST(BoardPictureTest, ZoomedFacesLeaveTheReserve) {
+  const State state = aGame();
+  BoardPicture picture(256, 192);
+  picture.draw(state);
+  picture.setZoom(2);
+  picture.draw(state); // (the faces on screen, wanted sharp)
+  constexpr std::size_t kReserve = 128 * 1024;
+  picture.setMemoryRoom(kReserve + 1000, kReserve); // (not enough for a face)
+  for (int i = 0; i < 100; ++i)
+    picture.prepare();
+  EXPECT_FALSE(picture.ready());
+  EXPECT_EQ(picture.zoom(), 2);
+  picture.setMemoryRoom(kReserve * 4, kReserve); // (enough)
+  int frames = 0;
+  while (!picture.prepare() && frames < 1000)
+    ++frames;
+  EXPECT_TRUE(picture.ready());
+  picture.setMemoryRoom(kReserve / 3, kReserve); // (short: let go)
+  EXPECT_FALSE(picture.ready());
+  EXPECT_EQ(picture.zoom(), 2);
+  picture.draw(state); // (the stand-in still draws)
 }
 
 // A tile turned over while the top screen shows it (Discovery): face down

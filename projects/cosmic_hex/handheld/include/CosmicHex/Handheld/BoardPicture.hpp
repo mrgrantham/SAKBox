@@ -70,12 +70,25 @@ public:
   bool prepare();
   // Whether every face and chip at this zoom is drawn sharp
   bool ready() const;
-  // The most memory a zoom's sharp faces and chips may take, in bytes:
-  // zooming stops at the closest zoom within it (mostZoom). On a DS, zoom
-  // 3's take about 530 KB and the game ran out of memory and stopped
+  // The most memory a zoom's sharp faces and chips may take, in bytes.
+  // Zoomed in, only the faces on screen are drawn sharp, as many as fit
+  // (a cache: the one seen longest ago goes for one newly in view); zooming
+  // stops at the closest zoom where its chips and kFewestSharpFaces fit
+  // (mostZoom). On a DS all 19 faces at zoom 2 took 240 KB, and the game
+  // ran out of memory and stopped
   void setZoomBudget(std::size_t bytes);
+  static constexpr int kFewestSharpFaces = 6;
   // The closest zoom there is: kMostZoom, or less within the budget
   int mostZoom() const;
+  // How many faces may be sharp at once at this zoom (within the budget)
+  int mostSharpFaces() const;
+  // How much memory is left to allocate (MemoryStats::Heap::room), told each
+  // frame where it's known (the DS), and how much of it to leave for the
+  // rest of the game: a zoom's sharp faces and chips are drawn only while
+  // they leave `reserve`, and let go if what's left falls below half of it
+  // (the stand-ins shown, the zoom kept). The game ran out of memory and
+  // stopped zoomed in as a turn ended
+  void setMemoryRoom(std::size_t room, std::size_t reserve);
   // A tile face as the whole board shows it (zoom 1), once prepare() has
   // drawn it, wholeFaceSize() a side; for other pictures of the same face
   // to be made from, rather than drawn from its recipe again
@@ -198,8 +211,19 @@ private:
   };
   Sprites whole_;                                         // (at zoom 1, kept)
   std::size_t zoomBudget_ = static_cast<std::size_t>(-1); // (setZoomBudget)
-  std::size_t zoomBytes(int zoom) const;                  // (a zoom's sharp faces and chips)
-  Sprites zoomed_;                                        // (at the current zoom, when it's not 1)
+  std::size_t zoomBytes(int zoom, int faces) const; // (a zoom's chips and `faces` sharp faces)
+  Sprites zoomed_; // (at the current zoom, when it's not 1: its chips, and
+                   // the faces on screen)
+  std::size_t room_ = static_cast<std::size_t>(-1), reserve_ = 0; // (setMemoryRoom)
+  bool roomFor(std::size_t bytes) const;
+  // When each face was last on screen (draws_ counts draws): the faces in
+  // the last draw are wanted sharp; the one seen longest ago goes first
+  std::array<std::uint32_t, Art::kFaces> seen_{};
+  std::uint32_t draws_ = 0;
+  // The face to draw sharp next (making room, if it must, by letting one go
+  // that isn't on screen), or -1: none wanted, or no room
+  int faceToDraw();
+  bool faceWaiting() const; // (one wanted, not sharp, that could be drawn)
   int facesSize() const;
   int facesSizeAt(int zoom) const;
   int chipsSize() const;
