@@ -52,4 +52,29 @@ BakedMotion::Point BakedMotion::onPath(float s) const {
   return out;
 }
 
+BakedMotion::Turn BakedMotion::turnAt(float t) const {
+  if (turns.empty())
+    return {1, 0, 0, 0};
+  if (turns.size() == 1 || seconds <= 0)
+    return turns.front();
+  const auto [i, u] = between(t / seconds, turns.size());
+  const Turn &a = turns[i];
+  Turn b = turns[i + 1];
+  // (the shorter way round: q and -q are the same turn)
+  if (a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3] < 0)
+    for (float &c : b)
+      c = -c;
+  Turn out{};
+  float length = 0;
+  for (std::size_t c = 0; c < 4; ++c) {
+    out[c] = a[c] + (b[c] - a[c]) * u;
+    length += out[c] * out[c];
+  }
+  length = std::sqrt(length);
+  if (length > 0)
+    for (float &c : out)
+      c /= length;
+  return out;
+}
+
 } // namespace ScratchPadd::Motion

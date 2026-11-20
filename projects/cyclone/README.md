@@ -27,7 +27,7 @@ The main pieces of the engine, in `include/cyclone/`:
 | `precision.h` | The `real` type and math functions (see [The number type](#the-number-type)). For `double` and flexmath's types, `real_sin`, `real_cos`, `real_exp`, `real_pow` and `real_atan2` are correctly rounded (flexmath's `CorrectlyRounded.hpp`), so the engine gives the same results on every platform |
 | `particle.h`, `pfgen.h`, `plinks.h`, `pcontacts.h`, `pworld.h` | Particles, their force generators, links (cables, rods), contacts and world |
 | `body.h`, `fgen.h`, `joints.h`, `world.h` | Rigid bodies, force generators (gravity, springs, aerodynamics, buoyancy), joints (ball and socket, cable, hinge, cone) and world (`world.h` isn't in `cyclone.h`; include it directly) |
-| `collide_coarse.h`, `collide_fine.h`, `contacts.h` | Broad-phase bounding volumes, primitive collision tests (spheres, boxes, capsules, planes), and contact resolution |
+| `collide_coarse.h`, `collide_fine.h`, `contacts.h` | Broad-phase bounding volumes, primitive collision tests (spheres, boxes, capsules, planes; and convex hulls against planes, `CollisionHull`: a shape's own corners, as the book's box against a plane, for a thing of a real shape landing on a floor), and contact resolution |
 | `random.h` | A random number generator for the demos, on [SeededRandom](../seeded_random/README.md)'s generator |
 
 ## Demos
@@ -92,7 +92,7 @@ The engine keeps to what all of them can do: maths through `real_sqrt` and frien
 
 ## The world
 
-`World` (`world.h`) runs a whole simulation. Add the bodies, their collision shapes (spheres, boxes and capsules, several to a body if need be), the planes they rest on and the joints between them; then each step, call `startFrame()`, add any forces by hand, and call `runPhysics(seconds)`:
+`World` (`world.h`) runs a whole simulation. Add the bodies, their collision shapes (spheres, boxes and capsules, several to a body if need be; hulls, which meet planes only so far), the planes they rest on and the joints between them; then each step, call `startFrame()`, add any forces by hand, and call `runPhysics(seconds)`:
 
 ```cpp
 cyclone::World world({.subSteps = 2, .restitution = (cyclone::real)0.3});

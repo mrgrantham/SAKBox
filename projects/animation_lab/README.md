@@ -26,12 +26,20 @@ was at every fixed step (a `Recording`). Each works flat too (`flat`: z stays
   method), then the best polished by small steps along each axis. Seeded, so
   the same search finds the same throw.
 
+- **`tumbleThrow`**: a thing of a real shape (the user's B) thrown spinning
+  onto the floor, bouncing and rolling to rest as that shape would. Its
+  shape is its hull's corners (`hullCorners`: a model's points furthest out
+  in 26 directions), which Cyclone's `CollisionHull` sets on the floor as
+  the book sets a box. Its turns are recorded with its positions.
+
 ## Baking
 
 `bake(recording, pathPoints, timingPoints)` turns a recording into a
 `BakedMotion` with its path and its timing kept apart: points evenly spaced
 along the way it went (played back on a Catmull-Rom curve through them), and
-how far along it is at evenly spaced moments. A path can then be reused with
+how far along it is at evenly spaced moments; and for a thing that
+tumbles, how it's turned at those moments (four numbers a moment: the only
+extra a real shape costs the bake). A path can then be reused with
 another timing, or a timing with another path. `bakeError` says how far the
 baked motion strays from the recording; 24 points each keep a 4-unit throw
 within 3 hundredths of a unit.

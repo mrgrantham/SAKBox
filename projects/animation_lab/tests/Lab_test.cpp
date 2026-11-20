@@ -93,3 +93,26 @@ TEST(LabTest, ABakedMotionSavesAsText) {
   EXPECT_NEAR(again.at(0.4f)[1], baked.at(0.4f)[1], 1e-5);
   EXPECT_FALSE(readText("nonsense 1 2 3").has_value());
 }
+
+// Tumbling: a cube thrown spinning lands, bounces and comes to rest on a
+// face on the floor, near where it was aimed; its turns baked with it
+TEST(LabTest, ATumbleLandsAndSettles) {
+  std::vector<Point> points;
+  for (const float x : {-0.5f, 0.5f})
+    for (const float y : {-0.5f, 0.5f})
+      for (const float z : {-0.5f, 0.5f})
+        points.push_back({x, y, z});
+  points.push_back({0, 0, 0}); // (inside: not a corner)
+  const std::vector<Point> corners = hullCorners(points);
+  EXPECT_EQ(corners.size(), 8u);
+  const Recording tumbled = tumbleThrow(
+      {.goal = {.from = {0, 2, 0}, .to = {3, 0.5f, 0}, .seconds = 0.8}, .corners = corners});
+  ASSERT_EQ(tumbled.turns.size(), tumbled.positions.size());
+  EXPECT_NEAR(tumbled.positions.back()[1], 0.5, 0.02); // (on a face)
+  EXPECT_GT(tumbled.positions.back()[0], 2.0f);
+  const auto baked = bake(tumbled);
+  EXPECT_EQ(baked.turns.size(), baked.timing.size());
+  const auto again = readText(writeText(baked));
+  ASSERT_TRUE(again.has_value());
+  EXPECT_EQ(again.value_or(ScratchPadd::Motion::BakedMotion{}).turns.size(), baked.turns.size());
+}

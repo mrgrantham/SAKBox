@@ -4,6 +4,7 @@
 
 #include <cyclone/particle.h>
 #include <cyclone/pfgen.h>
+#include <cyclone/world.h>
 
 #include <algorithm>
 #include <cmath>
@@ -200,6 +201,92 @@ Found searchThrow(const Search &search) {
   return best;
 }
 
+std::vector<Point> hullCorners(const std::vector<Point> &points) {
+  // The point furthest along each of the 26 directions to a cube's faces,
+  // edges and corners: each a corner of the hull, the hull close enough
+  std::vector<Point> corners;
+  for (int x = -1; x <= 1; ++x)
+    for (int y = -1; y <= 1; ++y)
+      for (int z = -1; z <= 1; ++z) {
+        if (x == 0 && y == 0 && z == 0)
+          continue;
+        const Point *best = nullptr;
+        float furthest = -1e30f;
+        for (const Point &p : points)
+          if (const float along = p[0] * x + p[1] * y + p[2] * z; along > furthest) {
+            furthest = along;
+            best = &p;
+          }
+        if (best && std::find(corners.begin(), corners.end(), *best) == corners.end())
+          corners.push_back(*best);
+      }
+  return corners;
+}
+
+Recording tumbleThrow(const Tumble &tumble) {
+  const Throw &goal = tumble.goal;
+  cyclone::World world(cyclone::World::Settings{.maxContacts = 64,
+                                                .subSteps = 4,
+                                                .friction = static_cast<real>(tumble.friction),
+                                                .restitution = static_cast<real>(tumble.bounce),
+                                                .iterations = 256});
+  cyclone::CollisionPlane floor;
+  floor.direction = Vector3(0, 1, 0);
+  floor.offset = static_cast<real>(tumble.floor);
+  world.addPlane(floor);
+  cyclone::RigidBody body;
+  cyclone::CollisionHull hull;
+  hull.body = &body;
+  for (const Point &corner : tumble.corners)
+    hull.corners.push_back(vectorOf(corner, false));
+  // (its mass 1, turning as a box its hull's size would)
+  Vector3 low(1e9, 1e9, 1e9), high(-1e9, -1e9, -1e9);
+  for (const Vector3 &c : hull.corners)
+    for (unsigned a = 0; a < 3; ++a) {
+      low[a] = std::min(low[a], c[a]);
+      high[a] = std::max(high[a], c[a]);
+    }
+  body.setMass(1);
+  cyclone::Matrix3 inertia;
+  inertia.setBlockInertiaTensor((high - low) * static_cast<real>(0.5), 1);
+  body.setInertiaTensor(inertia);
+  body.setDamping(static_cast<real>(0.999), static_cast<real>(0.95));
+  body.setPosition(vectorOf(goal.from, goal.flat));
+  body.setVelocity(solvedVelocity(goal));
+  body.setRotation(vectorOf(tumble.spin, goal.flat));
+  body.setAcceleration(Vector3(0, static_cast<real>(-goal.gravity), 0));
+  body.setCanSleep(false);
+  body.calculateDerivedData();
+  world.addBody(&body);
+  world.addShape(&hull);
+  Recording out;
+  out.step = goal.step;
+  const auto record = [&] {
+    out.positions.push_back(pointOf(body.getPosition()));
+    const cyclone::Quaternion q = body.getOrientation();
+    out.turns.push_back({static_cast<float>(static_cast<double>(q.r)),
+                         static_cast<float>(static_cast<double>(q.i)),
+                         static_cast<float>(static_cast<double>(q.j)),
+                         static_cast<float>(static_cast<double>(q.k))});
+  };
+  record();
+  // (on until it's been still a moment, after its throw's time; or the
+  // settling time's up)
+  constexpr double kStill = 0.05, kStillFor = 0.3;
+  double still = 0;
+  for (double t = goal.step; t <= goal.seconds + tumble.settle; t += goal.step) {
+    world.startFrame();
+    world.runPhysics(static_cast<real>(goal.step));
+    record();
+    const bool moving = static_cast<double>(body.getVelocity().magnitude()) > kStill ||
+                        static_cast<double>(body.getRotation().magnitude()) > kStill;
+    still = moving ? 0 : still + goal.step;
+    if (t > goal.seconds && still >= kStillFor)
+      break;
+  }
+  return out;
+}
+
 ScratchPadd::Motion::BakedMotion bake(const Recording &recording, std::size_t pathPoints,
                                       std::size_t timingPoints) {
   ScratchPadd::Motion::BakedMotion baked;
@@ -240,6 +327,9 @@ ScratchPadd::Motion::BakedMotion bake(const Recording &recording, std::size_t pa
     const auto i = std::min(static_cast<std::size_t>(place), p.size() - 2);
     const double u = place - static_cast<double>(i);
     baked.timing.push_back(static_cast<float>((came[i] + (came[i + 1] - came[i]) * u) / total));
+    // (and how it's turned then, for a thing that tumbles)
+    if (recording.turns.size() == p.size())
+      baked.turns.push_back(recording.turns[u < 0.5 ? i : i + 1]);
   }
   return baked;
 }
@@ -263,6 +353,8 @@ std::string writeText(const ScratchPadd::Motion::BakedMotion &baked) {
   for (const float f : baked.timing)
     out << " " << f;
   out << "\n";
+  for (const auto &turn : baked.turns)
+    out << "turn " << turn[0] << " " << turn[1] << " " << turn[2] << " " << turn[3] << "\n";
   return out.str();
 }
 
@@ -282,9 +374,16 @@ std::optional<ScratchPadd::Motion::BakedMotion> readText(const std::string &text
         return std::nullopt;
       baked.path.push_back(p);
     } else if (word == "timing") {
+      // (the numbers up to the next word)
       float f = 0;
       while (in >> f)
         baked.timing.push_back(f);
+      in.clear();
+    } else if (word == "turn") {
+      ScratchPadd::Motion::BakedMotion::Turn turn{};
+      if (!(in >> turn[0] >> turn[1] >> turn[2] >> turn[3]))
+        return std::nullopt;
+      baked.turns.push_back(turn);
     } else {
       return std::nullopt;
     }

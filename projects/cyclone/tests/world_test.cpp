@@ -6,6 +6,7 @@
 #include <cyclone/world.h>
 
 #include <algorithm>
+#include <cmath>
 #include <deque>
 #include <vector>
 
@@ -24,6 +25,7 @@ struct Scene {
   std::deque<CollisionSphere> spheres;
   std::deque<CollisionBox> boxes;
   std::deque<CollisionCapsule> capsules;
+  std::deque<CollisionHull> hulls;
 
   explicit Scene(World::Settings settings = {}) : world(settings) {
     CollisionPlane ground;
@@ -66,6 +68,14 @@ struct Scene {
     shape.body = &body(position);
     shape.radius = radius;
     shape.halfLength = halfLength;
+    world.addShape(&shape);
+    return shape;
+  }
+
+  CollisionHull &hull(const Vector3 &position, std::vector<Vector3> corners) {
+    CollisionHull &shape = hulls.emplace_back();
+    shape.body = &body(position);
+    shape.corners = std::move(corners);
     world.addShape(&shape);
     return shape;
   }
@@ -281,4 +291,29 @@ TEST(WorldTest, AWorldAsleepSkipsItsSteps) {
   scene.world.startFrame();
   scene.world.runPhysics(1.0 / 60);
   EXPECT_FALSE(scene.world.getStepContacts().empty());
+}
+
+// A hull rests on the ground as its shape would: a cube's corners as a box,
+// a tetrahedron on a face (thrown tumbling, it settles flat, not on a point)
+TEST(WorldTest, AHullRestsOnTheGround) {
+  Scene scene({.subSteps = 4});
+  scene.world.getResolver().setMethod(kTogether);
+  std::vector<Vector3> cube;
+  for (const real x : {-0.5, 0.5})
+    for (const real y : {-0.5, 0.5})
+      for (const real z : {-0.5, 0.5})
+        cube.emplace_back(x, y, z);
+  const RigidBody &asBox = *scene.hull(Vector3(0, 2, 0), cube).body;
+  RigidBody &tetra = *scene
+                          .hull(Vector3(3, 2, 0), {Vector3(1, 1, 1), Vector3(1, -1, -1),
+                                                   Vector3(-1, 1, -1), Vector3(-1, -1, 1)})
+                          .body;
+  tetra.setRotation(Vector3(3, 1, 2));
+  scene.run(5);
+  EXPECT_NEAR(asBox.getPosition().y, 0.5, 0.01);
+  // (a regular tetrahedron of these corners rests 1/3 of its 1-to-a-corner
+  // height above its middle: its middle is 1/sqrt(3) above a face)
+  EXPECT_NEAR(tetra.getPosition().y, 1 / std::sqrt(3.0), 0.03);
+  for (const RigidBody *body : {&asBox, static_cast<const RigidBody *>(&tetra)})
+    EXPECT_LT(body->getVelocity().magnitude(), 0.02);
 }

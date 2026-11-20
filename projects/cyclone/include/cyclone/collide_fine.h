@@ -64,7 +64,7 @@ public:
    * SAKBox: which kind of primitive it is, so World can pick the collision
    * test for each pair.
    */
-  enum class Shape : unsigned char { Sphere, Box, Capsule };
+  enum class Shape : unsigned char { Sphere, Box, Capsule, Hull };
   /**
    * This class exists to help the collision detector
    * and intersection routines, so they should have
@@ -206,6 +206,26 @@ public:
 };
 
 /**
+ * SAKBox: a convex hull, given by its corners in the body's own space: a
+ * shape of its own (a model's), not one of the book's primitives. Its
+ * contacts with a plane are made as the book makes a box's (section 13.3,
+ * "Box and Plane": "we can make do with only checking vertices"), every
+ * corner at or past the plane a contact, so it rests on a face, an edge or
+ * a corner as the shape would. It meets planes only (a thing thrown onto a
+ * floor, the animation lab's); against other shapes it makes no contacts
+ * yet. Its corners can be any of the shape's points: those that aren't on
+ * its hull are never the furthest past a plane, but each is checked, so
+ * fewer is quicker.
+ */
+class CollisionHull : public CollisionPrimitive {
+public:
+  CollisionHull() : CollisionPrimitive(Shape::Hull) {}
+
+  /** The corners, in the body's own space. */
+  std::vector<Vector3> corners;
+};
+
+/**
  * A wrapper class that holds fast intersection tests. These
  * can be used to drive the coarse collision detection system or
  * as an early out in the full collision tests below.
@@ -336,6 +356,10 @@ public:
    * a half-space (i.e. the normal of the plane
    * points out of the half-space).
    */
+  /** SAKBox: a hull's corners at or past a plane (see CollisionHull). */
+  static unsigned hullAndHalfSpace(const CollisionHull &hull, const CollisionPlane &plane,
+                                   CollisionData *data);
+
   static unsigned boxAndHalfSpace(const CollisionBox &box, const CollisionPlane &plane,
                                   CollisionData *data);
 

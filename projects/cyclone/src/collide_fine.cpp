@@ -31,6 +31,12 @@ real CollisionPrimitive::boundingRadius() const {
     const auto *capsule = static_cast<const CollisionCapsule *>(this);
     return capsule->radius + capsule->halfLength;
   }
+  case Shape::Hull: {
+    real furthest = 0;
+    for (const Vector3 &corner : static_cast<const CollisionHull *>(this)->corners)
+      furthest = std::max(furthest, corner.magnitude());
+    return furthest;
+  }
   }
   return 0;
 }
@@ -1087,6 +1093,34 @@ unsigned CollisionDetector::boxAndHalfSpace(const CollisionBox &box, const Colli
     }
   }
 
+  data->addContacts(contactsUsed);
+  return contactsUsed;
+}
+
+unsigned CollisionDetector::hullAndHalfSpace(const CollisionHull &hull, const CollisionPlane &plane,
+                                             CollisionData *data) {
+  // As boxAndHalfSpace, the hull's corners for the box's eight
+  if (data->contactsLeft <= 0)
+    return 0;
+  Contact *contact = data->contacts;
+  unsigned contactsUsed = 0;
+  for (const Vector3 &corner : hull.corners) {
+    const Vector3 vertexPos = hull.transform.transform(corner);
+    const real vertexDistance = vertexPos * plane.direction;
+    if (vertexDistance > plane.offset + data->margin)
+      continue;
+    // (the contact point halfway between the corner and the plane)
+    contact->contactPoint = plane.direction;
+    contact->contactPoint *= (plane.offset - vertexDistance) * (real)0.5;
+    contact->contactPoint += vertexPos;
+    contact->contactNormal = plane.direction;
+    contact->penetration = plane.offset - vertexDistance;
+    contact->setBodyData(hull.body, nullptr, data->friction, data->restitution);
+    contact++;
+    contactsUsed++;
+    if (contactsUsed == (unsigned)data->contactsLeft)
+      break;
+  }
   data->addContacts(contactsUsed);
   return contactsUsed;
 }

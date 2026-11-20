@@ -36,9 +36,12 @@ bool joinedApart(std::span<Joint *const> joints, const RigidBody *one, const Rig
 unsigned collide(const CollisionPrimitive &one, const CollisionPrimitive &two,
                  BoxContactCache &boxContacts, CollisionData &data) {
   using Shape = CollisionPrimitive::Shape;
-  // In the order sphere, box, capsule, so each pair has one case
+  // In the order sphere, box, capsule, hull, so each pair has one case
   if (two.getShape() < one.getShape())
     return collide(two, one, boxContacts, data);
+  // (a hull meets planes only, so far: see CollisionHull)
+  if (two.getShape() == Shape::Hull)
+    return 0;
   if (one.getShape() == Shape::Sphere) {
     const auto &sphere = static_cast<const CollisionSphere &>(one);
     switch (two.getShape()) {
@@ -50,6 +53,8 @@ unsigned collide(const CollisionPrimitive &one, const CollisionPrimitive &two,
     case Shape::Capsule:
       return CollisionDetector::capsuleAndSphere(static_cast<const CollisionCapsule &>(two), sphere,
                                                  &data);
+    case Shape::Hull:
+      return 0;
     }
   }
   if (one.getShape() == Shape::Box) {
@@ -76,6 +81,9 @@ unsigned collide(const CollisionPrimitive &shape, const CollisionPlane &plane,
   case Shape::Capsule:
     return CollisionDetector::capsuleAndHalfSpace(static_cast<const CollisionCapsule &>(shape),
                                                   plane, &data);
+  case Shape::Hull:
+    return CollisionDetector::hullAndHalfSpace(static_cast<const CollisionHull &>(shape), plane,
+                                               &data);
   }
   return 0;
 }
