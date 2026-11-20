@@ -111,6 +111,16 @@ inline State &state() {
 
 inline thread_local int currentSlot = 0;
 
+// A heap budget's bytes left (HeapBudget), while one is on
+struct Budget {
+  std::atomic<bool> on{false};
+  std::atomic<std::int64_t> left{0};
+};
+inline Budget &budget() {
+  static Budget b; // (atomics only: made before main, without new)
+  return b;
+}
+
 inline void raisePeak(Slot &slot, std::int64_t now) {
   std::int64_t peak = slot.peak.load(std::memory_order_relaxed);
   while (now > peak && !slot.peak.compare_exchange_weak(peak, now, std::memory_order_relaxed)) {
@@ -151,6 +161,46 @@ private:
 
 // The counting allocator's calls (it says it's linked once, at start)
 inline void markLinked() { Detail::state().linked.store(true, std::memory_order_relaxed); }
+// Whether `bytes` more fit the heap budget, if one is on (taken from it if
+// so), and bytes freed given back to it
+inline bool takeFromBudget(std::size_t bytes) {
+  Detail::Budget &b = Detail::budget();
+  if (!b.on.load(std::memory_order_relaxed))
+    return true;
+  const auto n = static_cast<std::int64_t>(bytes);
+  if (b.left.fetch_sub(n, std::memory_order_relaxed) - n >= 0)
+    return true;
+  b.left.fetch_add(n, std::memory_order_relaxed);
+  return false;
+}
+inline bool budgetOn() { return Detail::budget().on.load(std::memory_order_relaxed); }
+inline void giveToBudget(std::size_t bytes) {
+  Detail::Budget &b = Detail::budget();
+  if (b.on.load(std::memory_order_relaxed))
+    b.left.fetch_add(static_cast<std::int64_t>(bytes), std::memory_order_relaxed);
+}
+
+// A heap budget, for tests: while one is alive, the program may allocate at
+// most `bytes` more (frees give back, memory from before it too), and an
+// allocation past it fails as it would on a console that's run out
+// (operator new throws std::bad_alloc), so code meant for a DS's few
+// hundred KB can be held to its share on a desktop. Needs the counting
+// allocator linked (linked()); one at a time.
+//
+//   MemoryStats::HeapBudget budget(112 * 1024);
+//   picture.setZoom(2);  ...   // past it: std::bad_alloc
+class HeapBudget {
+public:
+  explicit HeapBudget(std::size_t bytes) {
+    Detail::budget().left.store(static_cast<std::int64_t>(bytes), std::memory_order_relaxed);
+    Detail::budget().on.store(true, std::memory_order_relaxed);
+  }
+  ~HeapBudget() { Detail::budget().on.store(false, std::memory_order_relaxed); }
+  HeapBudget(const HeapBudget &) = delete;
+  HeapBudget &operator=(const HeapBudget &) = delete;
+  // What's left of it
+  static std::int64_t left() { return Detail::budget().left.load(std::memory_order_relaxed); }
+};
 inline void allocated(std::size_t bytes) {
   if (!counting())
     return;

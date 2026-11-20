@@ -29,7 +29,8 @@ Gamepad readPlatformPad() {
       return {};
     NSString *product = controller.productCategory;
     return fromGameController(GameControllerState{
-        .productCategory = product ? std::string_view(product.UTF8String) : std::string_view(),
+        .productCategory = product && product.UTF8String ? std::string_view(product.UTF8String)
+                                                         : std::string_view(),
         .bottom = g.buttonA.pressed,
         .right = g.buttonB.pressed,
         .left = g.buttonX.pressed,

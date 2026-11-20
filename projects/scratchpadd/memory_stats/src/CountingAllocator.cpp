@@ -46,6 +46,10 @@ void *allocate(std::size_t bytes) {
   void *p = std::malloc(bytes == 0 ? 1 : bytes);
   if (!p)
     throw std::bad_alloc();
+  if (!MS::takeFromBudget(sizeOf(p))) { // (a heap budget, and past it)
+    std::free(p);
+    throw std::bad_alloc();
+  }
   if (MS::counting()) // (the size only asked for while counting)
     MS::allocated(sizeOf(p));
   return p;
@@ -55,6 +59,10 @@ void *allocateNoThrow(std::size_t bytes) noexcept {
   if (void *p = ScratchPadd::frameAllocate(bytes == 0 ? 1 : bytes))
     return p;
   void *p = std::malloc(bytes == 0 ? 1 : bytes);
+  if (p && !MS::takeFromBudget(sizeOf(p))) {
+    std::free(p);
+    return nullptr;
+  }
   if (p && MS::counting())
     MS::allocated(sizeOf(p));
   return p;
@@ -63,8 +71,13 @@ void *allocateNoThrow(std::size_t bytes) noexcept {
 void release(void *p) noexcept {
   if (!p || ScratchPadd::frameOwns(p)) // (arena memory: given back at its reset)
     return;
-  if (MS::counting())
-    MS::freed(sizeOf(p));
+  // (the size only asked for when it's wanted)
+  if (MS::budgetOn() || MS::counting()) {
+    const std::size_t size = sizeOf(p);
+    MS::giveToBudget(size);
+    if (MS::counting())
+      MS::freed(size);
+  }
   std::free(p);
 }
 } // namespace

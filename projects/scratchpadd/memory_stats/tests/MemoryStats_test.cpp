@@ -132,3 +132,19 @@ TEST(FrameArenaTest, AFramesAllocationsComeFromTheArena) {
   }
   kept.reset(); // (heap memory, freed as ever)
 }
+
+// A heap budget: allocations within it work, one past it fails with
+// bad_alloc (as a console out of memory), freeing gives back, and once the
+// budget's gone anything goes again
+TEST(MemoryStatsTest, AHeapBudgetHoldsAllocationsToIt) {
+  {
+    MS::HeapBudget budget(64 * 1024);
+    std::vector<char> fits(32 * 1024);
+    EXPECT_THROW(std::vector<char>(48 * 1024), std::bad_alloc);
+    fits = {}; // (given back)
+    fits.shrink_to_fit();
+    EXPECT_NO_THROW(std::vector<char>(48 * 1024));
+    EXPECT_EQ(::operator new(128 * 1024, std::nothrow), nullptr); // (the nothrow kind too)
+  }
+  EXPECT_NO_THROW(std::vector<char>(1024 * 1024));
+}

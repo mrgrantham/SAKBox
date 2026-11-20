@@ -154,7 +154,7 @@ An enumerator is always written after its enum's name, so it needs no mark; a co
 
 ## Static analysis
 
-[clang-tidy](https://clang.llvm.org/extra/clang-tidy/) checks the code for likely bugs, avoidable slowness and outdated C++, using the checks chosen (with the reasons for leaving some out) in [`.clang-tidy`](.clang-tidy):
+[clang-tidy](https://clang.llvm.org/extra/clang-tidy/) checks the code for likely bugs, avoidable slowness and outdated C++, using the checks chosen (with the reasons for leaving some out) in [`.clang-tidy`](.clang-tidy). Among them is the Clang static analyzer (`clang-analyzer-*`), which follows each path through a function: use after free, null dereferences, leaks on an early return, values used uninitialised, division by zero, dead stores.
 
 ``` bash
 python3 tools/compile_commands/refresh.py          # once, and after BUILD changes
@@ -164,7 +164,30 @@ python3 tools/clang_tidy/run.py --fix projects/cyclone   # apply clang-tidy's fi
 python3 tools/clang_tidy/run.py --checks='-*,modernize-use-nullptr' --fix   # one check only
 ```
 
-It skips `projects/examples/png/src/pngtest.cpp` (libpng's own test program, kept as published). It prints each finding once (a header's findings aren't repeated per file that includes it), then a count per check, and exits 1 if there are any. It finds clang-tidy on your `PATH`, in Homebrew's LLVM, or at `$CLANG_TIDY`. If a header can't be found, it stops and asks you to rebuild instead of listing findings: Bazel removes a dependency's headers from its output when a later build doesn't need them, and a file analysed without its headers gives wrong findings. Rebuild what you're checking (`bazel build //...`, or one project's targets) and run it again. Its findings are advice, not part of the build: review fixes before committing them, and rebuild and test afterwards.
+What it covers:
+
+- **Every project of the repo's own** (`DEFAULT_PATHS` in `run.py`), and `tools/assets`. It skips `projects/examples/png/src/pngtest.cpp` (libpng's own test program, kept as published).
+- **Tests are checked in a second pass** without `bugprone-unchecked-optional-access`: a test uses an optional after `ASSERT_TRUE(x)`, which ends the test if it's empty, but the check can't see that.
+- **Only the repo's own files' findings count:** the analyzer follows paths into third-party and system headers, and those are dropped.
+- **Waffles isn't yet under the analyzer** (`projects/waffles/.clang-tidy`): its first run found about 100 paths in Waffles' older code, to be gone through on their own.
+
+It prints each finding once (a header's findings aren't repeated per file that includes it), then a count per check, and exits 1 if there are any. It finds clang-tidy on your `PATH`, in Homebrew's LLVM, or at `$CLANG_TIDY`. If a header can't be found, it stops and asks you to rebuild instead of listing findings: Bazel removes a dependency's headers from its output when a later build doesn't need them, and a file analysed without its headers gives wrong findings. Rebuild what you're checking (`bazel build //...`, or one project's targets) and run it again. Its findings are advice, not part of the build: review fixes before committing them, and rebuild and test afterwards.
+
+### Sanitizers
+
+The tests can run under AddressSanitizer and UndefinedBehaviorSanitizer (desktops; `.bazelrc`'s `asan-ubsan` config):
+
+``` bash
+bazel test --config=asan-ubsan //...
+```
+
+- **AddressSanitizer** stops a test at a read or write out of bounds, or after a free. (Leaks aren't checked: macOS has no leak checker on Apple silicon.)
+- **UndefinedBehaviorSanitizer** stops it at signed overflow, a shift too far, a misaligned read or a bad cast: the bugs that behave on a Mac and not on an ARM console.
+- Each stops at the first problem, with where it happened.
+
+### Heap budgets
+
+A console has a few hundred KB of heap to spare; a desktop has gigabytes, so running out never shows there. ScratchPadd's `MemoryStats::HeapBudget` holds a test to a console's share: while one is alive, allocating past its bytes fails with `std::bad_alloc`, as it would on a DS out of memory ([ScratchPadd's README](projects/scratchpadd/README.md#packages)). Cosmic Hex's `BoardPicture_test` holds the zoomed map to the DS's budget this way.
 
 ### Checking each commit
 

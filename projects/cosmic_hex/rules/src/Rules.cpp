@@ -239,6 +239,7 @@ std::vector<CornerReach> cornerMovesFor(const State &state, const Ship &ship) {
       cornersWithin(ship.corner, settings.shipMove + (canBoost ? settings.boostMove : 0));
   // The taken corners, by number (a few dozen at most)
   std::vector<std::int16_t> taken;
+  taken.reserve(state.stations.size() + state.ships.size());
   for (const Station &station : state.stations)
     taken.push_back(static_cast<std::int16_t>(cornerNumber(station.at)));
   for (const Ship &other : state.ships)
@@ -1982,6 +1983,7 @@ void cornerActions(const State &state, std::vector<Action> &out) {
     if (!ship.moved) {
       const auto reachable = cornerMovesFor(state, ship);
       std::vector<int> corners;
+      corners.reserve(reachable.size());
       for (const CornerReach &reach : reachable)
         corners.push_back(reach.corner);
       std::sort(corners.begin(), corners.end()); // (by number, as the moves are listed)

@@ -90,3 +90,17 @@ build:clang --per_file_copt='^projects/.*@-Wdocumentation'
 # build --linkopt=-no_fixup_chains
 
 build --color=yes
+
+# Sanitizers for test runs (desktops; the console apps build with make):
+#   bazel test --config=asan-ubsan //...
+# AddressSanitizer (out of bounds, use after free; leaks not checked: macOS
+# has no leak checker on Apple silicon) and
+# UndefinedBehaviorSanitizer (signed overflow, shifts too far, misaligned
+# reads, bad casts: what behaves on a Mac and not on an ARM console), each
+# stopping the test at the first problem with where it happened. Fortify's
+# checks are off under them (they redefine _FORTIFY_SOURCE).
+build:asan-ubsan --copt=-fsanitize=address,undefined --linkopt=-fsanitize=address,undefined
+build:asan-ubsan --copt=-fno-sanitize-recover=undefined --copt=-fno-omit-frame-pointer --copt=-g
+build:asan-ubsan --copt=-U_FORTIFY_SOURCE --copt=-Wno-macro-redefined
+build:asan-ubsan --test_env=UBSAN_OPTIONS=print_stacktrace=1
+build:asan-ubsan --test_env=ASAN_OPTIONS=detect_leaks=0

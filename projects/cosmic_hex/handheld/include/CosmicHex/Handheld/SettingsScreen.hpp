@@ -55,7 +55,7 @@ public:
   static constexpr std::size_t kLongestName = 10; // (a DS's own allows 10)
 
 private:
-  enum Id : int { kChange = 1, kAnimations, kBack };
+  enum Id : int { IdChange = 1, IdAnimations, IdBack };
   void setButtons();
   Outcome typed(); // (after a key on the keyboard: done typing?)
 

@@ -708,6 +708,19 @@ std::vector<std::pair<int, int>> potentialPairs(const std::vector<Vector3> &posi
 
 } // namespace
 
+// An empty tree (a root made with no body) reports no pairs, and takes its
+// first body itself (it followed a null child: the static analyzer)
+TEST(CollisionTest, AnEmptyTreeTakesItsFirstBody) {
+  const std::unique_ptr<RigidBody> one = bodyAt({0, 0, 0}), two = bodyAt({0.5, 0, 0});
+  BVHNode<BoundingSphere> root(nullptr, BoundingSphere({0, 0, 0}, 1));
+  PotentialContact contacts[4];
+  EXPECT_EQ(root.getPotentialContacts(contacts, 4), 0u);
+  root.insert(one.get(), BoundingSphere({0, 0, 0}, 1));
+  EXPECT_TRUE(root.isLeaf());
+  root.insert(two.get(), BoundingSphere({0.5, 0, 0}, 1));
+  EXPECT_EQ(root.getPotentialContacts(contacts, 4), 1u);
+}
+
 TEST(BoundingVolumeTest, SpheresOverlap) {
   const BoundingSphere origin(Vector3(0, 0, 0), 1), near(Vector3(1.5, 0, 0), 1),
       far(Vector3(2.5, 0, 0), 1);

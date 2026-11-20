@@ -106,3 +106,12 @@ TEST(FixedPointTest, PortableArithmeticMatchesInt128) {
   }
 }
 #endif
+
+// Dividing by zero: the largest value of the dividend's sign, as a float's
+// infinity would be (the same everywhere, rather than a trap or 0)
+TEST(FixedPointTest, DividingByZeroSaturates) {
+  const FlexPoint16 zero = 0;
+  EXPECT_EQ(FlexPoint16(3) / zero, FlexPoint16::max());
+  EXPECT_EQ(FlexPoint16(-3) / zero, FlexPoint16::lowest());
+  EXPECT_EQ(zero / zero, zero);
+}

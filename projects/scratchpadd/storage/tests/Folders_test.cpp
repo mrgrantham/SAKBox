@@ -19,7 +19,9 @@ ScratchPadd::AppInfo app(const std::string &name) {
 TEST(FoldersTest, ThePlatformsUsualPlacesNamedAfterTheApp) {
   const Folders folders = Folders::forApp(app("my-app"));
 #if defined(__APPLE__)
-  const std::string home = std::getenv("HOME");
+  const char *homeVariable = std::getenv("HOME");
+  ASSERT_NE(homeVariable, nullptr);
+  const std::string home = homeVariable ? homeVariable : "";
   EXPECT_EQ(folders.files, home + "/Library/Application Support/my-app/");
   EXPECT_EQ(folders.logs, home + "/Library/Logs/my-app/");
 #elif defined(_WIN32)
@@ -47,7 +49,8 @@ TEST(FoldersTest, LinuxFollowsXdg) {
 // Under a root (for tests and tools), files there and logs in logs/;
 // makeFolder makes the folders above too
 TEST(FoldersTest, UnderARootAndMadeAsNeeded) {
-  const std::string root = std::string(std::getenv("TEST_TMPDIR")) + "/under";
+  const char *tmp = std::getenv("TEST_TMPDIR"); // (Bazel's; else the system's)
+  const std::string root = std::string(tmp ? tmp : "/tmp") + "/under";
   const Folders folders = Folders::under(root);
   EXPECT_EQ(folders.files, root + "/");
   EXPECT_EQ(folders.logs, root + "/logs/");

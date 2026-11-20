@@ -80,7 +80,8 @@ void tokenNumber(const TopFrame &f, const Scene::Transform &pose, int number, fl
 } // namespace
 
 void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
-                   const ScratchPadd::PictureSlot &closeUp) {
+                   const ScratchPadd::PictureSlot &closeUp,
+                   const ScratchPadd::PictureSlot &closeUpBack) {
   const auto moment = show.moment(f.now);
   const Discovery::Found *found = show.current();
   if (!moment || !found)
@@ -123,8 +124,11 @@ void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
   const bool faceUp = turn > kPi / 2;
   const auto spin = Scene::Transform::rotation({1, 0, 0}, faceUp ? turn - kPi : turn);
   const Art::Face face = faceUp ? found->face : found->faceDown;
-  const Scene::Texture texture = closeUp.showing(static_cast<int>(face))
-                                     ? closeUp.texture()
+  // (each side sharp when its close-up holds it: the face, or the back
+  // flying up face down; else the board's own picture)
+  const ScratchPadd::PictureSlot &sharp = faceUp ? closeUp : closeUpBack;
+  const Scene::Texture texture = sharp.showing(static_cast<int>(face))
+                                     ? sharp.texture()
                                      : f.pictures.faces[static_cast<std::size_t>(face)];
   f.renderer.draw(
       f.pictures.hexTile, pose * spin,

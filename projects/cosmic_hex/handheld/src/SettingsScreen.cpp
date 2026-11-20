@@ -36,16 +36,16 @@ void SettingsScreen::open(std::string name, bool fromConsole, Animations animati
   animations_ = animations;
   keyboard_.reset();
   setButtons();
-  buttons_.setFocus(kChange);
+  buttons_.setFocus(IdChange);
 }
 
 void SettingsScreen::setButtons() {
   const float k = static_cast<float>(width_) / 256;
-  buttons_.set({{.id = kChange, .area = {16 * k, 88 * k, 96 * k, 22 * k}, .label = "Change"},
-                {.id = kAnimations,
+  buttons_.set({{.id = IdChange, .area = {16 * k, 88 * k, 96 * k, 22 * k}, .label = "Change"},
+                {.id = IdAnimations,
                  .area = {16 * k, 130 * k, 96 * k, 22 * k},
                  .label = std::string(wordOf(animations_))},
-                {.id = kBack, .area = {16 * k, 164 * k, 96 * k, 22 * k}, .label = "Back"}});
+                {.id = IdBack, .area = {16 * k, 164 * k, 96 * k, 22 * k}, .label = "Back"}});
 }
 
 SettingsScreen::Outcome SettingsScreen::typed() {
@@ -77,14 +77,14 @@ SettingsScreen::Outcome SettingsScreen::press(Key key, double now) {
   case Key::Confirm:
     if (const auto focused = buttons_.focus()) {
       buttons_.press(*focused, now);
-      if (*focused == kBack)
+      if (*focused == IdBack)
         return Outcome::Back;
-      if (*focused == kAnimations) {
+      if (*focused == IdAnimations) {
         // (Full, Quick, Off, and round again)
         animations_ = static_cast<Animations>((static_cast<int>(animations_) + 1) % 3);
         setButtons();
-        buttons_.setFocus(kAnimations);
-        buttons_.press(kAnimations, now);
+        buttons_.setFocus(IdAnimations);
+        buttons_.press(IdAnimations, now);
         return Outcome::AnimationsChanged;
       }
       keyboard_.emplace(name_, kLongestName);
@@ -105,7 +105,7 @@ SettingsScreen::Outcome SettingsScreen::touch(int x, int y, double now) {
   const auto touched = buttons_.at(x, y);
   if (!touched)
     return Outcome::None;
-  buttons_.setFocus(*touched);
+  buttons_.setFocus(touched);
   return press(Key::Confirm, now);
 }
 

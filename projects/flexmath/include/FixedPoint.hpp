@@ -265,7 +265,13 @@ public:
   }
 
   // Truncates toward zero in the last place. `b` must not be zero.
+  // Truncating toward zero. By zero: the largest value of the dividend's
+  // sign (0 for 0 / 0), as a float's infinity would be, the same on every
+  // platform (the integer division underneath traps on x86, gives 0 on ARM,
+  // and something else again on the DS's divider)
   FixedPoint operator/(const FixedPoint &b) const {
+    if (b.valueFixed_ == 0)
+      return valueFixed_ > 0 ? max() : valueFixed_ < 0 ? lowest() : FixedPoint{};
     return fromFixed(detail::divideShifted(valueFixed_, kFractionalBits, b.valueFixed_));
   }
 

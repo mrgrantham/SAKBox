@@ -14,7 +14,7 @@ namespace {
 class ExpectFor {
 public:
   explicit ExpectFor(const char *list) {
-    if (const char *was = std::getenv(Name))
+    if (const char *was = std::getenv(kName))
       previous = was;
     set(list);
   }
@@ -23,15 +23,15 @@ public:
   ExpectFor &operator=(const ExpectFor &) = delete;
 
 private:
-  static constexpr const char *Name = "SAKBOX_EXPECT";
+  static constexpr const char *kName = "SAKBOX_EXPECT";
   static void set(const char *list) {
 #ifdef _WIN32
-    _putenv_s(Name, list ? list : "");
+    _putenv_s(kName, list ? list : "");
 #else
     if (list)
-      setenv(Name, list, 1);
+      setenv(kName, list, 1);
     else
-      unsetenv(Name);
+      unsetenv(kName);
 #endif
   }
   std::optional<std::string> previous;

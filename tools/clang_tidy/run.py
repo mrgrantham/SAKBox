@@ -29,11 +29,19 @@ REPO = pathlib.Path(__file__).resolve().parents[2]
 
 # The repo's own code
 DEFAULT_PATHS = [
+    "projects/action_log",
+    "projects/animation_lab",
+    "projects/cosmic_hex",
     "projects/cyclone",
     "projects/data_dep_retriever",
     "projects/examples",
+    "projects/expected_capabilities",
     "projects/flexmath",
+    "projects/game_bots",
+    "projects/hex_grid",
+    "projects/inplace_vector",
     "projects/scratchpadd",
+    "projects/seeded_random",
     "projects/waffles",
     "tools/assets",
 ]
@@ -87,10 +95,27 @@ def repo_path(reported):
         return resolved
 
 
+# Checks left out for tests: an optional is used after ASSERT_TRUE(x), which
+# ends the test if it's empty, but the check can't see that
+TEST_CHECKS = "-bugprone-unchecked-optional-access"
+
+
 def tidy(file_regex, fix=False, checks=None, jobs=None):
     """Runs clang-tidy on the compile_commands.json entries matching
-    file_regex. Returns (findings, result), findings being sorted, unique
-    (path, line, kind, message, checks) tuples."""
+    file_regex: the code with every check, then its tests (files in a
+    tests/ folder) without TEST_CHECKS. Returns (findings, result),
+    findings being sorted, unique (path, line, kind, message, checks)
+    tuples, and result the last run's."""
+    code, code_result = tidy_once("(?!.*/tests/)" + file_regex, fix, checks, jobs)
+    test_checks = TEST_CHECKS if not checks else checks + "," + TEST_CHECKS
+    tests, result = tidy_once("(?=.*/tests/)" + file_regex, fix, test_checks, jobs)
+    if code_result.returncode != 0 and result.returncode == 0:
+        result = code_result
+    return sorted(set(code) | set(tests)), result
+
+
+def tidy_once(file_regex, fix=False, checks=None, jobs=None):
+    """One run of clang-tidy over the entries matching file_regex."""
     clang_tidy = find_tool("clang-tidy", "CLANG_TIDY")
     run_clang_tidy = find_tool("run-clang-tidy", "RUN_CLANG_TIDY")
     command = [run_clang_tidy, "-p", str(REPO), "-clang-tidy-binary", clang_tidy,
@@ -109,8 +134,13 @@ def tidy(file_regex, fix=False, checks=None, jobs=None):
     for line in result.stdout.splitlines():
         m = re.match(r"(.+?):(\d+):(\d+): (warning|error): (.*) \[([\w.,-]+)\]$", line)
         if m:
-            findings.add((repo_path(m.group(1)), int(m.group(2)), m.group(4), m.group(5),
-                          m.group(6)))
+            path = repo_path(m.group(1))
+            # (the analyzer follows paths into third-party and system
+            # headers, past the header filter: only the repo's own count,
+            # and errors anywhere, such as a header not found)
+            if m.group(4) == "warning" and (path.startswith("..") or os.path.isabs(path)):
+                continue
+            findings.add((path, int(m.group(2)), m.group(4), m.group(5), m.group(6)))
     return sorted(findings), result
 
 

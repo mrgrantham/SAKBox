@@ -39,10 +39,10 @@ void OnScreenKeyboard::setKeys() {
     }
   // Then Shift, Space, Del and Done along the bottom
   const float y = 140 * k, h = 24 * k;
-  keys.push_back({.id = kShift, .area = {8 * k, y, 46 * k, h}, .label = "Shift", .on = shift_});
-  keys.push_back({.id = kSpace, .area = {58 * k, y, 90 * k, h}, .label = "Space"});
-  keys.push_back({.id = kDelete, .area = {152 * k, y, 46 * k, h}, .label = "Del"});
-  keys.push_back({.id = kDone, .area = {202 * k, y, 46 * k, h}, .label = "Done"});
+  keys.push_back({.id = KeyShift, .area = {8 * k, y, 46 * k, h}, .label = "Shift", .on = shift_});
+  keys.push_back({.id = KeySpace, .area = {58 * k, y, 90 * k, h}, .label = "Space"});
+  keys.push_back({.id = KeyDelete, .area = {152 * k, y, 46 * k, h}, .label = "Del"});
+  keys.push_back({.id = KeyDone, .area = {202 * k, y, 46 * k, h}, .label = "Done"});
   panel_.set(std::move(keys));
   if (!panel_.focus())
     panel_.setFocus(static_cast<int>('Q'));
@@ -52,19 +52,19 @@ void OnScreenKeyboard::type(int id) {
   if (outcome_ == Outcome::Done)
     return;
   switch (id) {
-  case kShift:
+  case KeyShift:
     shift_ = !shift_;
     break;
-  case kSpace:
+  case KeySpace:
     if (!text_.empty() && text_.size() < most_)
       text_ += ' ';
     break;
-  case kDelete:
+  case KeyDelete:
     if (!text_.empty())
       text_.pop_back();
     shift_ = text_.empty();
     break;
-  case kDone:
+  case KeyDone:
     // (trailing spaces dropped)
     while (!text_.empty() && text_.back() == ' ')
       text_.pop_back();
@@ -101,19 +101,19 @@ void OnScreenKeyboard::press(Key key, double now) {
     }
     break;
   case Key::Back:
-    panel_.press(kDelete, now);
-    type(kDelete);
+    panel_.press(KeyDelete, now);
+    type(KeyDelete);
     break;
   case Key::Done:
-    panel_.press(kDone, now);
-    type(kDone);
+    panel_.press(KeyDone, now);
+    type(KeyDone);
     break;
   }
 }
 
 void OnScreenKeyboard::touch(int x, int y, double now) {
   if (const auto key = panel_.at(x, y)) {
-    panel_.setFocus(*key);
+    panel_.setFocus(key);
     panel_.press(*key, now);
     type(*key);
   }

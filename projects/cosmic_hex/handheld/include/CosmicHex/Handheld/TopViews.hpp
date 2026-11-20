@@ -58,9 +58,11 @@ struct TopFrame {
 };
 
 // A discovered tile flying up from the board, turned over and set back
-// (its face from `closeUp` when that holds it: PictureSlot id, the face)
+// (its face from `closeUp` when that holds it, and its back from
+// `closeUpBack`: PictureSlot ids, the faces)
 void drawDiscovery(const TopFrame &frame, const DiscoveryShow &show,
-                   const ScratchPadd::PictureSlot &closeUp);
+                   const ScratchPadd::PictureSlot &closeUp,
+                   const ScratchPadd::PictureSlot &closeUpBack);
 // The two cards dealt, thrown in and turned, the one `chosen` below
 // outlined (`closeUps`: the cards' pictures drawn sharp, in order)
 void drawDealtCards(const TopFrame &frame, const DealtShow &show, int chosen,

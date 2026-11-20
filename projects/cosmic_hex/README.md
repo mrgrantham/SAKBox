@@ -270,7 +270,7 @@ Over the board:
 
 Words over a card or tile (its name, a token's number, a card's words) wait for it to settle, then fade in (`kSecondsWordsIn`).
 
-Pictures shown big for a moment (a discovered tile, the cards dealt, played or paid) are drawn again at `PlatformProfile::closeUpSize` (128 on both consoles) just before they're shown, while nothing moves, into textures kept for them. On a DS they're drawn 16 rows at a time (`closeUpBandRows`), as a picture drawn whole needs more main memory than a game has free.
+Pictures shown big for a moment (a discovered tile, both its back as it flies up face down and its face, the cards dealt, played or paid) are drawn again at `PlatformProfile::closeUpSize` (128 on both consoles) just before they're shown, while nothing moves, into textures kept for them. On a DS they're drawn 16 rows at a time (`closeUpBandRows`), as a picture drawn whole needs more main memory than a game has free.
 
 Moves animate and the dice roll on the game's own clock (ScratchPadd's `GameClock`), which stops while a watched game is paused; the shows run on a clock of their own at the Animations setting's pace. B (Back) takes whatever is animating (the dice, who goes first, pieces moving, the turn's banner, a turned-over tile, a pay, the cards dealt coming in) straight to its end.
 

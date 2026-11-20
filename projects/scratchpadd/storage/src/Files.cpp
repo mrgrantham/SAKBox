@@ -76,8 +76,13 @@ std::optional<Bytes> loadFile(const std::string &path) {
     return std::nullopt;
   Bytes bytes;
   std::uint8_t chunk[4096];
-  for (std::size_t read; (read = std::fread(chunk, 1, sizeof chunk, file)) > 0;)
+  // (a short read is the end, or an error: either way, done)
+  for (;;) {
+    const std::size_t read = std::fread(chunk, 1, sizeof chunk, file);
     bytes.insert(bytes.end(), chunk, chunk + read);
+    if (read < sizeof chunk)
+      break;
+  }
   std::fclose(file);
   return bytes;
 }

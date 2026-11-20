@@ -5,13 +5,15 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <string>
 
 using ScratchPadd::Storage::Bytes;
 
 namespace {
 std::string scratch(const std::string &name) {
-  return std::string(std::getenv("TEST_TMPDIR")) + "/files/" + name;
+  const char *tmp = std::getenv("TEST_TMPDIR"); // (Bazel's; else the system's)
+  return std::string(tmp ? tmp : "/tmp") + "/files/" + name;
 }
 Bytes bytesOf(const std::string &text) { return Bytes(text.begin(), text.end()); }
 } // namespace
@@ -33,10 +35,7 @@ TEST(FilesTest, SavesWholeAndLoadsBack) {
 TEST(FilesTest, LoadsAnUnfinishedSaveAndNothingFromNothing) {
   const std::string path = scratch("half/slot.bin");
   std::filesystem::create_directories(scratch("half"));
-  std::FILE *file = std::fopen((path + ".tmp").c_str(), "wb");
-  ASSERT_NE(file, nullptr);
-  std::fputs("whole", file);
-  std::fclose(file);
+  std::ofstream(path + ".tmp", std::ios::binary) << "whole";
   EXPECT_EQ(ScratchPadd::Storage::loadFile(path), bytesOf("whole"));
   EXPECT_FALSE(ScratchPadd::Storage::loadFile(scratch("nothing/here.bin")).has_value());
 }
@@ -45,9 +44,8 @@ TEST(FilesTest, LoadsAnUnfinishedSaveAndNothingFromNothing) {
 TEST(FilesTest, SaysWhyItCouldntSave) {
   const std::string blocker = scratch("blocker");
   std::filesystem::create_directories(scratch(""));
-  std::FILE *file = std::fopen(blocker.c_str(), "w"); // a file where a folder should be
-  ASSERT_NE(file, nullptr);
-  std::fclose(file);
+  std::ofstream{blocker}; // a file where a folder should be
+  ASSERT_TRUE(std::filesystem::is_regular_file(blocker));
   std::string error;
   EXPECT_FALSE(ScratchPadd::Storage::saveFile(blocker + "/inside.bin", bytesOf("x"), error));
   EXPECT_FALSE(error.empty());

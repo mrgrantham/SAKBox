@@ -30,7 +30,7 @@ bool Banner::showing(double now) const {
 }
 
 std::optional<Banner::Look> Banner::at(double now) const {
-  if (!showing(now))
+  if (!started_ || !showing(now))
     return std::nullopt;
   const auto elapsed = static_cast<float>(now - *started_);
   const float band = script_.progress(fadeIn_, elapsed, Motion::Curve::EaseOut) *

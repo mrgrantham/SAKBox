@@ -7,6 +7,8 @@
 #include <GameBots/Bots.hpp>
 #include <SeededRandom/Generator.hpp>
 
+#include <ScratchPadd/MemoryStats.hpp>
+
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -356,4 +358,46 @@ TEST(BoardPictureTest, ATileTurnedOverFadesIn) {
   const auto half = drawnRevealing(0.5f);
   EXPECT_NE(half, drawn(before, std::nullopt));
   EXPECT_NE(half, drawn(after, std::nullopt));
+}
+
+// Zoomed in on a DS's screen, panned over the whole board, the map stays
+// within its budget (PlatformProfile::boardZoomBytes) with room to spare
+// for its pieces: held to it by a heap budget, allocating past it fails as
+// on a DS out of memory (drawing every face sharp, as it did, ran a DS out
+// of memory zoomed in)
+TEST(BoardPictureTest, ZoomedInItStaysWithinItsMemory) {
+  ASSERT_TRUE(ScratchPadd::MemoryStats::linked());
+  const State state = aGame();
+  const auto panAround = [&](BoardPicture &picture) {
+    picture.setZoom(2);
+    for (const auto pan : {std::pair{-1000.0f, -1000.0f},
+                           {2000.0f, 0.0f},
+                           {0.0f, 2000.0f},
+                           {-2000.0f, 0.0f},
+                           {1000.0f, -1000.0f}}) {
+      picture.pan(pan.first, pan.second);
+      picture.draw(state);
+      for (int frame = 0; frame < 200 && !picture.ready(); ++frame)
+        picture.prepare();
+      picture.draw(state);
+    }
+  };
+  // (its pieces' lists, and drawing a face from its recipe for a moment:
+  // 48 KB measured, on a desktop)
+  constexpr std::size_t kForItsPieces = 56 * 1024;
+  BoardPicture ds(256, 192, kDsProfile.recipeSmoothing);
+  ds.setZoomBudget(kDsProfile.boardZoomBytes);
+  ds.draw(state); // (the whole board's faces, kept: before the budget)
+  {
+    ScratchPadd::MemoryStats::HeapBudget budget(kDsProfile.boardZoomBytes + kForItsPieces);
+    EXPECT_NO_THROW(panAround(ds));
+  }
+  // (and the heap budget catches it: with half the memory it runs out)
+  BoardPicture again(256, 192, kDsProfile.recipeSmoothing);
+  again.setZoomBudget(kDsProfile.boardZoomBytes);
+  again.draw(state);
+  {
+    ScratchPadd::MemoryStats::HeapBudget budget((kDsProfile.boardZoomBytes + kForItsPieces) / 2);
+    EXPECT_THROW(panAround(again), std::bad_alloc);
+  }
 }

@@ -86,7 +86,7 @@ TEST_F(TopViewsTest, ADiscoveryFromStartToEnd) {
   show.arrived(state, after, 0);
   frames(every(0, Discovery::kSeconds + 0.5), [&](const TopFrame &f) {
     show.update(f.now, nullptr);
-    drawDiscovery(f, show, noCloseUp);
+    drawDiscovery(f, show, noCloseUp, noCloseUp);
   });
 }
 

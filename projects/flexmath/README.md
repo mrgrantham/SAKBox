@@ -188,7 +188,7 @@ Things to know:
 - **It's one size of a template.** `FixedPoint<IntBits, FracBits>` (`FixedPoint.hpp`) is 32 or 64 bits in all; `FlexPoint` is `FixedPoint<32, 32>` and `FlexPoint16` is `FixedPoint<16, 16>` (see [FlexPoint16](#flexpoint16)). Everything here applies to both.
 - **It mixes with other numbers** in arithmetic and comparisons (`x * 2`, `0.5 < x`) and converts to `double` implicitly, as `FlexReal` does, so it can stand in for a `real` typedef. Converting from a floating-point constant (`(real)0.5`) happens when compiling.
 - **Maths functions:** `flex_sqrt`, `flex_abs` and `flex_fmod` work in integers and are exact; `flex_sin`, `flex_cos`, `flex_exp`, `flex_pow` and `flex_atan2` go through `double`, correctly rounded (`CorrectlyRounded.hpp`), and round to the nearest step. They're named as `FlexReal`'s are, so code written for one takes the other.
-- **`+` and `-` are exact.** `*` rounds toward negative infinity in the last place (2^-32), and `/` truncates toward zero. **Dividing by zero is undefined behaviour**, so check divisors first.
+- **`+` and `-` are exact.** `*` rounds toward negative infinity in the last place (2^-32), and `/` truncates toward zero. **Dividing by zero** gives the largest value of the dividend's sign (`max()` or `lowest()`, and 0 for 0 / 0), as a float's infinity would, the same on every platform.
 - `value()` converts to `double` exactly while |value| < 2^21.
 - Comparisons are exact. To compare at a reduced precision, compare quantized values: `a.quantized(p) == b.quantized(p)`.
 

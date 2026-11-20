@@ -105,6 +105,8 @@ std::string deviceAddress() {
     return "127.0.0.1";
   const auto handle = ::socket(AF_INET, SOCK_DGRAM, 0);
   std::string address = "127.0.0.1";
+  if (handle < 0)
+    return address; // (no socket: the loopback, as when there's no network)
   sockaddr_in outside = addressOf(0x08080808, 53); // (8.8.8.8: any outside address)
   if (::connect(handle, reinterpret_cast<sockaddr *>(&outside), sizeof outside) == 0) {
     sockaddr_in local{};
@@ -318,6 +320,8 @@ bool Socket::wouldBlock() {
 }
 
 void Socket::poke() const {
+  if (!valid())
+    return;
 #if defined(__3DS__)
   sockaddr_in at = addressOf(0, port());
   at.sin_addr.s_addr = static_cast<in_addr_t>(gethostid()); // (its own, in network order)

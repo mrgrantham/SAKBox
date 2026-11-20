@@ -1,8 +1,11 @@
 # clang-tidy checks for the repo's own code. Run them with
 # python3 tools/clang_tidy/run.py (see the README's "Static analysis").
 #
-# On: likely bugs (bugprone-*), avoidable slowness (performance-*), and a
-# few mechanical modernisations clang-tidy can apply itself (--fix).
+# On: likely bugs (bugprone-*), the static analyzer's path-by-path checks
+# (clang-analyzer-*: use after free, null dereferences, leaks on an early
+# return, uninitialised values, division by zero, dead stores), avoidable
+# slowness (performance-*), and a few mechanical modernisations clang-tidy
+# can apply itself (--fix).
 # Off, because they mostly flag intended code here:
 #   throwing-static-initialization  every googletest TEST() trips it
 #   easily-swappable-parameters     style: any two parameters of one type
@@ -18,6 +21,12 @@
 #   random-generator-seed           fixed seeds keep tests and simulations repeatable
 #   implicit-widening-of-multiplication-result  small array indices
 #   performance-no-int-to-ptr       OpenGL's (void *) buffer offsets
+#   clang-analyzer-security.insecureAPI.*  rand() and strcpy() in tests and
+#                                   Waffles, where neither is a risk
+#   clang-analyzer-security.FloatLoopCounter  as bugprone-float-loop-counter
+#   clang-analyzer-optin.*          opt-in style checks: struct padding,
+#                                   virtual calls in constructors, fields left
+#                                   for later, enum casts of bit flags
 # And the repo's naming rules (the README's Code conventions):
 # enumerators PascalCase (Kind::PlayStation), named constants kName
 # (constexpr, global, static and class constants: kGroups). Not Waffles,
@@ -25,6 +34,7 @@
 Checks: >
   -*,
   bugprone-*,
+  clang-analyzer-*,
   performance-*,
   modernize-use-override,
   modernize-use-nullptr,
@@ -46,7 +56,10 @@ Checks: >
   -bugprone-implicit-widening-of-multiplication-result,
   -performance-enum-size,
   -performance-avoid-endl,
-  -performance-no-int-to-ptr
+  -performance-no-int-to-ptr,
+  -clang-analyzer-security.insecureAPI.*,
+  -clang-analyzer-security.FloatLoopCounter,
+  -clang-analyzer-optin.*
 
 # Report problems in the repo's own headers (directly or through Bazel's
 # _virtual_includes, and the headers the asset cook generates), not

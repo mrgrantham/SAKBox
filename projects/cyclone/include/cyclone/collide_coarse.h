@@ -192,6 +192,13 @@ bool BVHNode<BoundingVolumeClass>::overlaps(const BVHNode<BoundingVolumeClass> *
 template <class BoundingVolumeClass>
 void BVHNode<BoundingVolumeClass>::insert(RigidBody *newBody,
                                           const BoundingVolumeClass &newVolume) {
+  // SAKBox: an empty tree (a root with no body and no children) takes the
+  // body itself; it followed a null child
+  if (!isLeaf() && (children[0] == nullptr || children[1] == nullptr)) {
+    body = newBody;
+    volume = newVolume;
+    return;
+  }
   // If we are a leaf, then the only option is to spawn two
   // new children and place the new body in one.
   if (isLeaf()) {
@@ -280,7 +287,9 @@ unsigned BVHNode<BoundingVolumeClass>::getPotentialContacts(PotentialContact *co
                                                             unsigned limit) const {
   // Early out if we don't have the room for contacts, or
   // if we're a leaf node.
-  if (isLeaf() || limit == 0)
+  // SAKBox: or an empty tree (a root with no body and no children yet),
+  // whose children are null
+  if (isLeaf() || limit == 0 || children[0] == nullptr || children[1] == nullptr)
     return 0;
 
   // SAKBox: pairs within each child count too; this only checked the two

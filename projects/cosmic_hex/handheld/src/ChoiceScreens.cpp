@@ -100,7 +100,7 @@ const std::vector<Canvas::Colour> &CardSprites::small(Art::Card card) {
   const auto whole = recipePixels(Art::cardRecipeOf(card), width_, fullHeight);
   if (whole.empty())
     return sprite;
-  sprite.assign(whole.begin(), whole.begin() + static_cast<std::ptrdiff_t>(width_ * height_));
+  sprite.assign(whole.begin(), whole.begin() + static_cast<std::ptrdiff_t>(width_) * height_);
   // Its short title in the band, dark on a light band
   Canvas band(width_, height_);
   band.blend(sprite, width_, height_, 0, 0);
@@ -239,8 +239,10 @@ void drawPlayers(Canvas &canvas, const Pickers::PlayerChoice &choice, int chosen
   if (!whole.empty())
     for (int y = 0; y < bh; ++y)
       for (int x = 0; x < bw; ++x)
-        half[static_cast<std::size_t>(y * bw + x)] =
-            whole[static_cast<std::size_t>((y * 2) * cards.width() + x * 2)];
+        half[static_cast<std::size_t>(y) * static_cast<std::size_t>(bw) +
+             static_cast<std::size_t>(x)] =
+            whole[static_cast<std::size_t>(y * 2) * static_cast<std::size_t>(cards.width()) +
+                  static_cast<std::size_t>(x * 2)];
   for (std::size_t i = 0; i < choice.options.size(); ++i) {
     const auto &option = choice.options[i];
     const Box box = playerRowBox(canvas.width(), i);

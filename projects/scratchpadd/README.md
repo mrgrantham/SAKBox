@@ -727,7 +727,7 @@ Hot functions are marked `[[gnu::hot]]`, which the DS builds put in ITCM, its fa
 - **`//projects/scratchpadd/frame_arena`**:
   - `FrameArena` (Gregory 6.2.1's single-frame allocator): a block handed out by moving a pointer, given back all at once with `reset()`
   - a thread allocates from it while an `InFrameArena` lives (through the counting allocator), and `OutOfFrameArena` keeps what must outlive the frame on the heap. Header-only, no dependencies. GameBots' search uses it: on a 3DS, the bots' allocations fell from 59,000 a second to about 40, and they play about 2.4 times as many simulated games in the same time
-- **`//projects/scratchpadd/memory_stats`**: `:counting_allocator`, which replaces the global new and delete so `MemoryStats` counts allocations (opt-in: link it; without it nothing is counted); sources for console builds
+- **`//projects/scratchpadd/memory_stats`**: `:counting_allocator`, which replaces the global new and delete so `MemoryStats` counts allocations (opt-in: link it; without it nothing is counted), and holds code to a heap budget (`MemoryStats::HeapBudget`, for tests: while one is alive, allocating past its bytes fails with `std::bad_alloc`, as on a console out of memory; frees give back); sources for console builds
 - **`//projects/scratchpadd/title_scene`**:
   - A game's title screen in 3D (`TitleScene.hpp`): its title in blocky letters (stb_easy_font's strokes as boxes, outlined), a model turning on its pedestal behind it, and a starfield turning slowly, drawn within a frame the game begins, so it can be shown at the start and again later
   - sources for console builds (`sources`, with `stb_easy_font.h`). Cosmic Hex's consoles use it with their rocket
@@ -756,7 +756,7 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 - **`network:Loop_test`, `network:Bridge_test`, `network:RemoteControls_test`, `messages:ControlsText_test`**: The network loop's services on localhost, remote controls in a running system, and control messages as text: see [`network`](network/README.md#parts)
 - **`basis:AboutPadd_test`, `utilities:AppInfo_test`**: The About tab's facts and each padd's way of running; an app named after its executable without a build's defines
 - **`basis:ActivityPadd_test`**: A padd's busy and wait graphs appearing once it works, its busy share between 0 and 100%, a 0 added in a second it's idle, and messages a second, one value a second. Also ran 10 times under ThreadSanitizer
-- **`memory_stats:MemoryStats_test`**: With the counting allocator linked: nothing counted with nobody reading; allocations put down to the slot marked on the thread, another thread's to its own; frees bringing in-use down and the peak kept; the heap's own figures on macOS and Linux. Also ran 10 times under ThreadSanitizer
+- **`memory_stats:MemoryStats_test`**: With the counting allocator linked: nothing counted with nobody reading; allocations put down to the slot marked on the thread, another thread's to its own; frees bringing in-use down and the peak kept; the heap's own figures on macOS and Linux; a heap budget failing an allocation past it (the nothrow kind too) and taking frees back. Also ran 10 times under ThreadSanitizer
 - **`memory_stats:ActivityPaddMemory_test`**: ActivityPadd with the counting allocator: allocations a second in all and a padd's own graph appearing once it allocates in a job; the heap in use. Also ran 10 times under ThreadSanitizer
 - **`basis:MessageStats_test`**:
   - Nothing counted until someone reads

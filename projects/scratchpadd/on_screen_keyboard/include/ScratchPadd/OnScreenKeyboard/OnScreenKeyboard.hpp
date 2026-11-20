@@ -50,7 +50,7 @@ public:
 
 private:
   // The keys' ids: a letter is its character; the others below
-  enum Special : int { kShift = 1, kSpace, kDelete, kDone };
+  enum Special : int { KeyShift = 1, KeySpace, KeyDelete, KeyDone };
   void type(int id);
   void setKeys();
 

@@ -883,7 +883,7 @@ private:
     else if (others_.showing(showsNow()) && latest_ && others_.which() >= 0)
       drawOtherPlayer(frame, viewOf(latest_->state, others_.which()), others_.down(showsNow()));
     else if (discovery_.moving(showsNow()))
-      drawDiscovery(frame, discovery_, closeUpFace_);
+      drawDiscovery(frame, discovery_, closeUpFace_, closeUpBack_);
     else if (pick_.at(showsNow()) && latest_ && bottomScreen_ && bottomScreen_->resourceChoice()) {
       drawPick(frame, pick_, bottomScreen_->resourceChoice()->title,
                latest_->state.player[static_cast<std::size_t>(latest_->state.turn)].resources,
@@ -1696,6 +1696,7 @@ private:
     // closeUpCards draw into them: PictureSlot)
     const int size = kThisPlatform.closeUpSize;
     closeUpFace_.load(*renderer_, size, size);
+    closeUpBack_.load(*renderer_, size, size);
     for (ScratchPadd::PictureSlot &card : closeUpCards_)
       card.load(*renderer_, size, size);
     pictures_.closeUpCardSquare = renderer_->load(
@@ -1779,11 +1780,18 @@ private:
   // (PlatformProfile::closeUpBandRows: on a DS, so a 128-pixel picture
   // never has to be in memory whole), each recipe read once
   void closeUpTile(CosmicHex::Art::Face face) {
+    closeUpTileInto(closeUpFace_, face);
+    if (const CosmicHex::Handheld::Discovery::Found *found = discovery_.current())
+      closeUpTileInto(closeUpBack_, found->faceDown);
+  }
+  void closeUpTileInto(ScratchPadd::PictureSlot &slot, CosmicHex::Art::Face face) {
+    if (slot.showing(static_cast<int>(face)))
+      return; // (drawn already)
     const int size = kThisPlatform.closeUpSize;
     const auto recipe = ScratchPadd::TextureRecipe::read(CosmicHex::Art::recipeOf(face));
     if (!recipe)
       return;
-    closeUpFace_.show(
+    slot.show(
         *renderer_, static_cast<int>(face),
         [&](int first, int rows) {
           return recipePixels(*recipe, size, size, kThisPlatform.recipeSmoothing, {first, rows});
@@ -2160,6 +2168,9 @@ private:
   // the two cards dealt, drawn sharp when they're shown, into slots loaded
   // once and reused (PictureSlot)
   ScratchPadd::PictureSlot closeUpFace_;
+  // ...and its back, flying up face down (the user's: sharp too; two
+  // designs, so it's mostly drawn already)
+  ScratchPadd::PictureSlot closeUpBack_;
   std::array<ScratchPadd::PictureSlot, 2> closeUpCards_;
   std::optional<ConsoleScreens::BottomScreen> bottom_;
   bool bottomDirty_ = true, touchWasDown_ = false, dragged_ = false;

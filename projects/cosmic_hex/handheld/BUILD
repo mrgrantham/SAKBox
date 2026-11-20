@@ -147,6 +147,7 @@ cc_test(
     srcs = ["tests/BoardPicture_test.cpp"],
     deps = [
         ":handheld",
+        "//projects/scratchpadd/memory_stats:counting_allocator",  # (heap budgets)
         "@gtest//:gtest_main",
     ],
 )
