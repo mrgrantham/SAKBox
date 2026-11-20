@@ -22,6 +22,7 @@
 
 #include <array>
 #include <cstddef>
+#include <optional>
 #include <vector>
 
 namespace ScratchPadd::Motion {
@@ -39,10 +40,44 @@ namespace ScratchPadd::Motion {
 //              two parabolas, the curve of something pulled at a constant
 //              acceleration then braked (Cosmic Hex's dice glass)
 //   Settle     fast, past the end by about a tenth, and back to settle: a
-//              piece dropped into place ("ease out back"; Cosmic Hex's
-//              number chips). The one curve that goes past 1
-enum class Curve { Linear, EaseIn, EaseOut, EaseInOut, Gentle, Pull, Settle };
+//              piece dropped into place ("ease out back", the animators'
+//              follow-through; Cosmic Hex's number chips). Goes past 1
+//   Anticipate back a little first (about a tenth), then away, slowly
+//              starting: the wind-up before a move ("ease in back", the
+//              animators' anticipation; a tile dipping before it lifts
+//              off the board). Goes below 0
+// (docs/research/animation-whimsy.md: the animation principles behind
+// Settle, Anticipate and arc)
+enum class Curve { Linear, EaseIn, EaseOut, EaseInOut, Gentle, Pull, Settle, Anticipate };
 float along(Curve curve, float t);
+
+// A point on the arc from `from` to `to`, `t` of the way (0 to 1), its
+// middle pushed out by `bulge`: a curve rather than a straight line, as
+// things thrown or lifted move (a quadratic Bezier through the middle
+// lifted by `bulge`). T needs +, - and * by a float: a float, a 3D vector
+template <typename T> T arc(const T &from, const T &to, const T &bulge, float t) {
+  // (the control point that puts the curve's middle at the straight
+  // line's middle plus `bulge`)
+  const T middle = from + (to - from) * 0.5f;
+  const T control = middle + bulge * 2.0f;
+  const float u = 1 - t;
+  return from * (u * u) + control * (2 * u * t) + to * (t * t);
+}
+
+// Something shown since a moment, on the caller's clock (seconds): a
+// view's animation started, how long it's been, and stopped again.
+//
+//   Showing dealt;           // not showing
+//   dealt.start(now);
+//   dealt.seconds(now)       // since it started
+//   dealt.stop();
+struct Showing {
+  std::optional<double> since;
+  void start(double now) { since = now; }
+  void stop() { since.reset(); }
+  bool on() const { return since.has_value(); }
+  double seconds(double now) const { return since ? now - *since : 0; }
+};
 
 // A value carried from `from` to `to`, starting at `start` (seconds, on
 // the caller's clock) and taking `seconds`, along `curve`. T is a float, or

@@ -20,6 +20,11 @@ float along(Curve curve, float t) {
   case Curve::Pull:
     // (each half a parabola reaching the middle at half the time)
     return t < 0.5f ? 2 * t * t : 1 - 2 * (1 - t) * (1 - t);
+  case Curve::Anticipate: {
+    // (the mirror of Settle: back about a tenth at its lowest)
+    constexpr float kBack = 1.70158f;
+    return t * t * ((kBack + 1) * t - kBack);
+  }
   case Curve::Settle: {
     // (the usual "back" curve: an overshoot of about 10% at its most)
     constexpr float kBack = 1.70158f;

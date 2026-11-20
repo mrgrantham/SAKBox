@@ -6,6 +6,7 @@ Research and first designs for what's next, to review together before anything i
 | --- | --- | --- |
 | [Toon shading and outlines](toon-shading.md) | Hard-banded lighting and outlines on the DS (hardware toon and edge marking), the 3DS (vertex-shader bands, or fragment-lighting tables; inverted-hull outlines) and desktops (shader ramps; inverted hull or screen-space edges) | The scene layer |
 | [The endless on-rails ship game](rail-ship-game.md) | A ship on an endless, seeded, procedural course, steering in a corridor, Tron-like, on the Mac, 3DS and DS; Cyclone's new heightfield; a moving origin for Q16.16 | Toon shading; Cyclone |
+| [Animation with some whimsy](animation-whimsy.md) | The animation principles (Lasseter's, via SIGGRAPH; Schell's juiciness; Jonasson and Purho's easing) as rules for the game's moving pieces: arcs, a wind-up before, a settle after, rigid things rigid, timing as weight | Nothing; a reference, followed by `Motion` and the views |
 | [Game design reading](game-design-reading.md) | Takeaways from the game design books (MDA, *Characteristics of Games*, *Rules of Play*, Schell, Koster, *AI and Games*), applied to the two games | Nothing; a reference |
 | [A multiplayer hex-tile trading game](../../projects/cosmic_hex/design.md) (moved: Cosmic Hex's design doc now lives in its project) | An original game in the hex resource-trading genre, played with a DS each over local wireless; the host's state is authoritative; the DS toolchain decision (local multiplayer is in BlocksDS's DSWifi, not devkitPro's) | The message bridge |
 

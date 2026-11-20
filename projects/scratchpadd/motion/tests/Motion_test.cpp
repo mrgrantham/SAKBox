@@ -101,3 +101,36 @@ TEST(MotionTest, GentleIsSofterAtBothEnds) {
   EXPECT_LT(along(Curve::Gentle, 0.1f), along(Curve::EaseInOut, 0.1f));
   EXPECT_GT(along(Curve::Gentle, 0.9f), along(Curve::EaseInOut, 0.9f));
 }
+
+// Anticipate: back a little first (about a tenth), then all the way
+TEST(MotionTest, AnticipateWindsUpFirst) {
+  using ScratchPadd::Motion::along;
+  using ScratchPadd::Motion::Curve;
+  EXPECT_FLOAT_EQ(along(Curve::Anticipate, 0), 0);
+  EXPECT_NEAR(along(Curve::Anticipate, 1), 1, 1e-5f);
+  float lowest = 0;
+  for (float t = 0; t <= 1; t += 0.01f)
+    lowest = std::min(lowest, along(Curve::Anticipate, t));
+  EXPECT_LT(lowest, -0.08f);
+  EXPECT_GT(lowest, -0.12f);
+}
+
+// An arc: from its start to its end, its middle pushed out by the bulge
+TEST(MotionTest, AnArcBulgesAtItsMiddle) {
+  using ScratchPadd::Motion::arc;
+  EXPECT_FLOAT_EQ(arc(0.0f, 10.0f, 3.0f, 0), 0);
+  EXPECT_FLOAT_EQ(arc(0.0f, 10.0f, 3.0f, 1), 10);
+  EXPECT_FLOAT_EQ(arc(0.0f, 10.0f, 3.0f, 0.5f), 8);     // (5, the middle, plus 3)
+  EXPECT_FLOAT_EQ(arc(0.0f, 10.0f, 0.0f, 0.25f), 2.5f); // (no bulge: a straight line)
+}
+
+// Showing: on from its start, how long since, off again
+TEST(MotionTest, ShowingCountsSinceItStarted) {
+  ScratchPadd::Motion::Showing showing;
+  EXPECT_FALSE(showing.on());
+  showing.start(4.0);
+  EXPECT_TRUE(showing.on());
+  EXPECT_DOUBLE_EQ(showing.seconds(6.5), 2.5);
+  showing.stop();
+  EXPECT_FALSE(showing.on());
+}
