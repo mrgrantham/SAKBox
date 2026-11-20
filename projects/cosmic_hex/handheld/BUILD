@@ -35,6 +35,7 @@ cc_library(
         "src/TopShows.cpp",
         "src/TopViews.cpp",
         "src/TradeRoom.cpp",
+        "src/WinCelebration.cpp",
     ],
     hdrs = [
         "include/CosmicHex/Handheld/BoardButtons.hpp",
@@ -69,6 +70,7 @@ cc_library(
         "include/CosmicHex/Handheld/TopShows.hpp",
         "include/CosmicHex/Handheld/TopViews.hpp",
         "include/CosmicHex/Handheld/TradeRoom.hpp",
+        "include/CosmicHex/Handheld/WinCelebration.hpp",
     ],
     strip_include_prefix = "include/",
     visibility = ["//projects/cosmic_hex:__subpackages__"],
@@ -366,6 +368,16 @@ cc_test(
     name = "ScorePops_test",
     size = "small",
     srcs = ["tests/ScorePops_test.cpp"],
+    deps = [
+        ":handheld",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "WinCelebration_test",
+    size = "small",
+    srcs = ["tests/WinCelebration_test.cpp"],
     deps = [
         ":handheld",
         "@gtest//:gtest_main",

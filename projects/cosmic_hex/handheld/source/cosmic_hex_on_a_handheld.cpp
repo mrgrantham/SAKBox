@@ -58,6 +58,7 @@
 #include <CosmicHex/Handheld/TableGame.hpp>
 #include <CosmicHex/Handheld/TopShows.hpp>
 #include <CosmicHex/Handheld/TopViews.hpp>
+#include <CosmicHex/Handheld/WinCelebration.hpp>
 #include <ScratchPadd/Canvas/Canvas.hpp>
 #include <ScratchPadd/FrameProfile.hpp>
 #include <ScratchPadd/GameClock.hpp>
@@ -437,9 +438,10 @@ public:
           send(PlayMove{*next});
           latest_->yourMove = false;
         }
-      // Someone won: the title again, with who (ScreenFlow's Won)
-      if (snapshot.state.winner >= 0)
-        apply(flow_.on(ScreenFlow::Event::GameWon));
+      // Someone won: their ships fly round above the board, then the
+      // title again, with who (ScreenFlow's Won)
+      if (snapshot.state.winner >= 0 && !celebration_ && flow_.screen() == ScreenFlow::Screen::Game)
+        celebrate(snapshot.state);
     });
   }
   std::string name() override { return "ScreenPadd"; }
@@ -617,6 +619,7 @@ private:
     updateHomePay();
     updateRollPay();
     updateCardPlay();
+    updateCelebration();
     // The two cards dealt, drawn sharp before they're thrown in (on a DS
     // about a quarter of a second, while the screen is still)
     if (dealt_.needsCloseUp()) {
@@ -683,10 +686,13 @@ private:
           0, 0, kTopWidth, kTopHeight,
           {0, 0, 0, static_cast<std::uint8_t>(std::lround((1 - in) * 255))});
     if (flow_.screen() == ScreenFlow::Screen::Won && latest_) {
-      char line[64];
-      std::snprintf(line, sizeof line, "Player %d wins!", latest_->state.winner + 1);
+      const int winner = latest_->state.winner;
       Scene::Overlay &overlay = renderer_->overlay();
-      overlay.text(kTopWidth / 2.0f - 70, kTopHeight - 40, line, Palette::kHighlight, 2);
+      overlay.textCentred(kTopWidth / 2.0f, kTopHeight - 34,
+                          (mode_ == Mode::Playing && winner == 0 ? std::string("You win")
+                                                                 : names_[winner] + " wins") +
+                              "!",
+                          Palette::kHighlight, 2);
       overlay.text(kTopWidth / 2.0f - 60, kTopHeight - 16, "A: to the title", Palette::kSoftWords);
     }
     showProfile();
@@ -1020,19 +1026,50 @@ private:
 
   // A ship at `pose` in `colour`, its engine's flame when it burns
   // (swivelled, flickering a little, from the middle of its tail)
-  void drawShip(const ShipPose &pose, const Scene::Transform &placement, Scene::Colour colour) {
+  void drawShip(const ShipPose &pose, const Scene::Transform &placement, Scene::Colour colour,
+                std::uint8_t alpha = 31) {
+    if (alpha == 0)
+      return;
     const Scene::Transform at = placement * Scene::Transform::translation(pose.at) *
                                 Scene::Transform::rotation({0, 1, 0}, pose.heading);
-    renderer_->draw(ship_, at, {.shading = Scene::Material::Shading::Toon, .colour = colour});
+    renderer_->draw(ship_, at,
+                    {.shading = Scene::Material::Shading::Toon, .colour = colour, .alpha = alpha});
     if (pose.flame <= 0)
       return;
     const float flicker = 0.85f + 0.15f * std::sin(static_cast<float>(gameClock_.seconds()) * 47);
     const float length = 0.65f * pose.flame * flicker;
-    renderer_->draw(flame_,
-                    at * Scene::Transform::translation({-0.27f, 0.21f, 0}) *
-                        Scene::Transform::rotation({0, 1, 0}, pose.gimbal) *
-                        Scene::Transform::scaling({length, 1, 1}),
-                    {.shading = Scene::Material::Shading::Unlit, .colour = {255, 110, 40}});
+    renderer_->draw(
+        flame_,
+        at * Scene::Transform::translation({-0.27f, 0.21f, 0}) *
+            Scene::Transform::rotation({0, 1, 0}, pose.gimbal) *
+            Scene::Transform::scaling({length, 1, 1}),
+        {.shading = Scene::Material::Shading::Unlit, .colour = {255, 110, 40}, .alpha = alpha});
+  }
+
+  // Someone's won: their ships (and, if fewer than three, more from their
+  // colonies) fly round above the board (WinCelebration), then the title;
+  // straight to the title when animations are off
+  std::optional<WinCelebration> celebration_;
+  void celebrate(const State &state) {
+    if (animations_ == Animations::Off) {
+      apply(flow_.on(ScreenFlow::Event::GameWon));
+      return;
+    }
+    std::vector<Scene::Vector3> ships, colonies;
+    for (const CosmicHex::Ship &ship : state.ships)
+      if (ship.owner == state.winner)
+        ships.push_back(BoardPieces::at(ship.corner));
+    for (const CosmicHex::Station &station : state.stations)
+      if (station.owner == state.winner && station.colony)
+        colonies.push_back(BoardPieces::at(station.at));
+    celebration_.emplace(ships, colonies, showsNow());
+  }
+  // Each frame: once it's over (or skipped), the title
+  void updateCelebration() {
+    if (celebration_ && celebration_->over(showsNow())) {
+      celebration_.reset();
+      apply(flow_.on(ScreenFlow::Event::GameWon));
+    }
   }
 
   // A board's tiles, chips, stations and ships, placed by `placement`
@@ -1132,8 +1169,14 @@ private:
     }
     // Ships, flying from where they were, nose first, their engines
     // burning as they speed up (BoardMotion)
+    // (the winner's flying round above it instead, once someone's won)
     for (std::size_t i = 0; i < state.ships.size(); ++i)
-      drawShip(motion_.ship(i, t), placement, BoardColours::ofPlayer(state.ships[i].owner));
+      if (!celebration_ || state.ships[i].owner != state.winner)
+        drawShip(motion_.ship(i, t), placement, BoardColours::ofPlayer(state.ships[i].owner));
+    if (celebration_ && state.winner >= 0)
+      for (std::size_t i = 0; i < celebration_->ships(); ++i)
+        drawShip(celebration_->pose(i, showsNow()), placement, BoardColours::ofPlayer(state.winner),
+                 static_cast<std::uint8_t>(31 * celebration_->fadedIn(i, showsNow())));
     // The blockade, swooping to its planet
     if (const auto pose = motion_.blockade(t))
       drawShip(*pose, placement, BoardColours::kBlockade);
@@ -1199,10 +1242,13 @@ private:
         !cards_.showing(showsNow()) && bottomScreen_ && bottomScreen_->showingMoveList())
       drawMoves(overlay);
     drawBanner(overlay);
-    if (state.winner >= 0) {
-      std::snprintf(line, sizeof line, "Player %d wins!", state.winner + 1);
-      overlay.text(kTopWidth / 2.0f - 60, kTopHeight / 2.0f - 10, line, Palette::kHighlight, 1.5f);
-    }
+    if (state.winner >= 0)
+      overlay.textCentred(kTopWidth / 2.0f, kTopHeight / 2.0f,
+                          (mode_ == Mode::Playing && state.winner == 0
+                               ? std::string("You win")
+                               : names_[state.winner] + " wins") +
+                              "!",
+                          BoardColours::ofPlayer(state.winner), kTopWidth >= 400 ? 3.0f : 2.5f);
   }
 
   // How big a pop draws something (ScorePops' size): its overshoot made
@@ -1327,6 +1373,11 @@ private:
     const Button back = lastPad_.buttonFor(Input::Role::Back);
     // (B: an animation straight to its end; pressed again, B's own job)
     if (pressed.pressed(back) && skippable()) {
+      skipAnimations();
+      return;
+    }
+    // (A: on from the winner's celebration)
+    if (celebration_ && pressed.pressed(confirm)) {
       skipAnimations();
       return;
     }
@@ -1935,7 +1986,7 @@ private:
     if (shownInfo_ != BottomScreen::Info::None || cards_.moving(showsNow()) || outlineMovedAt_)
       return true; // (an info view coming in or going, the points' outline)
     // (the views over the board: each says)
-    if (scorePops_.popping(showsNow()) || cardPlay_.moving(showsNow()))
+    if (scorePops_.popping(showsNow()) || cardPlay_.moving(showsNow()) || celebration_)
       return true; // (points or badges popping in, a card played)
     if (dealt_.moving() || others_.moving(showsNow()) || discovery_.moving(showsNow()) ||
         homePay_.moving(showsNow()) || rollPay_.moving(showsNow()))
@@ -2109,7 +2160,7 @@ private:
   bool skippable() const {
     if (flow_.screen() != ScreenFlow::Screen::Game || !latest_)
       return false;
-    if (dice_ != DiceStage::Idle || firstRoll_.on())
+    if (dice_ != DiceStage::Idle || firstRoll_.on() || celebration_)
       return true;
     if (gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving)
       return true;
@@ -2301,6 +2352,7 @@ private:
     if (step.quit)
       quitting_ = true;
     if (step.stopGame) {
+      celebration_.reset();
       send(StopGame{});
       latest_.reset();
       motion_ = BoardMotion();
