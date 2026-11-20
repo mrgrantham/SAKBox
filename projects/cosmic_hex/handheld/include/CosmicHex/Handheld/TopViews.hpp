@@ -1,0 +1,66 @@
+// TopViews.hpp - drawing what the top screen shows over the board for a
+// while (TopShows.hpp's shows): a discovered tile, the two cards dealt,
+// another player's panel, who goes first. Each draws into a TopFrame: the
+// renderer, its overlay and camera, the screen's size, the pictures loaded
+// once (TopPictures) and the players' names.
+//
+//   TopFrame frame{renderer, overlay, camera, 256, 192, pictures, names, now};
+//   drawDiscovery(frame, discovery, closeUpFace);
+//
+// The board itself and the HUD are the app's. Pictures over the board are
+// flat squares just in front of the camera (ScreenPictures.hpp), so the
+// overlay's words (always on top) go over them.
+#pragma once
+
+#include <CosmicHex/Art.hpp>
+#include <CosmicHex/Handheld/CardChoices.hpp>
+#include <CosmicHex/Handheld/OtherPlayers.hpp>
+#include <CosmicHex/Handheld/PlayerNames.hpp>
+#include <CosmicHex/Handheld/TopShows.hpp>
+
+#include <ScratchPadd/PictureSlot/PictureSlot.hpp>
+#include <ScratchPadd/Scene/Overlay.hpp>
+#include <ScratchPadd/Scene/Scene.hpp>
+
+#include <array>
+
+namespace CosmicHex::Handheld {
+
+// The pictures the views draw with, loaded once by the app
+struct TopPictures {
+  ScratchPadd::Scene::Mesh hexTile, numberChip; // (the board's own pieces)
+  // Flat squares, each with its pictures' texture corners (ScreenPictures)
+  ScratchPadd::Scene::Mesh pictureSquare, backSquare, closeUpCardSquare;
+  std::array<ScratchPadd::Scene::Texture, Art::kFaces> faces{};
+  std::array<ScratchPadd::Scene::Texture, Art::kHighestChip + 1> chips{}; // (by number)
+  std::array<ScratchPadd::Scene::Texture, Art::kCards> cards{};           // (action cards')
+  std::array<ScratchPadd::Scene::Texture, 2> backs{};                     // (by Art::CardBack)
+};
+
+// One frame's drawing
+struct TopFrame {
+  ScratchPadd::Scene::Renderer &renderer;
+  ScratchPadd::Scene::Overlay &overlay;
+  const ScratchPadd::Scene::Camera &camera;
+  float width, height; // (the screen, in pixels)
+  const TopPictures &pictures;
+  const PlayerNames &names;
+  double now;                             // (the shows' clock)
+  float k() const { return width / 256; } // (sizes are for a DS's screen, scaled)
+};
+
+// A discovered tile flying up from the board, turned over and set back
+// (its face from `closeUp` when that holds it: PictureSlot id, the face)
+void drawDiscovery(const TopFrame &frame, const DiscoveryShow &show,
+                   const ScratchPadd::PictureSlot &closeUp);
+// The two cards dealt, thrown in and turned, the one `chosen` below
+// outlined (`closeUps`: the cards' pictures drawn sharp, in order)
+void drawDealtCards(const TopFrame &frame, const DealtShow &show, int chosen,
+                    const std::array<ScratchPadd::PictureSlot, 2> &closeUps);
+// What everyone can see of a player, on a panel sliding down from the top
+void drawOtherPlayer(const TopFrame &frame, const PlayerView &view, float down);
+// Who goes first: the dice of each round, tumbling and settling, then the
+// order by name
+void drawFirstRoll(const TopFrame &frame, const FirstRoll &roll, float seconds);
+
+} // namespace CosmicHex::Handheld

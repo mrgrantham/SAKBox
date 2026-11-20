@@ -54,6 +54,8 @@
 #include <CosmicHex/Handheld/ScreenPictures.hpp>
 #include <CosmicHex/Handheld/StartMenu.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
+#include <CosmicHex/Handheld/TopShows.hpp>
+#include <CosmicHex/Handheld/TopViews.hpp>
 #include <ScratchPadd/Canvas/Canvas.hpp>
 #include <ScratchPadd/FrameProfile.hpp>
 #include <ScratchPadd/GameClock.hpp>
@@ -81,8 +83,10 @@
 #include <ScratchPadd/Banner/Banner.hpp>
 #include <ScratchPadd/ConsoleScreens/ConsoleScreens.hpp>
 #include <ScratchPadd/OwnerName/OwnerName.hpp>
+#include <ScratchPadd/PictureSlot/PictureSlot.hpp>
 #include <ScratchPadd/Scene/TextWrap.hpp>
 #include <ScratchPadd/StartupSplash/StartupSplash.hpp>
+#include <ScratchPadd/StillFrames/StillFrames.hpp>
 
 #if defined(COSMIC_HEX_BENCH)
 #include "CosmicHexBench.hpp"
@@ -134,18 +138,11 @@ constexpr std::array<ScriptedTap, 0> kScriptedTaps{};
 // is done
 // The points bars' outline moving to the next player's row
 constexpr float kSecondsOutline = 0.35f;
-// The two cards dealt after buying: each thrown in, then turned over
-constexpr float kSecondsCardThrow = 0.45f, kSecondsCardTurn = 0.4f;
 // How long the other players' view takes to slide down (or up)
 constexpr float kSecondsPanel = 0.3f;
-// How long who goes first is shown at the start (A goes on sooner)
 // Show resources' cards: each eases in (and out) over kSecondsCard, each
 // a little after the last
 constexpr float kSecondsCard = 0.25f, kSecondsCardStagger = 0.05f;
-// Who goes first: each round of dice thrown, tumbling then settling; then
-// time to read the order
-constexpr float kSecondsARollRound = 1.4f, kSecondsDiceTumble = 0.9f;
-constexpr double kSecondsFirstRollRead = 2.6;
 constexpr double kSecondsTitleFadeIn = 0.6;
 
 constexpr bool kTitleScene = true;
@@ -337,14 +334,9 @@ public:
       // What moved since the last, animated from now
       if (latest_) {
         motion_ = BoardMotion(latest_->state, snapshot.state);
-        shownBig_.clear();
         // Tiles turned over: each shown big on the top screen, one after
-        // another, once the ship's slide is done (Discovery)
-        for (Discovery::Found &found : Discovery::between(latest_->state, snapshot.state))
-          discoveries_.push_back(std::move(found));
-        if (!discoveries_.empty() && !discoveryAt_)
-          discoveryAt_ =
-              Clock::now() + std::chrono::milliseconds(static_cast<int>(kSecondsAnimating * 1000));
+        // another, once the ship's slide is done (DiscoveryShow)
+        discovery_.arrived(latest_->state, snapshot.state, now() + kSecondsAnimating);
       }
       // A new turn (after the setup's placing): its banner
       const CosmicHex::Phase phase = snapshot.state.phase;
@@ -352,7 +344,7 @@ public:
           phase == CosmicHex::Phase::PlaceColony || phase == CosmicHex::Phase::PlaceShip;
       // (the start's placing: whose it is and what, once who goes first is
       // shown)
-      if (placing && !firstRollShownAt_ && !descentStarted_ &&
+      if (placing && !firstRoll_.on() && !descentStarted_ &&
           (!latest_ || snapshot.state.turn != latest_->state.turn || phase != latest_->state.phase))
         startPlacingBanner(snapshot.state);
       if (latest_ && snapshot.state.turn != latest_->state.turn && !placing &&
@@ -366,10 +358,11 @@ public:
       {
         const bool keeping = mode_ == Mode::Playing && snapshot.yourMove &&
                              snapshot.state.phase == CosmicHex::Phase::KeepContract;
-        if (keeping && !keepDealtAt_)
-          keepDealtAt_ = Clock::now();
-        else if (!keeping)
-          keepDealtAt_.reset();
+        const auto choice = keeping ? keepChoiceOf(snapshot.state, snapshot.moves) : std::nullopt;
+        if (choice)
+          dealt_.deal(choice->cards, now());
+        else
+          dealt_.stop();
       }
       // A new turn: the points bars' outline moves to its row
       if (latest_ && snapshot.state.turn != latest_->state.turn) {
@@ -419,8 +412,8 @@ public:
     bottomCanvas_.emplace(kBottomWidth, kBottomHeight);
     renderer_.emplace(*display_);
     const BoardPieces pieces;
-    hexTile_ = renderer_->load(pieces.hexTile.data());
-    numberChip_ = renderer_->load(pieces.numberChip.data());
+    pictures_.hexTile = renderer_->load(pieces.hexTile.data());
+    pictures_.numberChip = renderer_->load(pieces.numberChip.data());
     station_ = renderer_->load(pieces.station.data());
     colony_ = renderer_->load(pieces.colony.data());
     ship_ = renderer_->load(pieces.ship.data());
@@ -517,6 +510,11 @@ private:
       } else {
         infoClosingAt_.reset();
       }
+      // (another player's panel: down as it opens, up as it closes)
+      if (bottomScreen_->info() == BottomScreen::Info::Player)
+        others_.open(bottomScreen_->infoPlayer(), now());
+      else if (shownInfo_ == BottomScreen::Info::Player)
+        others_.close(now());
       shownInfo_ = bottomScreen_->info();
       infoOpenedAt_ = Clock::now();
       if (flow_.screen() == ScreenFlow::Screen::Game && latest_) {
@@ -537,6 +535,9 @@ private:
         bottomDirty_ = true;
       pressDrawn_ = bottomScreen_->pressing(); // (and once more, to clear it)
     }
+    // (another player chosen while the panel's open: their view)
+    if (bottomScreen_ && shownInfo_ == BottomScreen::Info::Player)
+      others_.choose(bottomScreen_->infoPlayer());
     if (bottomScreen_ && bottomScreen_->showingFeedback()) {
       if (!feedbackSince_) {
         feedbackSince_ = Clock::now();
@@ -547,8 +548,7 @@ private:
       }
     }
     profile_.frameStarted();
-    if (firstRollShownAt_ && latest_ &&
-        secondsSince(*firstRollShownAt_) > firstRollSeconds(latest_->firstRoll))
+    if (latest_ && firstRoll_.done(now(), latest_->firstRoll))
       endFirstRoll();
     if (bottomDirty_) {
       auto timing = profile_.time(kProfileBottom);
@@ -562,12 +562,9 @@ private:
     updateDiscovery();
     // The two cards dealt, drawn sharp before they're thrown in (on a DS
     // about a quarter of a second, while the screen is still)
-    if (keepDealtAt_ && latest_) {
-      if (const auto choice = keepChoiceOf(latest_->state, latest_->moves);
-          choice && choice->cards != closeUpCardsShow_) {
-        closeUpCards(choice->cards);
-        keepDealtAt_ = Clock::now();
-      }
+    if (dealt_.needsCloseUp()) {
+      closeUpCards(dealt_.cards());
+      dealt_.closeUpDrawn(now());
     }
     // (the map's faces at the whole board's size, and the bottom screen's
     // pictures, are drawn at the start: starting())
@@ -606,7 +603,7 @@ private:
       ConsoleScreens::waitForTheRefresh();
     } else {
       drawBoard(latest_ ? &latest_->state : nullptr);
-      movedWhenDrawn_ = topMoving();
+      still_.drawn(topMoving());
       drawnSnapshots_ = snapshots_;
       drawnTurn_ = turn_;
       drawnSelection_ = selected_;
@@ -832,7 +829,7 @@ private:
       descentStarted_.reset();
       // (down: who goes first, shown, the game still held; then it goes on)
       if (flow_.screen() == ScreenFlow::Screen::Game)
-        firstRollShownAt_ = Clock::now(); // (real time: the game's clock is held)
+        firstRoll_.start(now()); // (real time: the game's clock is held)
     }
     const Scene::Camera camera = cameraBetween(topDownCamera(), gameCamera(turn_), down);
     renderer_->beginFrame(camera, boardEnvironment(1 - down));
@@ -846,19 +843,28 @@ private:
       drawPieces(*shown, Scene::Transform::identity());
     }
     // (behind another player's view, the dice wait unseen: the game's held)
-    if (!showingPlayer())
+    if (!others_.showing(now()))
       drawDice(camera);
     drawInfo(camera);
-    // (who goes first in place of the usual words: on a DS words are on a
-    // layer over every shape, so they'd show through it)
-    if (firstRollShownAt_)
-      drawFirstRoll(renderer_->overlay());
-    else if (showingPlayer())
-      drawOtherPlayer(renderer_->overlay(), camera);
-    else if (discoveryMoment())
-      drawDiscovery(renderer_->overlay(), camera);
-    else if (keepDealtAt_)
-      drawDealtCards(renderer_->overlay(), camera);
+    // What shows over the board for a while (TopViews; on a DS words are on
+    // a layer over every shape, so only one at a time)
+    const TopFrame frame{*renderer_,
+                         renderer_->overlay(),
+                         camera,
+                         static_cast<float>(kTopWidth),
+                         static_cast<float>(kTopHeight),
+                         pictures_,
+                         names_,
+                         now()};
+    if (firstRoll_.on() && latest_)
+      drawFirstRoll(frame, latest_->firstRoll, firstRoll_.seconds(now()));
+    else if (others_.showing(now()) && latest_ && others_.which() >= 0)
+      drawOtherPlayer(frame, viewOf(latest_->state, others_.which()), others_.down(now()));
+    else if (discovery_.moving(now()))
+      drawDiscovery(frame, discovery_, closeUpFace_);
+    else if (dealt_.on())
+      drawDealtCards(frame, dealt_, bottomScreen_ ? bottomScreen_->keepChosen() : -1,
+                     closeUpCards_);
     else
       drawText();
     // The touched corner (or the blockade's hex), ringed on the 3D board too
@@ -951,41 +957,41 @@ private:
                               CosmicHex::Art::Face down, CosmicHex::Art::Face up) {
       const auto showing = [&](CosmicHex::Art::Face face) {
         // (a face that didn't load: its colour)
-        if (!faces_[static_cast<std::size_t>(face)])
+        if (!pictures_.faces[static_cast<std::size_t>(face)])
           return Scene::Material{.shading = Scene::Material::Shading::Toon,
                                  .colour = BoardColours::ofFace(face)};
         return Scene::Material{.shading = Scene::Material::Shading::Toon,
-                               .texture = faces_[static_cast<std::size_t>(face)]};
+                               .texture = pictures_.faces[static_cast<std::size_t>(face)]};
       };
       if (!turn) {
-        renderer_->draw(hexTile_, placement * BoardPieces::onHex(hex), showing(up));
+        renderer_->draw(pictures_.hexTile, placement * BoardPieces::onHex(hex), showing(up));
         return;
       }
       const float half = 1.5707963f;
       const bool upSide = *turn > half;
       const auto lift = Scene::Transform::translation({0, 0.6f * std::sin(*turn), 0});
       const auto spin = Scene::Transform::rotation({1, 0, 0}, upSide ? *turn - 2 * half : *turn);
-      renderer_->draw(hexTile_, placement * BoardPieces::onHex(hex) * lift * spin,
+      renderer_->draw(pictures_.hexTile, placement * BoardPieces::onHex(hex) * lift * spin,
                       showing(upSide ? up : down));
     };
     for (std::size_t i = 0; i < state.planets.size(); ++i) {
       // (one turned over is shown big first: face down here till it's
       // back, then simply face up: Discovery)
       const CosmicHex::Hex hex = state.planets[i].hex;
-      if (stillDiscovering(hex)) {
-        if (!flying(hex))
+      if (discovery_.stillToShow(hex, now())) {
+        if (!discovery_.flying(hex, now()))
           drawTile(hex, std::nullopt, CosmicHex::Art::Face::PlanetFaceDown,
                    CosmicHex::Art::Face::PlanetFaceDown);
         continue;
       }
-      const bool shownBig = wasShownBig(hex);
+      const bool shownBig = discovery_.shownBig(hex);
       const auto turn = shownBig ? std::nullopt : motion_.planetTurn(i, t);
       drawTile(hex, turn, CosmicHex::Art::Face::PlanetFaceDown, faceOf(state.planets[i]));
       // its number chip, once it's lying face up; one just
       // turned over drops onto it from above and settles (a
       // short bounce on a curve, the same every time)
       const int number = chipOf(state.planets[i]);
-      const Scene::Texture chip = chips_[static_cast<std::size_t>(number)];
+      const Scene::Texture chip = pictures_.chips[static_cast<std::size_t>(number)];
       if (number > 0 && !turn && chip) {
         float drop = 0;
         if (motion_.planetTurn(i, 0) && !shownBig) {
@@ -995,7 +1001,7 @@ private:
           drop = since < 0 ? kChipDropHeight : (1 - landed) * kChipDropHeight;
         }
         renderer_->draw(
-            numberChip_,
+            pictures_.numberChip,
             placement * BoardPieces::onHex(state.planets[i].hex) *
                 Scene::Transform::translation({0, drop, 0}),
             Scene::Material{.shading = Scene::Material::Shading::Toon, .texture = chip});
@@ -1003,12 +1009,12 @@ private:
     }
     for (std::size_t i = 0; i < state.zone.size(); ++i) {
       const CosmicHex::Hex hex = state.zone[i].hex;
-      if (stillDiscovering(hex)) {
-        if (!flying(hex))
+      if (discovery_.stillToShow(hex, now())) {
+        if (!discovery_.flying(hex, now()))
           drawTile(hex, std::nullopt, CosmicHex::Art::Face::FindFaceDown,
                    CosmicHex::Art::Face::FindFaceDown);
       } else
-        drawTile(hex, wasShownBig(hex) ? std::nullopt : motion_.siteTurn(i, t),
+        drawTile(hex, discovery_.shownBig(hex) ? std::nullopt : motion_.siteTurn(i, t),
                  CosmicHex::Art::Face::FindFaceDown, faceOf(state.zone[i]));
     }
     for (const CosmicHex::Station &station : state.stations)
@@ -1175,7 +1181,7 @@ private:
   // the last showing its band; your action cards across the top half; each
   // card easing in on its own, the piles from below, the cards from above
   void drawInfo(const Scene::Camera &camera) {
-    if (!latest_ || !showingResources() || !pictureSquare_)
+    if (!latest_ || !showingResources() || !pictures_.pictureSquare)
       return;
     const State &state = latest_->state;
     const auto &player = state.player[static_cast<std::size_t>(infoPlayer(state))];
@@ -1208,10 +1214,10 @@ private:
     for (std::size_t i = 0; i < actions.size(); ++i) {
       const float x = (screenW - total) / 2 + static_cast<float>(i) * (w + gap), y = 44 * k;
       const float in = cardArrived(order++);
-      renderer_->draw(pictureSquare_,
+      renderer_->draw(pictures_.pictureSquare,
                       onScreenAt(camera, screenW, screenH, x, y - (1 - in) * (y + h + 4), w, h),
                       {.shading = Scene::Material::Shading::Unlit,
-                       .texture = cardPictures_[static_cast<std::size_t>(actions[i])]});
+                       .texture = pictures_.cards[static_cast<std::size_t>(actions[i])]});
     }
   }
 
@@ -1321,7 +1327,7 @@ private:
     const Button confirm = lastPad_.buttonFor(Input::Role::Confirm);
     const Button back = lastPad_.buttonFor(Input::Role::Back);
     // (A: on from who goes first)
-    if (firstRollShownAt_ && pressed.pressed(confirm)) {
+    if (firstRoll_.on() && pressed.pressed(confirm)) {
       endFirstRoll();
       return;
     }
@@ -1610,21 +1616,21 @@ private:
             auto timing = profile_.time(kProfileMap);
             // Tiles turned over still face down on the map until the top
             // screen has shown them, then each fades in (Discovery)
-            if (discoveries_.empty()) {
+            if (!discovery_.waiting()) {
               picture_->draw(latest_->state, marks);
             } else {
               CosmicHex::State waiting = latest_->state;
-              for (std::size_t i = 1; i < discoveries_.size(); ++i) {
+              for (const CosmicHex::Hex hex : discovery_.waitingAfterCurrent()) {
                 for (CosmicHex::Planet &planet : waiting.planets)
-                  if (planet.hex == discoveries_[i].hex)
+                  if (planet.hex == hex)
                     planet.flipped = false;
                 for (CosmicHex::ZoneSite &site : waiting.zone)
-                  if (site.hex == discoveries_[i].hex)
+                  if (site.hex == hex)
                     site.flipped = false;
               }
-              const auto moment = discoveryMoment();
-              marks.revealing = BoardPicture::Marks::Revealing{
-                  .hex = discoveries_.front().hex, .shown = moment ? moment->fade : 0.0f};
+              if (const auto revealing = discovery_.revealing(now()))
+                marks.revealing = BoardPicture::Marks::Revealing{.hex = revealing->hex,
+                                                                 .shown = revealing->shown};
               picture_->draw(waiting, marks);
             }
           }
@@ -1735,18 +1741,16 @@ private:
           load(static_cast<CosmicHex::Art::Card>(r), resourceWidth_, uMax, vMax);
     resourceSquare_ = renderer_->load(pictureSquare(uMax, vMax).data());
     for (int c = CosmicHex::kResources; c < CosmicHex::Art::kCards; ++c)
-      cardPictures_[static_cast<std::size_t>(c)] =
+      pictures_.cards[static_cast<std::size_t>(c)] =
           load(static_cast<CosmicHex::Art::Card>(c), cardWidth_, uMax, vMax);
-    pictureSquare_ = renderer_->load(pictureSquare(uMax, vMax).data());
-    // The close-ups' textures, blank until one's shown (closeUpTile and
-    // closeUpCards draw into them)
+    pictures_.pictureSquare = renderer_->load(pictureSquare(uMax, vMax).data());
+    // The close-ups' slots, blank until one's shown (closeUpTile and
+    // closeUpCards draw into them: PictureSlot)
     const int size = kThisPlatform.closeUpSize;
-    const Scene::TextureImage blank{
-        size, size, std::vector<Scene::Colour>(static_cast<std::size_t>(size * size))};
-    closeUpFace_ = renderer_->load(blank);
-    for (Scene::Texture &card : closeUpCards_)
-      card = renderer_->load(blank);
-    closeUpCardSquare_ = renderer_->load(
+    closeUpFace_.load(*renderer_, size, size);
+    for (ScratchPadd::PictureSlot &card : closeUpCards_)
+      card.load(*renderer_, size, size);
+    pictures_.closeUpCardSquare = renderer_->load(
         pictureSquare(1, static_cast<float>(size * 52 / 63) / static_cast<float>(size)).data());
     // The two backs, whole cards (the planets for resource cards, the rings
     // for action cards: the agreed designs), for cards held face down
@@ -1757,9 +1761,9 @@ private:
       if (whole.empty())
         continue;
       const PaddedPicture picture = padded(whole, cardWidth_, cardWidth_ * 88 / 63);
-      backPictures_[static_cast<std::size_t>(design)] =
+      pictures_.backs[static_cast<std::size_t>(design)] =
           renderer_->load(Scene::TextureImage{picture.width, picture.height, picture.pixels});
-      backSquare_ = renderer_->load(pictureSquare(picture.uMax, picture.vMax).data());
+      pictures_.backSquare = renderer_->load(pictureSquare(picture.uMax, picture.vMax).data());
     }
   }
 
@@ -1775,7 +1779,7 @@ private:
                              kThisPlatform.recipeSmoothing);
       if (pixels.empty())
         continue; // (the tile shows white: a broken recipe, tested against on the Mac)
-      faces_[static_cast<std::size_t>(i)] =
+      pictures_.faces[static_cast<std::size_t>(i)] =
           renderer_->load(Scene::TextureImage{kFaceSize, kFaceSize, pixels});
     }
     // and the number chips, half a face's size
@@ -1785,14 +1789,14 @@ private:
           recipePixels(CosmicHex::Art::chipRecipeOf(n), kChipSize, kThisPlatform.recipeSmoothing);
       if (pixels.empty())
         continue;
-      chips_[static_cast<std::size_t>(n)] =
+      pictures_.chips[static_cast<std::size_t>(n)] =
           renderer_->load(Scene::TextureImage{kChipSize, kChipSize, pixels});
     }
   }
 
-  Scene::Mesh hexTile_, numberChip_, station_, colony_, ship_, stars_, hexRing_, cornerRing_;
-  std::array<Scene::Texture, CosmicHex::Art::kFaces> faces_{};
-  std::array<Scene::Texture, CosmicHex::Art::kHighestChip + 1> chips_{}; // (by number)
+  Scene::Mesh station_, colony_, ship_, stars_, hexRing_, cornerRing_;
+  // The pictures the board and the views over it draw with (TopViews)
+  TopPictures pictures_;
   // Memory, measured (with the counting allocator in the build)
   std::optional<ScratchPadd::MemoryStats::Reader> memory_;
   Clock::time_point memoryAt_;
@@ -1820,374 +1824,45 @@ private:
   std::string profileLine_;
   double startSeconds_ = 0; // (the start's work: starting())
 
-  // Whether the top screen would look as it did when last drawn: a game's
-  // board, nothing new from the table, nothing moving (the pieces, the
-  // dice, the board coming down), the camera and the selection the same.
-  // (The -watch builds redraw once a second, for their measurements.)
-  // After buying, the two cards dealt (the user's): thrown onto the top
-  // screen face down, one after the other, then turned over one after the
-  // other (each narrowing to nothing, its back showing, then widening, its
-  // front), their words on them once turned; the one chosen on the bottom
-  // screen outlined. The pictures are the cards' textures, larger; the
-  // words are the overlay's, sharp at any size (full-size textures of the
-  // cards wouldn't fit beside the tile faces in the DS's texture memory)
-  // A close-up's picture drawn into its texture (PlatformProfile::closeUpSize)
+  // A close-up's picture drawn into its slot (PlatformProfile::closeUpSize;
+  // PictureSlot: drawn only when it isn't there already)
   void closeUpTile(CosmicHex::Art::Face face) {
     const int size = kThisPlatform.closeUpSize;
-    const auto pixels =
-        recipePixels(CosmicHex::Art::recipeOf(face), size, kThisPlatform.recipeSmoothing);
-    closeUpFaceShows_ = face;
-    if (pixels.empty() || !renderer_->replace(closeUpFace_, {size, size, pixels}))
-      closeUpFaceShows_.reset(); // (the usual face, then)
+    closeUpFace_.show(*renderer_, static_cast<int>(face), [&] {
+      return recipePixels(CosmicHex::Art::recipeOf(face), size, kThisPlatform.recipeSmoothing);
+    });
   }
   void closeUpCards(const std::vector<CosmicHex::Art::Card> &cards) {
     const int size = kThisPlatform.closeUpSize, height = size * 52 / 63;
-    closeUpCardsShow_ = cards;
-    for (std::size_t i = 0; i < cards.size() && i < closeUpCards_.size(); ++i) {
-      const auto whole = recipePixels(CosmicHex::Art::cardRecipeOf(cards[i]), size, size * 88 / 63,
-                                      kThisPlatform.recipeSmoothing);
-      std::vector<Scene::Colour> square(static_cast<std::size_t>(size * size));
-      if (!whole.empty())
+    for (std::size_t i = 0; i < cards.size() && i < closeUpCards_.size(); ++i)
+      closeUpCards_[i].show(*renderer_, static_cast<int>(cards[i]), [&] {
+        // (the card's picture: its drawing down to the picture's foot)
+        const auto whole = recipePixels(CosmicHex::Art::cardRecipeOf(cards[i]), size,
+                                        size * 88 / 63, kThisPlatform.recipeSmoothing);
+        std::vector<Scene::Colour> square(static_cast<std::size_t>(size * size));
+        if (whole.empty())
+          return std::vector<Scene::Colour>{};
         std::copy(whole.begin(), whole.begin() + size * height, square.begin());
-      if (whole.empty() || !renderer_->replace(closeUpCards_[i], {size, size, square}))
-        closeUpCardsShow_.clear(); // (the usual pictures, then)
-    }
+        return square;
+      });
   }
-
-  // The discovery showing (Discovery): where it is, once the ship's slide
-  // is done
-  std::optional<Discovery::Moment> discoveryMoment() const {
-    if (discoveries_.empty() || !discoveryAt_ || Clock::now() < *discoveryAt_)
-      return std::nullopt;
-    return Discovery::at(static_cast<float>(secondsSince(*discoveryAt_)));
-  }
-  // Whether a tile is turned over but not yet back in its place on the top
-  // board: the one showing, until it's back down, or one waiting
-  bool stillDiscovering(CosmicHex::Hex hex) const {
-    for (std::size_t i = 0; i < discoveries_.size(); ++i) {
-      if (discoveries_[i].hex != hex)
-        continue;
-      const auto moment = i == 0 ? discoveryMoment() : std::nullopt;
-      return !moment || moment->down < 1;
-    }
-    return false;
-  }
-  // Whether it's off the board, flying (drawDiscovery draws it, not the
-  // board)
-  bool flying(CosmicHex::Hex hex) const {
-    const auto moment = discoveryMoment();
-    return moment && discoveries_.front().hex == hex && moment->down < 1;
-  }
-  bool wasShownBig(CosmicHex::Hex hex) const {
-    return std::find(shownBig_.begin(), shownBig_.end(), hex) != shownBig_.end() ||
-           (!discoveries_.empty() && discoveries_.front().hex == hex);
-  }
-  // Each frame: the game held while a discovery shows, let go after the
-  // last; the bottom screen drawn again as its tile fades in
+  // Each frame: a discovery's close-up drawn before it starts, the game
+  // held while one shows and let go after the last (unless a view holds
+  // it too), the bottom map drawn again as its tile fades in
   void updateDiscovery() {
-    if (discoveries_.empty() || !discoveryAt_ || Clock::now() < *discoveryAt_)
-      return;
-    // Its face drawn sharp first (about 45 ms on a DS at 64), while
-    // nothing moves: the ship's slide is done, the lift not begun
-    if (closeUpFaceShows_ != discoveries_.front().face) {
-      closeUpTile(discoveries_.front().face);
-      discoveryAt_ = Clock::now();
-    }
-    if (!heldForDiscovery_ && latest_ && !latest_->paused) {
+    const DiscoveryShow::Step step =
+        discovery_.update(now(), [this](CosmicHex::Art::Face face) { closeUpTile(face); });
+    if (step.hold && latest_ && !latest_->paused) {
       send(SetHold{true});
       heldForDiscovery_ = true;
     }
-    const Discovery::Moment moment = *discoveryMoment();
-    if (moment.fade > 0)
-      bottomDirty_ = true;
-    if (!moment.done)
-      return;
-    shownBig_.push_back(discoveries_.front().hex);
-    discoveries_.erase(discoveries_.begin());
-    if (!discoveries_.empty()) {
-      discoveryAt_ = Clock::now();
-      return;
-    }
-    discoveryAt_.reset();
-    if (heldForDiscovery_) {
+    if (step.letGo && heldForDiscovery_) {
       heldForDiscovery_ = false;
       if (!heldForInfo_)
         send(SetHold{false});
     }
-  }
-  // The tile turned over, the board's own 3D tile: lifted off its place
-  // and flown up to face you, face down; turned over; its number token
-  // dropped on from above; held, its name and what it gives written above
-  // and below; then flown back down to lie flat where it was
-  void drawDiscovery(Scene::Overlay &overlay, const Scene::Camera &camera) {
-    const auto moment = discoveryMoment();
-    if (!moment)
-      return;
-    const Discovery::Found &found = discoveries_.front();
-    const float k = static_cast<float>(kTopWidth) / 256;
-    const auto screenW = static_cast<float>(kTopWidth), screenH = static_cast<float>(kTopHeight);
-    const float lifted = moment->lifted();
-    // A dim backdrop behind it while it faces you: in as it turns over,
-    // gone early on its way back (the tile passes through its plane on the
-    // way up and down, so not then)
-    const float dim = moment->turn * std::max(0.0f, 1 - 4 * moment->down);
-    if (dim > 0 && pictureSquare_)
-      renderer_->draw(
-          pictureSquare_,
-          onScreenAt(camera, screenW, screenH, 0, 0, screenW, screenH, kPictureDistance * 1.2f),
-          {.shading = Scene::Material::Shading::Unlit,
-           .colour = {8, 12, 22},
-           .alpha = static_cast<std::uint8_t>(24 * dim)});
-    // On the board: where it lies, flat (its x, y and z the world's)
-    const Scene::Vector3 onBoard = BoardPieces::centre(found.hex);
-    const float radius = (BoardPieces::at({found.hex, 0}) - onBoard).length();
-    // Facing you: in front of the camera, as tall as about 55% of the
-    // screen, its face towards you, its top up the screen
-    const Scene::Vector3 forward = (camera.target - camera.eye).normalised();
-    const Scene::Vector3 right = forward.cross(camera.up).normalised();
-    const Scene::Vector3 screenUp = right.cross(forward);
-    const float distance =
-        2 * radius / (0.55f * 2 * std::tan(camera.fieldOfView * 3.14159265f / 360));
-    const Scene::Vector3 facing = camera.eye + forward * distance;
-    // Between: its position and axes carried from one to the other (the
-    // axes made square again: Gram-Schmidt)
-    const auto between = [lifted](const Scene::Vector3 &a, const Scene::Vector3 &b) {
-      return a + (b - a) * lifted;
-    };
-    const Scene::Vector3 y = between({0, 1, 0}, forward * -1).normalised();
-    Scene::Vector3 z = between({0, 0, 1}, screenUp * -1);
-    z = (z - y * z.dot(y)).normalised();
-    const Scene::Vector3 x = y.cross(z);
-    const Scene::Transform pose = Scene::Transform::fromAxes(x, y, z, between(onBoard, facing));
-    // Turning over about its x axis, as on the board: face down until half
-    // way
-    const float half = 1.5707963f, turn = moment->turn * 2 * half;
-    const bool faceUp = turn > half;
-    const auto spin = Scene::Transform::rotation({1, 0, 0}, faceUp ? turn - 2 * half : turn);
-    const CosmicHex::Art::Face face = faceUp ? found.face : found.faceDown;
-    const Scene::Texture texture = closeUpFaceShows_ == face && closeUpFace_
-                                       ? closeUpFace_
-                                       : faces_[static_cast<std::size_t>(face)];
-    renderer_->draw(
-        hexTile_, pose * spin,
-        texture ? Scene::Material{.shading = Scene::Material::Shading::Toon, .texture = texture}
-                : Scene::Material{.shading = Scene::Material::Shading::Toon,
-                                  .colour = BoardColours::ofFace(face)});
-    // Its number token, dropped on from above once it's face up (from up
-    // the screen while it faces you), riding it back down
-    const Scene::Texture chip = chips_[static_cast<std::size_t>(found.number)];
-    if (found.number > 0 && moment->turn >= 1 && chip) {
-      const float drop = (1 - moment->chip) * 2.5f * radius;
-      renderer_->draw(numberChip_, pose * Scene::Transform::translation({0, 0, -drop}),
-                      Scene::Material{.shading = Scene::Material::Shading::Toon, .texture = chip});
-    }
-    // Its words, while it faces you
-    if (lifted > 0.98f) {
-      overlay.textCentred(screenW / 2, 10 * k, names_[found.by] + " discovers",
-                          BoardColours::ofPlayer(found.by), k);
-      if (moment->turn >= 1) {
-        overlay.textCentred(screenW / 2, screenH / 2 - 66 * k, found.name, Palette::kWords, 2 * k);
-        overlay.textCentred(screenW / 2, screenH / 2 + 64 * k, found.gives, Palette::kSoftWords,
-                            1.5f * k);
-      }
-    }
-  }
-
-  void drawDealtCards(Scene::Overlay &overlay, const Scene::Camera &camera) {
-    if (!latest_ || !pictureSquare_)
-      return;
-    const auto choice = keepChoiceOf(latest_->state, latest_->moves);
-    if (!choice)
-      return;
-    const float k = static_cast<float>(kTopWidth) / 256;
-    const auto screenW = static_cast<float>(kTopWidth), screenH = static_cast<float>(kTopHeight);
-    const float since = static_cast<float>(secondsSince(*keepDealtAt_));
-    const float w = 100 * k, pictureH = w * 52 / 63, cardH = w * 88 / 63, gap = 16 * k;
-    const auto count = static_cast<float>(choice->cards.size());
-    const float left = (screenW - (count * w + (count - 1) * gap)) / 2, top = 8 * k;
-    const int chosen = bottomScreen_ ? bottomScreen_->keepChosen() : -1;
-    overlay.textCentred(screenW / 2, screenH - 6 * k, "Keep one: touch it below",
-                        Palette::kDimWords, k);
-    for (std::size_t i = 0; i < choice->cards.size(); ++i) {
-      const auto n = static_cast<float>(i);
-      // Thrown in from the bottom left, eased to its place
-      const float flown = ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::EaseOut,
-                                                     (since - 0.15f * n) / kSecondsCardThrow);
-      const float homeX = left + n * (w + gap);
-      const float x = -w + (homeX + w) * flown, y = screenH + (top - screenH) * flown;
-      // Then turned over: its width through |cos|, the back until halfway
-      const float turned =
-          std::clamp((since - kSecondsCardThrow - 0.2f - 0.35f * n) / kSecondsCardTurn, 0.0f, 1.0f);
-      const float across = std::abs(std::cos(turned * 3.14159265f));
-      const bool front = turned >= 0.5f;
-      if (!front) {
-        renderer_->draw(
-            backSquare_,
-            onScreenAt(camera, screenW, screenH, x + w * (1 - across) / 2, y, w * across, cardH),
-            {.shading = Scene::Material::Shading::Unlit,
-             .texture = backPictures_[static_cast<std::size_t>(CosmicHex::Art::kActionBack)]});
-        continue;
-      }
-      const auto card = choice->cards[i];
-      const float cw = w * across, cx = x + w * (1 - across) / 2;
-      const bool sharp =
-          closeUpCardsShow_ == choice->cards && i < closeUpCards_.size() && closeUpCardSquare_;
-      renderer_->draw(
-          sharp ? closeUpCardSquare_ : pictureSquare_,
-          onScreenAt(camera, screenW, screenH, cx, y, cw, pictureH),
-          {.shading = Scene::Material::Shading::Unlit,
-           .texture = sharp ? closeUpCards_[i] : cardPictures_[static_cast<std::size_t>(card)]});
-      // The card's body under its picture, and once flat, its words
-      overlay.rectangle(cx, y + pictureH, cw, cardH - pictureH, {236, 232, 220, 255});
-      if (turned >= 1) {
-        const CosmicHex::Art::CardWords words = CosmicHex::Art::wordsOf(card);
-        // (the title white, centred on the label band, 3 to 19 of the
-        // card's 88 units, as large as fits its width: the user's)
-        float titleScale = 2 * k;
-        while (titleScale > k &&
-               Scene::Overlay::textWidth(words.shortTitle, titleScale) > w * 54 / 63)
-          titleScale -= 0.25f * k;
-        overlay.textCentred(x + w / 2, y + w * 11 / 63, words.shortTitle, Palette::kWords,
-                            titleScale);
-        // (wrapped by the width the letters take as drawn, spacing included)
-        const auto lines = Scene::wrapText(words.words, w - 8 * k, [k](std::string_view line) {
-          return Scene::Overlay::textWidth(line, k);
-        });
-        for (std::size_t l = 0; l < lines.size() && l < 6; ++l)
-          overlay.text(x + 4 * k, y + pictureH + (3 + 9 * static_cast<float>(l)) * k, lines[l],
-                       {40, 40, 48}, k);
-        if (static_cast<int>(i) == chosen) {
-          overlay.rectangle(x - 3 * k, y - 3 * k, w + 6 * k, 2 * k, Palette::kHighlight);
-          overlay.rectangle(x - 3 * k, y + cardH + k, w + 6 * k, 2 * k, Palette::kHighlight);
-          overlay.rectangle(x - 3 * k, y - 3 * k, 2 * k, cardH + 6 * k, Palette::kHighlight);
-          overlay.rectangle(x + w + k, y - 3 * k, 2 * k, cardH + 6 * k, Palette::kHighlight);
-        }
-      }
-    }
-  }
-
-  // Another player's view on the top screen (the other players' tabs):
-  // open, or still sliding back up
-  bool showingPlayer() {
-    if (shownInfo_ == BottomScreen::Info::Player) {
-      shownPlayer_ = bottomScreen_->infoPlayer();
-      return true;
-    }
-    if (!infoClosingAt_ || closingInfo_ != BottomScreen::Info::Player)
-      return false;
-    if (std::chrono::duration<float>(Clock::now() - *infoClosingAt_).count() > kSecondsPanel) {
-      infoClosingAt_.reset();
-      return false;
-    }
-    return true;
-  }
-
-  // What everyone can see of a player (OtherPlayers.hpp), over the board,
-  // sliding down from the top (and back up): their name and points, their
-  // cards face down, badges, ships, stations and colonies, the planets
-  // their stations touch with each one's number, their revealed Charters
-  void drawOtherPlayer(Scene::Overlay &overlay, const Scene::Camera &camera) {
-    if (!latest_ || shownPlayer_ < 0)
-      return;
-    const PlayerView view = viewOf(latest_->state, shownPlayer_);
-    const float k = static_cast<float>(kTopWidth) / 256;
-    const Clock::time_point from = infoClosingAt_ ? *infoClosingAt_ : infoOpenedAt_;
-    const float moved = ScratchPadd::Motion::along(
-        ScratchPadd::Motion::Curve::EaseInOut,
-        std::chrono::duration<float>(Clock::now() - from).count() / kSecondsPanel);
-    const float down = infoClosingAt_ ? 1 - moved : moved;
-    const float top = -static_cast<float>(kTopHeight) * (1 - down);
-    const Scene::Colour colour = BoardColours::ofPlayer(view.player);
-    const auto screenW = static_cast<float>(kTopWidth), screenH = static_cast<float>(kTopHeight);
-    // The panel: a dark, slightly see-through backdrop in 3D, behind the
-    // cards' pictures (the overlay's shapes would cover them)
-    renderer_->draw(
-        pictureSquare_,
-        onScreenAt(camera, screenW, screenH, 0, top, screenW, screenH, kPictureDistance * 1.2f),
-        {.shading = Scene::Material::Shading::Unlit, .colour = {12, 18, 32}, .alpha = 29});
-    overlay.rectangle(3 * k, top + 3 * k, kTopWidth - 6 * k, 1, colour);
-    overlay.rectangle(3 * k, top + kTopHeight - 4 * k, kTopWidth - 6 * k, 1, colour);
-    // Name and points
-    overlay.text(10 * k, top + 10 * k, names_.shortOf(view.player), colour, 1.5f * k);
-    overlay.text(10 * k, top + 32 * k,
-                 std::to_string(view.points) + (view.points == 1 ? " point" : " points"),
-                 Palette::kWords, k);
-    // Their cards, face down, in the agreed backs: fanned, six a row, a
-    // second row under the first when there are more (up to 12 shown), the
-    // count by the label. What's under them moves down to make room
-    constexpr int kBacksARow = 6, kBacksShown = 12;
-    const float backW = 28 * k, backH = backW * 88 / 63, backStep = 9 * k, rowStep = 18 * k;
-    const auto rowsOf = [&](int count) {
-      return std::max(1, (std::min(count, kBacksShown) + kBacksARow - 1) / kBacksARow);
-    };
-    const int rows = std::max(rowsOf(view.resourceCards), rowsOf(view.actionCards));
-    const float extra = backH - 34 * k + rowStep * static_cast<float>(rows - 1);
-    const auto backs = [&](float x, float y, int count, std::string_view label,
-                           CosmicHex::Art::CardBack design) {
-      overlay.text(x, y, std::string(label) + " " + std::to_string(count), Palette::kDimWords, k);
-      const int shown = std::min(count, kBacksShown);
-      for (int i = 0; i < shown; ++i) {
-        const auto column = static_cast<float>(i % kBacksARow);
-        const auto row = static_cast<float>(i / kBacksARow);
-        if (backSquare_ && backPictures_[static_cast<std::size_t>(design)])
-          renderer_->draw(backSquare_,
-                          onScreenAt(camera, screenW, screenH, x + column * backStep,
-                                     y + 11 * k + row * rowStep, backW, backH,
-                                     kPictureDistance * (1 - 0.002f * static_cast<float>(i))),
-                          {.shading = Scene::Material::Shading::Unlit,
-                           .texture = backPictures_[static_cast<std::size_t>(design)]});
-      }
-    };
-    backs(84 * k, top + 10 * k, view.resourceCards, "RESOURCES", CosmicHex::Art::kResourceBack);
-    backs(170 * k, top + 10 * k, view.actionCards, "CARDS", CosmicHex::Art::kActionBack);
-    // Badges, ships, stations and colonies as the board draws them (the
-    // user's): each a group of its pieces, up to four of them, or one and
-    // how many; its name small under it
-    const auto pieces = [&](float x, int count, std::string_view name, auto &&drawOne) {
-      const float y = top + 66 * k + extra;
-      constexpr int kMostDrawn = 4;
-      const int drawn = count > kMostDrawn ? 1 : count;
-      for (int i = 0; i < drawn; ++i)
-        drawOne(x + 5 * k + static_cast<float>(i) * 11 * k, y);
-      if (count > kMostDrawn)
-        overlay.text(x + 12 * k, y - 4 * k, "x" + std::to_string(count), Palette::kWords, k);
-      if (count == 0)
-        overlay.text(x + 1 * k, y - 4 * k, "none", Palette::kDimWords, k);
-      overlay.text(x, y + 8 * k, name, Palette::kDimWords, k);
-    };
-    pieces(10 * k, view.badges, "badges",
-           [&](float x, float y) { overlay.hexagon(x, y, 4.5f * k, Palette::kHighlight, true); });
-    pieces(72 * k, view.ships, "ships", [&](float x, float y) {
-      overlay.triangle(x, y - 5 * k, x - 4.5f * k, y + 4 * k, x + 4.5f * k, y + 4 * k, colour);
-    });
-    pieces(134 * k, view.stations, "stations", [&](float x, float y) {
-      overlay.rectangle(x - 3.5f * k, y - 3.5f * k, 7 * k, 7 * k, colour);
-    });
-    pieces(196 * k, view.colonies, "colonies", [&](float x, float y) {
-      overlay.rectangle(x - 4.5f * k, y - 4.5f * k, 9 * k, 9 * k, colour);
-      overlay.rectangle(x - 1.5f * k, y - 1.5f * k, 3 * k, 3 * k, {20, 22, 30});
-    });
-    // Their planets: a hexagon each in its kind's colour, its number on it
-    overlay.text(10 * k, top + 88 * k + extra, "PLANETS", Palette::kDimWords, k);
-    if (view.planets.empty())
-      overlay.text(64 * k, top + 88 * k + extra, "none yet", Palette::kDimWords, k);
-    for (std::size_t i = 0; i < view.planets.size() && i < 16; ++i) {
-      const float x = (22 + 26 * static_cast<float>(i % 8)) * k;
-      const float y = top + (110 + 25 * static_cast<float>(i / 8)) * k + extra;
-      const PlayerView::Planet &planet = view.planets[i];
-      overlay.hexagon(x, y, 12 * k, BoardColours::ofKind(planet.kind), true);
-      if (planet.colony)
-        overlay.hexagon(x, y, 8 * k, colour, true);
-      overlay.textCentred(x, y, std::to_string(planet.number), {20, 22, 30}, k);
-    }
-    // Their revealed Charters
-    if (!view.charters.empty()) {
-      std::string charters = "Charters:";
-      for (const CosmicHex::Art::Card card : view.charters)
-        charters += " " + std::string(CosmicHex::Art::wordsOf(card).shortTitle);
-      overlay.text(10 * k, std::min(top + 156 * k + extra, top + kTopHeight - 14 * k), charters,
-                   Palette::kWords, k);
-    }
+    if (step.redrawMap)
+      bottomDirty_ = true;
   }
 
   // The start's banner: what's being placed and by whom
@@ -2209,120 +1884,34 @@ private:
   // tied rolling again), for firstRollSeconds or until A; then the game
   // goes on
   void endFirstRoll() {
-    firstRollShownAt_.reset();
+    firstRoll_.stop();
     if (flow_.screen() == ScreenFlow::Screen::Game)
       send(SetHold{false});
     if (latest_)
       startPlacingBanner(latest_->state);
   }
-  // How long who goes first shows: each round's dice tumbling then
-  // settling, then time to read the order
-  static double firstRollSeconds(const CosmicHex::Handheld::FirstRoll &roll) {
-    return kSecondsARollRound * static_cast<double>(std::min<std::size_t>(roll.rounds.size(), 3)) +
-           kSecondsFirstRollRead;
-  }
-  // A square turned by `angle` (radians) about its middle: two triangles
-  // (the overlay's rectangles don't turn)
-  static void turnedSquare(Scene::Overlay &overlay, float x, float y, float half, float angle,
-                           Scene::Colour colour) {
-    std::array<std::array<float, 2>, 4> c{};
-    for (int i = 0; i < 4; ++i) {
-      const float a = angle + 0.7853982f + static_cast<float>(i) * 1.5707963f;
-      c[static_cast<std::size_t>(i)] = {x + half * 1.4142136f * std::cos(a),
-                                        y + half * 1.4142136f * std::sin(a)};
-    }
-    overlay.triangle(c[0][0], c[0][1], c[1][0], c[1][1], c[2][0], c[2][1], colour);
-    overlay.triangle(c[0][0], c[0][1], c[2][0], c[2][1], c[3][0], c[3][1], colour);
-  }
-  // Who goes first, the user's way: every player's die thrown at once in
-  // their colour, tumbling (spinning, its number flickering) as it drops
-  // in, then settling; those tied for the highest throw again on the row
-  // below; then the order, by name
-  void drawFirstRoll(Scene::Overlay &overlay) {
-    if (!latest_ || latest_->firstRoll.rounds.empty() || !firstRollShownAt_)
-      return;
-    const CosmicHex::Handheld::FirstRoll &roll = latest_->firstRoll;
-    const float k = static_cast<float>(kTopWidth) / 256;
-    const auto since = static_cast<float>(secondsSince(*firstRollShownAt_));
-    overlay.rectangle(0, 0, kTopWidth, kTopHeight, {10, 15, 26, 240});
-    overlay.textCentred(kTopWidth / 2.0f, 14 * k, "WHO GOES FIRST", Palette::kWords, 2 * k);
-    const int players = static_cast<int>(roll.rounds.front().size());
-    const float gap = 58 * k;
-    const float left = kTopWidth / 2.0f - gap * static_cast<float>(players - 1) / 2;
-    for (int p = 0; p < players; ++p)
-      overlay.textCentred(left + gap * static_cast<float>(p), 32 * k, names_.shortOf(p),
-                          Palette::player(p), k);
-    const std::size_t rounds = std::min<std::size_t>(roll.rounds.size(), 3);
-    float y = 54 * k;
-    for (std::size_t r = 0; r < rounds; ++r) {
-      const float startsAt = kSecondsARollRound * static_cast<float>(r);
-      if (since < startsAt)
-        break;
-      const float t = std::min(1.0f, (since - startsAt) / kSecondsDiceTumble);
-      const float half = (r == 0 ? 14 : 10) * k;
-      if (r > 0)
-        overlay.textCentred(kTopWidth / 2.0f, y - half - 7 * k, "tied: they throw again",
-                            Palette::kHighlight, k);
-      for (int p = 0; p < players; ++p) {
-        const int face = roll.rounds[r][static_cast<std::size_t>(p)];
-        if (face == 0)
-          continue;
-        const float x = left + gap * static_cast<float>(p);
-        // Dropping in from above and settling (Settle: a small bounce),
-        // turning less and less, its number flickering until it lands
-        const float landed = ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::Settle, t);
-        const float dy = (1 - landed) * -24 * k; // (from just under the title)
-        const float angle = (1 - t) * (1 - t) * (5.0f + static_cast<float>(p));
-        const bool settled = t >= 1;
-        const bool winner =
-            settled && r + 1 == rounds && p == roll.first &&
-            since >= kSecondsARollRound * static_cast<float>(rounds - 1) + kSecondsDiceTumble;
-        turnedSquare(overlay, x, y + dy, half + 2 * k, angle,
-                     winner ? Palette::kHighlight : Palette::player(p));
-        turnedSquare(overlay, x, y + dy, half, angle, {242, 242, 242, 255});
-        const int shown =
-            settled ? face : 1 + (p * 7 + static_cast<int>(since * 14)) % 6; // (flickering)
-        overlay.textCentred(x, y + dy, std::to_string(shown), {30, 30, 36},
-                            (r == 0 ? 2 : 1.5f) * k);
-      }
-      y += 2 * half + 22 * k;
-    }
-    // Once the last throw has settled: the order, by name
-    if (since < kSecondsARollRound * static_cast<float>(rounds - 1) + kSecondsDiceTumble + 0.3f)
-      return;
-    std::string homes = "Homes: ", ships = "Ships: ";
-    for (int i = 0; i < players; ++i) {
-      homes += (i ? ", " : "") + names_[(roll.first + i) % players];
-      ships += (i ? ", " : "") + names_[(roll.first + players - 1 - i) % players];
-    }
-    const float bottom = static_cast<float>(kTopHeight) - 44 * k;
-    overlay.textCentred(kTopWidth / 2.0f, bottom, names_[roll.first] + " goes first",
-                        Palette::player(roll.first), 1.5f * k);
-    overlay.textCentred(kTopWidth / 2.0f, bottom + 16 * k, homes, Palette::kWords, k);
-    overlay.textCentred(kTopWidth / 2.0f, bottom + 28 * k, ships + " (back again)",
-                        Palette::kSoftWords, k);
-  }
-
   // Whether anything on the top screen moves now
   bool topMoving() const {
     if (flow_.screen() != ScreenFlow::Screen::Game || !latest_ || descentStarted_ ||
-        dice_ != DiceStage::Idle || firstRollShownAt_)
+        dice_ != DiceStage::Idle || firstRoll_.moving())
       return true;
     if (gameClock_.seconds() - motionStarted_ < kSecondsAnimating + kSecondsChipDrop)
       return true; // (pieces still moving, or a number chip dropping)
     if (banner_.showing(gameClock_.seconds()))
       return true; // (the turn's banner moving)
-    if (shownInfo_ != BottomScreen::Info::None || infoClosingAt_ || keepDealtAt_ ||
-        outlineMovedAt_ || discoveryMoment())
-      return true; // (an info view, dealt cards, a discovery: they come in or go)
+    if (shownInfo_ != BottomScreen::Info::None || infoClosingAt_ || outlineMovedAt_)
+      return true; // (an info view coming in or going, the points' outline)
+    // (the views over the board: each says)
+    if (dealt_.moving() || others_.moving(now()) || discovery_.moving(now()))
+      return true;
     return false;
   }
   bool topIsStill() const {
-    // (after something moved, one frame more: its last drawn frame may
-    // still show a trace of it, a banner's band fading, say)
-    if (topMoving() || movedWhenDrawn_)
-      return false;
-    if (snapshots_ != drawnSnapshots_ || turn_ != drawnTurn_ || selected_ != drawnSelection_)
+    // (StillFrames: after something moved, one frame more, as its last
+    // drawn frame may still show a trace of it: a banner's band fading)
+    const bool changed =
+        snapshots_ != drawnSnapshots_ || turn_ != drawnTurn_ || selected_ != drawnSelection_;
+    if (!still_.canHold(topMoving(), changed))
       return false;
     return !kWatchAtStart || Clock::now() - drawnAt_ < std::chrono::seconds(1);
   }
@@ -2348,8 +1937,7 @@ private:
       spdlog::info("frames: {}", profileLine_);
     }
     // (not over a view that fills the screen: its words would be lost)
-    if (firstRollShownAt_ || shownInfo_ == BottomScreen::Info::Player || keepDealtAt_ ||
-        discoveryMoment())
+    if (firstRoll_.on() || others_.showing(now()) || dealt_.on() || discovery_.moving(now()))
       return;
     // (three lines where the screen's narrow)
     for (std::size_t from = 0, row = 0; from < profileLine_.size() && row < 4;
@@ -2387,6 +1975,8 @@ private:
   bool pressDrawn_ = false;                    // (a button's press glow drawn last frame)
   bool rollAsked_ = false;                     // (you've said to throw the dice: Roll or A)
   Clock::time_point startedAt_ = Clock::now(); // (the scripted taps' times)
+  // The app's real clock, in seconds: the shows over the board run on it
+  double now() const { return secondsSince(startedAt_); }
   ScratchPadd::Banner banner_{static_cast<float>(kTopWidth)};
   // The info views (Show resources): which is shown, since when, and
   // whether it holds the game; the cards' pictures for them
@@ -2394,36 +1984,31 @@ private:
   Clock::time_point infoOpenedAt_{};
   std::optional<Clock::time_point> infoClosingAt_;            // (an info view going off)
   BottomScreen::Info closingInfo_ = BottomScreen::Info::None; // (which)
-  int shownPlayer_ = -1; // (the other players' view: whose, kept while it goes off)
-  std::optional<Clock::time_point> keepDealtAt_;    // (your two cards dealt: since)
-  std::optional<Clock::time_point> outlineMovedAt_; // (the turn's outline moving: since)
-  int outlineFrom_ = 0;                             // (from this player's row)
+  std::optional<Clock::time_point> outlineMovedAt_;           // (the turn's outline moving: since)
+  int outlineFrom_ = 0;                                       // (from this player's row)
   bool heldForInfo_ = false;
-  // Tiles turned over, still to show big (Discovery), the first showing
-  // since discoveryAt_ (real time: the game's held meanwhile)
-  std::vector<Discovery::Found> discoveries_;
-  std::optional<Clock::time_point> discoveryAt_;
-  bool heldForDiscovery_ = false;
-  bool movedWhenDrawn_ = true; // (the top screen's last frame drawn while something moved)
-  bool youPaused_ = false;
+  // What shows over the board for a while (TopShows; drawn by TopViews),
+  // each on the app's real clock (now()): they run while the game's held
+  DiscoveryShow discovery_;         // (tiles turned over)
+  bool heldForDiscovery_ = false;   // (and the game held for them)
+  DealtShow dealt_;                 // (the two cards dealt)
+  PanelShow others_{kSecondsPanel}; // (another player's panel)
+  FirstRollShow firstRoll_;         // (who goes first)
+  ScratchPadd::StillFrames still_;  // (when the top screen can hold its last frame)
+  bool youPaused_ = false;          // (watching: paused with A, so the PAUSED band shows)
   // Who's who: your name (the console's owner's), the bots' (PlayerNames),
   // made as each game starts
   std::string ownerName_ = ScratchPadd::OwnerName::get();
-  PlayerNames names_;                    // (watching: paused with A, so the PAUSED band shows)
-  std::vector<CosmicHex::Hex> shownBig_; // (shown big since the last move: no flip)
+  PlayerNames names_;
   // Close-ups (PlatformProfile::closeUpSize): a discovered tile's face and
-  // the two cards dealt, drawn sharp when they're shown, into textures
-  // loaded once and reused
-  Scene::Texture closeUpFace_;
-  std::optional<CosmicHex::Art::Face> closeUpFaceShows_;
-  std::array<Scene::Texture, 2> closeUpCards_{};
-  std::vector<CosmicHex::Art::Card> closeUpCardsShow_;
-  Scene::Mesh closeUpCardSquare_;
-  std::array<Scene::Texture, CosmicHex::Art::kCards> cardPictures_{};
+  // the two cards dealt, drawn sharp when they're shown, into slots loaded
+  // once and reused (PictureSlot)
+  ScratchPadd::PictureSlot closeUpFace_;
+  std::array<ScratchPadd::PictureSlot, 2> closeUpCards_;
+  // Show resources' pictures (the resource cards, bigger)
   std::array<Scene::Texture, CosmicHex::kResources> resourcePictures_{};
   std::array<Scene::Colour, CosmicHex::kResources> resourceBands_{};
-  Scene::Mesh pictureSquare_, resourceSquare_, backSquare_;
-  std::array<Scene::Texture, 2> backPictures_{}; // (by Art::CardBack)
+  Scene::Mesh resourceSquare_;
   int cardWidth_ = 32, resourceWidth_ = 44;
   static constexpr float kPileStep = 5; // (pixels between a pile's cards: their bands show)
   std::optional<ConsoleScreens::BottomScreen> bottom_;
@@ -2453,7 +2038,6 @@ private:
   // The start of a game: the board coming down, the bottom screen fading
   std::optional<Clock::time_point> descentStarted_;
   bool fadeFromMenu_ = false; // (the bottom screen fading from the setup's menu)
-  std::optional<Clock::time_point> firstRollShownAt_; // (who goes first, on the screen since)
   // What the buttons cover on the map, as last drawn; and whether the
   // bottom screen shows the map as last drawn (so only what changes needs
   // copying to it)
