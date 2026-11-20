@@ -49,10 +49,35 @@ constexpr std::uint32_t kTranslucentSetsDepth = BIT(11);
 // go by ID / 8: all set to the outline's.
 constexpr unsigned kFirstOutlineId = 8, kLastOutlineId = 55;
 constexpr unsigned kClearId = 63, kClearIdWithOutlines = 0;
-// Toon shading's textures (DisplayList::textureFor) live in VRAM bank B,
-// mapped as texture slot 0, 128 bytes each (8 x 8 direct colours), handed
-// out in turn (a mesh unloaded doesn't give its back; the bank holds 1,024)
-constexpr std::uint32_t kTextureBank = 128 * 1024;
+// The textures (pictures, and toon shading's: DisplayList::textureFor, 128
+// bytes each, 8 x 8 direct colours) live in VRAM banks B and A, mapped as
+// texture slots 0 and 1: 256 KB, handed out in turn (a texture unloaded
+// doesn't give its space back). Bank A was mapped by nothing; with B alone
+// (128 KB) the last pictures loaded, the card backs, got none
+constexpr std::uint32_t kSlotBytes = 128 * 1024;
+constexpr std::uint32_t kTextureBank = 2 * kSlotBytes;
+// The banks to the CPU, to write textures (as LCD memory), and back to the
+// 3D hardware as its texture slots
+void texturesToCpu() {
+  vramSetBankB(VRAM_B_LCD);
+  vramSetBankA(VRAM_A_LCD);
+}
+void texturesToGpu() {
+  vramSetBankB(VRAM_B_TEXTURE_SLOT0);
+  vramSetBankA(VRAM_A_TEXTURE_SLOT1);
+}
+// Where texture memory at `offset` is, to the CPU (banks mapped to it):
+// slot 0 in bank B, slot 1 in bank A
+std::uint16_t *textureMemory(std::uint32_t offset) {
+  return offset < kSlotBytes ? VRAM_B + offset / 2 : VRAM_A + (offset - kSlotBytes) / 2;
+}
+// The next offset with room for `bytes` that doesn't cross from one slot
+// into the next (the banks aren't side by side to the CPU)
+std::uint32_t roomFor(std::uint32_t offset, std::uint32_t bytes) {
+  if (offset < kSlotBytes && offset + bytes > kSlotBytes)
+    return kSlotBytes;
+  return offset;
+}
 constexpr std::uint32_t kTextureBytes = DisplayList::kTexels * 2;
 // TEXIMAGE_PARAM (GBATEK, "DS 3D Texture Attributes"): the texture's VRAM
 // offset in 8-byte steps, its width and height (8 << n: 0), its format (7:
@@ -193,14 +218,15 @@ std::uint32_t Renderer::Backend::textureFor(LoadedMesh &mesh, Colour colour) {
   for (const auto &[made, parameter] : mesh.textures)
     if (made == colour)
       return parameter;
+  nextTextureOffset = roomFor(nextTextureOffset, kTextureBytes);
   if (nextTextureOffset + kTextureBytes > kTextureBank)
-    return 0; // (the bank's full: drawn in the toon table's colours)
+    return 0; // (the banks are full: drawn in the toon table's colours)
   const std::vector<std::uint16_t> texels = DisplayList::textureFor(mesh.source, colour);
   // Written with the bank mapped to the CPU, then mapped back (a frame being
   // drawn as it's written may show this mesh untextured for that frame)
-  vramSetBankB(VRAM_B_LCD);
-  std::copy(texels.begin(), texels.end(), VRAM_B + nextTextureOffset / 2);
-  vramSetBankB(VRAM_B_TEXTURE_SLOT0);
+  texturesToCpu();
+  std::copy(texels.begin(), texels.end(), textureMemory(nextTextureOffset));
+  texturesToGpu();
   const std::uint32_t parameter = textureParameter(nextTextureOffset);
   nextTextureOffset += kTextureBytes;
   mesh.textures.emplace_back(colour, parameter);
@@ -401,9 +427,9 @@ Renderer::Renderer(Display &display) : backend_(std::make_unique<Backend>(displa
   glEnable(GL_ANTIALIAS);
   glEnable(GL_BLEND);
   glClearPolyID(kClearId);
-  // Toon shading's textures: bank B, and texture mapping on (a draw without
+  // The textures' banks (B and A), and texture mapping on (a draw without
   // one sets none)
-  vramSetBankB(VRAM_B_TEXTURE_SLOT0);
+  texturesToGpu();
   glEnable(GL_TEXTURE_2D);
   glClearDepth(GL_MAX_DEPTH);
   glViewport(0, 0, 255, 191);
@@ -425,18 +451,19 @@ Mesh Renderer::load(const MeshData &mesh) {
 Texture Renderer::load(const TextureImage &image) {
   const int widthCode = sideCode(image.width), heightCode = sideCode(image.height);
   const auto bytes = static_cast<std::uint32_t>(image.width * image.height * 2);
+  backend_->nextTextureOffset = roomFor(backend_->nextTextureOffset, bytes);
   if (widthCode < 0 || heightCode < 0 ||
       image.pixels.size() < static_cast<std::size_t>(image.width * image.height) ||
       backend_->nextTextureOffset + bytes > kTextureBank)
     return {};
   // Direct colour: 15 bits, the top bit opaque (more than half alpha)
-  vramSetBankB(VRAM_B_LCD);
-  std::uint16_t *to = VRAM_B + backend_->nextTextureOffset / 2;
+  texturesToCpu();
+  std::uint16_t *to = textureMemory(backend_->nextTextureOffset);
   for (std::size_t i = 0; i < static_cast<std::size_t>(image.width * image.height); ++i) {
     const Colour c = image.pixels[i];
     to[i] = static_cast<std::uint16_t>(DisplayList::rgb15(c) | (c.a >= 128 ? 0x8000 : 0));
   }
-  vramSetBankB(VRAM_B_TEXTURE_SLOT0);
+  texturesToGpu();
   backend_->images.push_back(
       {textureParameter(backend_->nextTextureOffset, static_cast<std::uint32_t>(widthCode),
                         static_cast<std::uint32_t>(heightCode)),
@@ -454,13 +481,13 @@ bool Renderer::replace(Texture texture, const TextureImage &image) {
     return false;
   // (where it is in the bank: the parameter's offset, in 8-byte steps)
   const std::uint32_t offset = (loaded.parameter & 0xFFFF) * 8;
-  vramSetBankB(VRAM_B_LCD);
-  std::uint16_t *to = VRAM_B + offset / 2;
+  texturesToCpu();
+  std::uint16_t *to = textureMemory(offset);
   for (std::size_t i = 0; i < static_cast<std::size_t>(image.width * image.height); ++i) {
     const Colour c = image.pixels[i];
     to[i] = static_cast<std::uint16_t>(DisplayList::rgb15(c) | (c.a >= 128 ? 0x8000 : 0));
   }
-  vramSetBankB(VRAM_B_TEXTURE_SLOT0);
+  texturesToGpu();
   return true;
 }
 
