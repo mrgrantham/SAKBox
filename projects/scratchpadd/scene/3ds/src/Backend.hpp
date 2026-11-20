@@ -77,11 +77,13 @@ struct Renderer::Backend {
     Mesh mesh;
     Transform where;
     Material material;
-    float distance; // from the eye, to draw translucent ones farthest first
+    float distance;        // from the eye, to draw translucent ones farthest first
+    std::uint8_t view = 0; // (which of the frame's views)
   };
   struct Lines {
     std::size_t first, count; // in lineEnds
     Colour colour;
+    std::uint8_t view = 0;
   };
 
   // A frame's own vertices (lines, the overlay), in linear memory, taken
@@ -93,7 +95,8 @@ struct Renderer::Backend {
   };
 
   void copyFrameVertices();
-  void drawEye(C3D_RenderTarget *target, const C3D_Mtx &projection);
+  // One eye's frame: each view in its part of the screen, `separation` apart
+  void drawEye(C3D_RenderTarget *target, float separation);
   void drawMesh(const Draw &draw, const C3D_Mtx &viewProjection);
   void drawOutline(LoadedMesh &mesh, const Draw &draw, const C3D_Mtx &mvp);
   // Toon shading per pixel (toon.v.pica and the GPU's fragment lighting):
@@ -103,7 +106,7 @@ struct Renderer::Backend {
   // lighting (every draw but useToon's)
   void plainColours();
   void drawWireframe(LoadedMesh &mesh, const C3D_Mtx &mvp, const Material &material);
-  void drawLineBatches(const C3D_Mtx &viewProjection);
+  void drawLineBatches(const C3D_Mtx &viewProjection, std::uint8_t view);
   void drawLineVertices(const LineVertex *vertices, int count, const C3D_Mtx &mvp,
                         const Material &material);
   void drawOverlay();
@@ -136,12 +139,24 @@ struct Renderer::Backend {
         toon, extrude;
   };
   SceneUniforms sceneUniforms;
-  int lineMvp = -1, lineMaterial = -1, overlayProjection = -1;
+  int lineMvp = -1, lineMaterial = -1, lineViewport = -1, overlayProjection = -1;
   C3D_AttrInfo sceneAttributes, lineAttributes, overlayAttributes;
   const shaderProgram_s *bound = nullptr;
 
   // This frame's
-  Camera camera;
+  Camera camera; // this view's
+  // The frame's views (Renderer::beginView), each drawn in its part of the
+  // screen at the frame's end, for each eye; the current is the last
+  struct View {
+    Camera camera;
+    C3D_Mtx look;
+    PixelRect rect; // (on the screen, 400 x 240, from its top left)
+  };
+  std::vector<View> views;
+  // The render target's viewport for a part of the screen (the target is
+  // turned: 240 x 400), and the line shader's sizes for it
+  void useViewport(const PixelRect &rect);
+  float lineViewportSize[4] = {120, 200, 1.0f / 240, 1.0f / 400};
   Environment environment;
   C3D_Mtx view;
   std::optional<Frustum> frustum;

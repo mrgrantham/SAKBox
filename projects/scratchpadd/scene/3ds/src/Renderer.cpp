@@ -143,18 +143,23 @@ u32 fogColour(Colour c) {
 }
 
 // The eye's projection, turned to the top screen: in stereo, each eye
-// `separation` apart, objects as far as the target at the screen's depth
-C3D_Mtx projectionFor(const Camera &camera, float separation) {
+// `separation` apart, objects as far as the target at the screen's depth;
+// `aspect` the view's (the whole top screen's, 400 / 240, unless a view's)
+C3D_Mtx projectionFor(const Camera &camera, float separation, float aspect) {
   C3D_Mtx p;
   const float fov = C3D_AngleFromDegrees(camera.fieldOfView);
   if (separation == 0) {
-    Mtx_PerspTilt(&p, fov, C3D_AspectRatioTop, camera.nearPlane, camera.farPlane, false);
+    Mtx_PerspTilt(&p, fov, aspect, camera.nearPlane, camera.farPlane, false);
   } else {
     const float focus = std::max<float>((camera.target - camera.eye).length(), camera.nearPlane);
-    Mtx_PerspStereoTilt(&p, fov, C3D_AspectRatioTop, camera.nearPlane, camera.farPlane, separation,
-                        focus, false);
+    Mtx_PerspStereoTilt(&p, fov, aspect, camera.nearPlane, camera.farPlane, separation, focus,
+                        false);
   }
   return p;
+}
+
+float aspectOf(const PixelRect &rect) {
+  return static_cast<float>(rect.width) / static_cast<float>(rect.height > 0 ? rect.height : 1);
 }
 
 // Toon shading's band table for the GPU's fragment lighting: how much of a
@@ -186,6 +191,8 @@ Renderer::Backend::Backend(Display &display) : display(display) {
   shaderProgramInit(&lineProgram);
   shaderProgramSetVsh(&lineProgram, &lineShaders->DVLE[0]);
   lineMvp = static_cast<int>(shaderInstanceGetUniformLocation(lineProgram.vertexShader, "mvp"));
+  lineViewport =
+      static_cast<int>(shaderInstanceGetUniformLocation(lineProgram.vertexShader, "viewport"));
   lineMaterial =
       static_cast<int>(shaderInstanceGetUniformLocation(lineProgram.vertexShader, "material"));
   shaderProgramInit(&overlayProgram);
@@ -524,6 +531,8 @@ void Renderer::Backend::drawLineVertices(const LineVertex *vertices, int count, 
   const float alpha = static_cast<float>(std::min<int>(material.alpha, 31)) / 31.0f;
   C3D_FVUnifSet(GPU_VERTEX_SHADER, lineMaterial, channel(material.colour.r),
                 channel(material.colour.g), channel(material.colour.b), alpha);
+  C3D_FVUnifSet(GPU_VERTEX_SHADER, lineViewport, lineViewportSize[0], lineViewportSize[1],
+                lineViewportSize[2], lineViewportSize[3]);
   C3D_BufInfo buffers;
   BufInfo_Init(&buffers);
   BufInfo_Add(&buffers, vertices, sizeof(LineVertex), 4, 0x3210);
@@ -590,10 +599,12 @@ void Renderer::Backend::drawWireframe(LoadedMesh &mesh, const C3D_Mtx &mvp,
   drawLineVertices(mesh.wireframe, mesh.wireframeVertices, mvp, material);
 }
 
-void Renderer::Backend::drawLineBatches(const C3D_Mtx &viewProjection) {
+void Renderer::Backend::drawLineBatches(const C3D_Mtx &viewProjection, std::uint8_t view) {
   if (!lineVertices)
     return;
   for (const Lines &batch : lines) {
+    if (batch.view != view)
+      continue;
     if (!mayDraw())
       return;
     Material material;
@@ -654,17 +665,31 @@ void Renderer::Backend::copyFrameVertices() {
   }
 }
 
-void Renderer::Backend::drawEye(C3D_RenderTarget *target, const C3D_Mtx &projection) {
+void Renderer::Backend::useViewport(const PixelRect &rect) {
+  // The top screen's render target is turned: 240 x 400, its x up the
+  // screen from the bottom, its y across from the right
+  const int width = display.width(), height = display.height();
+  C3D_SetViewport(static_cast<u32>(height - (rect.y + rect.height)),
+                  static_cast<u32>(width - (rect.x + rect.width)), static_cast<u32>(rect.height),
+                  static_cast<u32>(rect.width));
+  // (the line shader's: half the view's size in the target, and one over it)
+  lineViewportSize[0] = static_cast<float>(rect.height) / 2;
+  lineViewportSize[1] = static_cast<float>(rect.width) / 2;
+  lineViewportSize[2] = 1.0f / static_cast<float>(std::max(rect.height, 1));
+  lineViewportSize[3] = 1.0f / static_cast<float>(std::max(rect.width, 1));
+}
+
+void Renderer::Backend::drawEye(C3D_RenderTarget *target, float separation) {
+  // (the frame's first view sets the background and fog: they're the frame's)
+  const Camera &frameCamera = views.front().camera;
   C3D_RenderTargetClear(target, C3D_CLEAR_ALL,
-                        clearColour(environment.backgroundSeen(camera.farPlane)), 0);
+                        clearColour(environment.backgroundSeen(frameCamera.farPlane)), 0);
   C3D_FrameDrawOn(target);
-  C3D_Mtx viewProjection;
-  Mtx_Multiply(&viewProjection, &projection, &view);
 
   // Fog, by each pixel's depth (exp(-density x distance), as on desktops)
   const Debug::Settings &s = debug.settings;
   if (environment.fog.density > Scalar(0) && s.fog && s.view == Debug::View::Normal) {
-    FogLut_Exp(&fog, environment.fog.density, 1, camera.nearPlane, camera.farPlane);
+    FogLut_Exp(&fog, environment.fog.density, 1, frameCamera.nearPlane, frameCamera.farPlane);
     C3D_FogGasMode(GPU_FOG, GPU_PLAIN_DENSITY, false);
     C3D_FogColor(fogColour(environment.fog.colour));
     C3D_FogLutBind(&fog);
@@ -681,30 +706,44 @@ void Renderer::Backend::drawEye(C3D_RenderTarget *target, const C3D_Mtx &project
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ONE, GPU_ONE, GPU_ONE);
   };
 
-  // Solid meshes and lines
-  if (overdraw) {
-    additive();
-  } else {
-    C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_ALL);
-    C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
-  }
-  if (s.meshes)
-    for (const Draw &draw : solid)
-      drawMesh(draw, viewProjection);
-  if (s.lines && !overdraw)
-    drawLineBatches(viewProjection);
+  // Each view in its part of the screen, with its camera
+  for (std::size_t v = 0; v < views.size(); ++v) {
+    const View &seen = views[v];
+    const auto index = static_cast<std::uint8_t>(v);
+    useViewport(seen.rect);
+    const C3D_Mtx projection = projectionFor(seen.camera, separation, aspectOf(seen.rect));
+    C3D_Mtx viewProjection;
+    Mtx_Multiply(&viewProjection, &projection, &seen.look);
 
-  // Translucent ones, farthest first, blending over what's behind them
-  // without hiding what's drawn after
-  if (!overdraw) {
-    C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_COLOR);
-    C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
-                   GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
-  }
-  if (s.translucent)
-    for (const Draw &draw : later)
-      drawMesh(draw, viewProjection);
+    // Solid meshes and lines
+    if (overdraw) {
+      additive();
+    } else {
+      C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_ALL);
+      C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+    }
+    if (s.meshes)
+      for (const Draw &draw : solid)
+        if (draw.view == index)
+          drawMesh(draw, viewProjection);
+    if (s.lines && !overdraw)
+      drawLineBatches(viewProjection, index);
 
+    // Translucent ones, farthest first, blending over what's behind them
+    // without hiding what's drawn after
+    if (!overdraw) {
+      C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_COLOR);
+      C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
+                     GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+    }
+    if (s.translucent)
+      for (const Draw &draw : later)
+        if (draw.view == index)
+          drawMesh(draw, viewProjection);
+  }
+
+  // The overlay over the whole screen
+  useViewport({0, 0, display.width(), display.height()});
   if (s.overlay)
     drawOverlay();
 }
@@ -844,20 +883,30 @@ void Renderer::unload(Mesh mesh) {
 
 void Renderer::beginFrame(const Camera &camera, const Environment &environment) {
   Backend &b = *backend_;
-  b.camera = camera;
   b.environment = environment;
-  Mtx_LookAt(&b.view, FVec3_New(camera.eye.x, camera.eye.y, camera.eye.z),
-             FVec3_New(camera.target.x, camera.target.y, camera.target.z),
-             FVec3_New(camera.up.x, camera.up.y, camera.up.z), false);
-  // What the camera sees, its sides moved out a little: in stereo each eye
-  // sees a little further to its side
-  b.frustum.emplace(camera, static_cast<float>(b.display.width()) / b.display.height(), 1.15f);
+  b.views.clear();
+  beginView(camera, {});
   b.solid.clear();
   b.later.clear();
   b.lineEnds.clear();
   b.lines.clear();
   b.counting = {};
   overlay_.clear();
+}
+
+void Renderer::beginView(const Camera &camera, const Viewport &viewport) {
+  Backend &b = *backend_;
+  if (b.views.size() >= 255)
+    return; // (a frame's views are counted in a byte)
+  b.camera = camera;
+  Mtx_LookAt(&b.view, FVec3_New(camera.eye.x, camera.eye.y, camera.eye.z),
+             FVec3_New(camera.target.x, camera.target.y, camera.target.z),
+             FVec3_New(camera.up.x, camera.up.y, camera.up.z), false);
+  const PixelRect rect = pixelsOf(viewport, b.display.width(), b.display.height());
+  b.views.push_back({camera, b.view, rect});
+  // What the camera sees, its sides moved out a little: in stereo each eye
+  // sees a little further to its side
+  b.frustum.emplace(camera, aspectOf(rect), 1.15f);
 }
 
 void Renderer::draw(Mesh mesh, const Transform &where, const Material &material) {
@@ -871,10 +920,11 @@ void Renderer::draw(Mesh mesh, const Transform &where, const Material &material)
     return;
   }
   const float distance = (where.position() - b.camera.eye).length();
+  const auto view = static_cast<std::uint8_t>(b.views.size() - 1);
   if (material.alpha < 31 || loaded.translucent)
-    b.later.push_back({mesh, where, material, distance});
+    b.later.push_back({mesh, where, material, distance, view});
   else
-    b.solid.push_back({mesh, where, material, distance});
+    b.solid.push_back({mesh, where, material, distance, view});
   b.counting += loaded.cost;
   ++b.counting.draws;
 }
@@ -884,7 +934,8 @@ void Renderer::drawLines(std::span<const Vector3> ends, Colour colour) {
     return;
   Backend &b = *backend_;
   const std::size_t count = ends.size() / 2 * 2;
-  b.lines.push_back({b.lineEnds.size(), count, colour});
+  b.lines.push_back(
+      {b.lineEnds.size(), count, colour, static_cast<std::uint8_t>(b.views.size() - 1)});
   b.lineEnds.insert(b.lineEnds.end(), ends.begin(),
                     ends.begin() + static_cast<std::ptrdiff_t>(count));
   // (each line: two triangles)
@@ -895,17 +946,20 @@ void Renderer::drawLines(std::span<const Vector3> ends, Colour colour) {
 
 bool Renderer::toScreen(const Vector3 &point, float &x, float &y) const {
   const Backend &b = *backend_;
-  // The mono projection, not turned to the screen: x across, y up
+  // The mono projection, not turned to the screen: x across, y up, in the
+  // current view
+  const PixelRect rect = b.views.empty() ? PixelRect{0, 0, b.display.width(), b.display.height()}
+                                         : b.views.back().rect;
   C3D_Mtx projection, viewProjection;
-  Mtx_Persp(&projection, C3D_AngleFromDegrees(b.camera.fieldOfView),
-            static_cast<float>(b.display.width()) / static_cast<float>(b.display.height()),
+  Mtx_Persp(&projection, C3D_AngleFromDegrees(b.camera.fieldOfView), aspectOf(rect),
             b.camera.nearPlane, b.camera.farPlane, false);
   Mtx_Multiply(&viewProjection, &projection, &b.view);
   const C3D_FVec clip = Mtx_MultiplyFVec4(&viewProjection, FVec4_New(point.x, point.y, point.z, 1));
   if (clip.w <= 0)
     return false;
-  x = (clip.x / clip.w * 0.5f + 0.5f) * static_cast<float>(b.display.width());
-  y = (0.5f - clip.y / clip.w * 0.5f) * static_cast<float>(b.display.height());
+  x = static_cast<float>(rect.x) + (clip.x / clip.w * 0.5f + 0.5f) * static_cast<float>(rect.width);
+  y = static_cast<float>(rect.y) +
+      (0.5f - clip.y / clip.w * 0.5f) * static_cast<float>(rect.height);
   return true;
 }
 
@@ -949,10 +1003,10 @@ void Renderer::endFrame() {
   b.copyFrameVertices();
   b.bound = nullptr;
   b.eye = 1;
-  b.drawEye(b.display.left(), projectionFor(b.camera, -separation));
+  b.drawEye(b.display.left(), -separation);
   if (separation > 0) {
     b.eye = 2;
-    b.drawEye(b.display.right(), projectionFor(b.camera, separation));
+    b.drawEye(b.display.right(), separation);
   }
   C3D_FrameEnd(0);
 

@@ -5,14 +5,12 @@
 ; screen, so lines are a pixel wide whatever their distance, for each eye.
 ; Unlit: the vertex's colour (bytes, 0-255) times the material's.
 
-.fvec mvp[4], material
+; viewport: pixels per unit of the view's x and y over w (half its size in
+; the render target, 240 x 400 for the whole top screen, the projection
+; turned to fit it), then half a pixel in those units (one over its size)
+.fvec mvp[4], material, viewport
 
 .constf consts(0.0, 1.0, 0.00392156862745, 0.000001) ; (1/255; a tiny length)
-; Pixels per unit of the screen's x and y over w (the top screen's render
-; target is 240 x 400, the projection turned to fit it), and half a pixel
-; in those units
-.constf pixels(120.0, 200.0, 0.0, 0.0)
-.constf halfPixel(0.0041666667, 0.0025, 0.0, 0.0)
 .alias  zeros     consts.xxxx
 .alias  ones      consts.yyyy
 .alias  fromBytes consts.zzzz
@@ -49,7 +47,7 @@
 
 	; Across the line, in pixels, at length 1
 	add r5.xy, r4.xy, -r3.xy
-	mul r5.xy, pixels.xy, r5.xy
+	mul r5.xy, viewport.xy, r5.xy
 	mov r6.x, -r5.y
 	mov r6.y, r5.x
 	mov r6.zw, zeros
@@ -59,7 +57,7 @@
 	mul r6.xy, r6.xy, r7.xx
 
 	; Half a pixel that way, on this vertex's side, times its w
-	mul r6.xy, halfPixel.xy, r6.xy
+	mul r6.xy, viewport.zw, r6.xy
 	mul r6.xy, r6.xy, inside.xx
 	mul r6.xy, r6.xy, r1.ww
 	mov r8, r1

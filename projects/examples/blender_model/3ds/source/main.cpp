@@ -82,6 +82,11 @@ int main() {
     environment.addLight({.direction = {-0.5f, -0.8f, -0.6f}, .colour = {220, 215, 205}});
     environment.outline.width = 0.06f; // (a few pixels on the 3DS's 240-line screen)
     const Scene::Camera camera{.eye = {0, 1.6f, 6.4f}, .target = {0, -0.2f, 0}, .fieldOfView = 40};
+    // Two views (DOWN): the hangar as before on the left, from above on the
+    // right (Renderer::beginView)
+    const Scene::Camera above{
+        .eye = {0, 9, 0.5f}, .target = {0, 0, 0}, .up = {0, 0, -1}, .fieldOfView = 40};
+    bool twoViews = false;
 
     Scene::Debug::Watchdog watchdog(renderer);
     Scene::Debug::Panel debugPanel(renderer);
@@ -91,7 +96,7 @@ int main() {
       std::printf("Rock: %lu triangles (x2)\n\n",
                   static_cast<unsigned long>(Assets::kRockTriangles));
       std::printf("A: wireframe ship  B: fog\nX: toon  Y: outlines  R: bands\n"
-                  "3D slider: stereo  SELECT: debug\nSTART: quit\n");
+                  "DOWN: two views  3D slider: stereo\nSELECT: debug  START: quit\n");
     };
     Look::Settings look;
     printIntro();
@@ -121,29 +126,42 @@ int main() {
           look.outlines = !look.outlines;
         if (pressed.pressed(Input::Button::R))
           look.nextBands();
+        if (pressed.pressed(Input::Button::Down))
+          twoViews = !twoViews;
       }
       look.apply(environment);
       before = pad;
 
-      renderer.beginFrame(camera, environment);
-      renderer.drawLines(lines, {90, 95, 110});
-      renderer.draw(pane, Scene::Transform::identity(),
-                    {.shading = Scene::Material::Shading::Unlit});
-      renderer.overlay().text(8, 6, "Hangar", {255, 220, 140}, 2);
       angle += 0.02f;
       const Scene::Transform turn = Scene::Transform::rotation({0, 1, 0}, angle);
-      for (const Shown &model : shown) {
-        renderer.draw(model.mesh, Scene::Transform::translation(model.where) * turn,
-                      look.material(model.material));
-        float x = 0, y = 0;
-        if (renderer.toScreen(model.where + Scene::Vector3{0, -1.1f, 0}, x, y)) {
-          const float width = Scene::Overlay::textWidth(model.label);
-          const float left = x - width / 2, top = y;
-          renderer.overlay().rectangle(left - 2, top - 2, width + 4,
-                                       Scene::Overlay::lineHeight() + 4, {0, 0, 0, 150});
-          renderer.overlay().text(left, top, model.label, {255, 255, 255});
+      // The hangar, in whichever view is current
+      const auto drawHangar = [&] {
+        renderer.drawLines(lines, {90, 95, 110});
+        renderer.draw(pane, Scene::Transform::identity(),
+                      {.shading = Scene::Material::Shading::Unlit});
+        for (const Shown &model : shown) {
+          renderer.draw(model.mesh, Scene::Transform::translation(model.where) * turn,
+                        look.material(model.material));
+          float x = 0, y = 0;
+          if (renderer.toScreen(model.where + Scene::Vector3{0, -1.1f, 0}, x, y)) {
+            const float width = Scene::Overlay::textWidth(model.label);
+            const float left = x - width / 2, top = y;
+            renderer.overlay().rectangle(left - 2, top - 2, width + 4,
+                                         Scene::Overlay::lineHeight() + 4, {0, 0, 0, 150});
+            renderer.overlay().text(left, top, model.label, {255, 255, 255});
+          }
         }
+      };
+      renderer.beginFrame(camera, environment);
+      if (twoViews) {
+        renderer.beginView(camera, {0, 0, 0.5f, 1});
+        drawHangar();
+        renderer.beginView(above, {0.5f, 0, 0.5f, 1});
+        drawHangar();
+      } else {
+        drawHangar();
       }
+      renderer.overlay().text(8, 6, "Hangar", {255, 220, 140}, 2);
       renderer.endFrame();
 
       debugPanel.draw();

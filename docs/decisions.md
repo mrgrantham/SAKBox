@@ -49,6 +49,9 @@ Stations on 3 planets of one kind, Occupier, and the Deep-space relay (1 point o
 
 ## Platform: ScratchPadd and the consoles
 
+**Views in the renderer, on every backend** (2026-11-20)
+`Renderer::beginView(camera, viewport)`: a camera drawn into part of the screen, on Metal, OpenGL, Vulkan, the DS and the 3DS, rather than desktop-only or a second renderer. **Why:** the user's pick, for the lab's side-by-side comparison, and one interface that fits every platform (split screen and picture-in-picture later). Views drawn over another share its depth for now.
+
 **The animation lab: three ways, baked to path and timing apart** (2026-11-20)
 A desktop-only lab (`projects/animation_lab`) makes motions with Cyclone three ways (a solved throw, a spring guided along keys, a search for when there's no formula) in 3D or flat, and bakes each into ScratchPadd's `BakedMotion`: points evenly spaced along the path, and how far along at evenly spaced moments. **Why:** physics gives motion its weight, but the consoles can't afford to run it for every flourish; a few dozen floats can. Path and timing apart (the user's A) so either can be reused or retimed. **Not:** one curve of position against time (simpler, but a change of pace means a new curve); running the physics on the consoles (the DS can't spare it).
 
