@@ -1,5 +1,6 @@
 #include <CosmicHex/Handheld/BoardPieces.hpp>
 #include <CosmicHex/Handheld/Discovery.hpp>
+#include <CosmicHex/Handheld/GameWords.hpp>
 
 #include <ScratchPadd/Motion/Motion.hpp>
 
@@ -9,29 +10,6 @@
 namespace CosmicHex::Handheld::Discovery {
 
 namespace {
-
-constexpr std::array<const char *, kResources> kResourceNames{"Minerals", "Food", "Fuel", "Water",
-                                                              "Crystals"};
-
-const char *nameOf(PlanetKind kind) {
-  switch (kind) {
-  case PlanetKind::AsteroidBelt:
-    return "Asteroid belt";
-  case PlanetKind::LushPlanet:
-    return "Lush planet";
-  case PlanetKind::GasGiant:
-    return "Gas giant";
-  case PlanetKind::IceMoon:
-    return "Ice moon";
-  case PlanetKind::Nebula:
-    return "Nebula";
-  case PlanetKind::Home:
-    return "Home world";
-  case PlanetKind::Moon:
-    return "Barren moon";
-  }
-  return "";
-}
 
 // What a find gives the player who found it (Rules.cpp: every one earns
 // an explorer badge besides)
@@ -47,22 +25,6 @@ std::string givesOf(Find find, const Settings &settings) {
     return "Trade " + std::to_string(settings.alienRate) + " for 1 here";
   case Find::PirateHideout:
     return "Steal from each player";
-  }
-  return "";
-}
-
-const char *nameOf(Find find) {
-  switch (find) {
-  case Find::Nothing:
-    return "Deep space";
-  case Find::Salvage:
-    return "Salvage";
-  case Find::Ruins:
-    return "Ancient ruins";
-  case Find::AlienStation:
-    return "Alien outpost";
-  case Find::PirateHideout:
-    return "Pirate hideout";
   }
   return "";
 }
@@ -87,10 +49,10 @@ std::vector<Found> between(const State &before, const State &after) {
             .face = faceOf(planet),
             .number = chipOf(planet),
             .by = by,
-            .name = nameOf(planet.kind)};
+            .name = std::string(GameWords::of(planet.kind))};
     f.gives = givesResources(planet.kind)
-                  ? std::string(kResourceNames[static_cast<std::size_t>(planet.kind)]) + " on a " +
-                        std::to_string(planet.number)
+                  ? std::string(GameWords::resource(static_cast<std::size_t>(planet.kind))) +
+                        " on a " + std::to_string(planet.number)
                   : "No resource: an explorer badge";
     found.push_back(std::move(f));
   }
@@ -103,7 +65,7 @@ std::vector<Found> between(const State &before, const State &after) {
                      .faceDown = Art::Face::FindFaceDown,
                      .face = faceOf(site),
                      .by = by,
-                     .name = nameOf(site.find),
+                     .name = std::string(GameWords::of(site.find)),
                      .gives = givesOf(site.find, after.settings)});
   }
   return found;

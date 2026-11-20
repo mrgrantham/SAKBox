@@ -1,6 +1,7 @@
 // A tile turned over shown big: which tiles, their words, and the show's
 // timeline (the bottom screen's tile only after the top's is back in place)
 #include <CosmicHex/Handheld/Discovery.hpp>
+#include <CosmicHex/Handheld/GameWords.hpp>
 
 #include <gtest/gtest.h>
 
@@ -61,4 +62,15 @@ TEST(DiscoveryTest, TheBottomScreenWaitsForTheTop) {
   EXPECT_FLOAT_EQ(at(kSeconds).fade, 1);
   EXPECT_FALSE(at(kSeconds - 0.01f).done);
   EXPECT_TRUE(at(kSeconds).done);
+}
+
+// The game's names in one table, matching its enumerations' order
+TEST(DiscoveryTest, TheGamesWordsMatchItsThings) {
+  using namespace CosmicHex::Handheld;
+  EXPECT_EQ(GameWords::of(Resource::Minerals), "Minerals");
+  EXPECT_EQ(GameWords::of(Resource::Crystals), "Crystals");
+  EXPECT_EQ(GameWords::of(PlanetKind::GasGiant), "Gas giant");
+  EXPECT_EQ(GameWords::of(PlanetKind::Moon), "Barren moon");
+  EXPECT_EQ(GameWords::of(Find::AlienStation), "Alien outpost");
+  EXPECT_EQ(GameWords::kFinds_.size(), static_cast<std::size_t>(kFinds));
 }

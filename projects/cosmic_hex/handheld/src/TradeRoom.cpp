@@ -1,3 +1,4 @@
+#include <CosmicHex/Handheld/GameWords.hpp>
 #include <CosmicHex/Handheld/TradeRoom.hpp>
 
 #include <algorithm>
@@ -9,8 +10,6 @@ namespace CosmicHex::Handheld {
 namespace {
 using Kind = Action::Kind;
 constexpr int kYou = 0; // (the player at the console)
-constexpr std::array<const char *, kResources> kNames{"Minerals", "Food", "Fuel", "Water",
-                                                      "Crystals"};
 int total(const Resources &r) { return std::accumulate(r.begin(), r.end(), 0); }
 // "2 Fuel and 1 Water"
 std::string words(const Resources &r) {
@@ -21,7 +20,7 @@ std::string words(const Resources &r) {
     if (n == 0)
       continue;
     out += (parts++ > 0 ? " and " : "") + std::to_string(n) + " " +
-           kNames[static_cast<std::size_t>(i)];
+           std::string(GameWords::resource(static_cast<std::size_t>(i)));
   }
   return parts == 0 ? "nothing" : out;
 }
@@ -146,7 +145,7 @@ std::string TradeRoom::whyNot() const {
     return "Pick what you get";
   for (std::size_t r = 0; r < give_.size(); ++r)
     if (give_[r] > held()[r])
-      return "You hold " + std::to_string(held()[r]) + " " + kNames[r];
+      return "You hold " + std::to_string(held()[r]) + " " + std::string(GameWords::resource(r));
   return "";
 }
 

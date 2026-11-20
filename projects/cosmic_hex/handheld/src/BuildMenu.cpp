@@ -1,4 +1,5 @@
 #include <CosmicHex/Handheld/BuildMenu.hpp>
+#include <CosmicHex/Handheld/GameWords.hpp>
 
 #include <algorithm>
 #include <array>
@@ -6,9 +7,6 @@
 namespace CosmicHex::Handheld {
 
 namespace {
-
-constexpr std::array<const char *, kResources> kResourceNames{"Minerals", "Food", "Fuel", "Water",
-                                                              "Crystals"};
 
 Action::Kind kindOf(Buildable what) {
   switch (what) {
@@ -53,7 +51,8 @@ std::string missingFrom(const Resources &held, const Resources &cost) {
     const int short_ = cost[r] - held[r];
     if (short_ <= 0)
       continue;
-    out += (kinds++ ? ", " : "") + std::to_string(short_) + " " + kResourceNames[r];
+    out +=
+        (kinds++ ? ", " : "") + std::to_string(short_) + " " + std::string(GameWords::resource(r));
   }
   return kinds == 1 ? "needs " + out.insert(out.find(' ') + 1, "more ") : "needs " + out;
 }

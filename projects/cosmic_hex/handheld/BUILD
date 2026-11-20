@@ -47,6 +47,7 @@ cc_library(
         "include/CosmicHex/Handheld/ChoiceScreens.hpp",
         "include/CosmicHex/Handheld/ButtonMenu.hpp",
         "include/CosmicHex/Handheld/DicePieces.hpp",
+        "include/CosmicHex/Handheld/GameWords.hpp",
         "include/CosmicHex/Handheld/Discovery.hpp",
         "include/CosmicHex/Handheld/MenuPicture.hpp",
         "include/CosmicHex/Handheld/MoveSpots.hpp",
