@@ -96,7 +96,15 @@ A key pushes its stick all the way, and a diagonal as far as straight; Alt held 
 
 A padd on the main thread (where a Mac finds its pads) that reads the pad every 4 ms and publishes it, with the keyboard laid on if a window publishes one. The main thread is busy drawing until the screen's refresh, so in practice it reads once a frame, just before the next one starts. On a DS it reads every 16 ms, about once a frame: presses are counted there at every refresh anyway (below), and each read is the main thread's time, which on a DS comes out of the other padds' (the main thread outranks them). Readers on any thread call `currentState<Input::Gamepad>()`.
 
-When reads come more than 50 ms apart (three frames: other work kept the main thread from reading; 100 ms on a DS, three frames at 30 a second, as an app drawing every other refresh reads), GamePadd logs a warning, the first at once and then at most once every 10 seconds: `Reads were up to 120 ms apart (asked for every 4 ms)`. Only its regular reads are timed: between its first read and its second, the main thread's other padds start, and a DS app's screens took a second, which it used to report as a late read. A button pressed and let go in such a gap would be missed where presses are counted from the reads. On a DS they aren't: a thread of its own, ahead of everything else in the app, wakes at every screen refresh (calico's `threadIrqWait`, as an interrupt handler mustn't lock or call the C library), samples the buttons and counts each press and release, and the Reader takes those counts (`readPlatformPresses`). A tap is seen even when the reads are late, as they were on a DS Lite while a ragdoll's physics kept the main thread waiting (before padds had priorities: see [Threads](../README.md#threads)).
+**Late reads are logged:** when reads come more than 50 ms apart (three frames: other work kept the main thread from reading; 100 ms on a DS, three frames at 30 a second, as an app drawing every other refresh reads), GamePadd logs a warning, the first at once and then at most once every 10 seconds: `Reads were up to 120 ms apart (asked for every 4 ms)`. Only its regular reads are timed: between its first read and its second, the main thread's other padds start, and a DS app's screens took a second, which it used to report as a late read.
+
+**On a DS no press is missed:** a button pressed and let go between late reads would be missed where presses are counted from the reads. On a DS they aren't:
+
+- a thread of its own, ahead of everything else in the app, wakes at every screen refresh (calico's `threadIrqWait`, as an interrupt handler mustn't lock or call the C library);
+- it samples the buttons and counts each press and release;
+- the Reader takes those counts (`readPlatformPresses`).
+
+So a tap is seen even when the reads are late, as they were on a DS Lite while a ragdoll's physics kept the main thread waiting (before padds had priorities: [Threads](../README.md#threads)).
 
 ## Handhelds
 

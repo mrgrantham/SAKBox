@@ -19,7 +19,22 @@ bazel run //projects/examples/blender_model    # downloads Blender the first tim
 
 ## On a DS
 
-[`ds`](ds/source/main.cpp) draws the `hangar` scene on a Nintendo DS with ScratchPadd's [scene layer](../../scratchpadd/README.md#scene-layer), from the versions the build cooked for the DS: the ship (Ship_DS) lit with its vertex colours, a rock, and a second rock translucent (alpha 14 of 31), in front of a pane of glass that's see-through by its vertex colours' alpha, over lines marking the floor, in fog the background's colour, each labelled (the overlay's text on the top screen's bitmap layer, over a translucent rectangle, placed with `toScreen`), under a title at twice the size. The models are drawn as the build cooked them, in quads and strips: the bottom screen gives each model's triangles and polygons, and what each frame drew, 1,625 of the DS's 2,048 polygons and 4,848 of its 6,144 vertices: the 1,601 polygons and 4,772 vertices the `hangar` scene counted, plus the lines (18 and 54), the glass (a quad) and the labels' rectangles (6 and 18), less a polygon the DS leaves out as it's wholly off screen (its vertices are still sent, shared in a strip). A shows the ship as a wireframe, B turns the fog off and on, X, Y, R and L the look (above), DOWN splits the screen into two views (the hangar as before on the left, from above on the right: `Renderer::beginView`); SELECT saves a screenshot of the top screen to the SD card, `/data/blender-model-ds/screenshots/shot_001.bmp` and on (its path shown on the bottom screen), to copy off the card and compare with the emulator and a photo; START quits. (In melonDS the shot goes to its SD image, `.melonds/dldi.bin`, synced to `.melonds/sd` when melonDS is closed normally.)
+[`ds`](ds/source/main.cpp) draws the `hangar` scene on a Nintendo DS with ScratchPadd's [scene layer](../../scratchpadd/README.md#scene-layer), from the versions the build cooked for the DS:
+
+- the ship (Ship_DS) lit with its vertex colours, a rock, and a second rock translucent (alpha 14 of 31);
+- in front of a pane of glass that's see-through by its vertex colours' alpha, over lines marking the floor, in fog the background's colour;
+- each labelled (the overlay's text on the top screen's bitmap layer, over a translucent rectangle, placed with `toScreen`), under a title at twice the size.
+
+The models are drawn as the build cooked them, in quads and strips. The bottom screen gives each model's triangles and polygons, and what each frame drew: 1,625 of the DS's 2,048 polygons and 4,848 of its 6,144 vertices. That's the 1,601 polygons and 4,772 vertices the `hangar` scene counted, plus the lines (18 and 54), the glass (a quad) and the labels' rectangles (6 and 18), less a polygon the DS leaves out as it's wholly off screen (its vertices are still sent, shared in a strip).
+
+| Button | What it does |
+| --- | --- |
+| A | The ship as a wireframe |
+| B | Fog off and on |
+| X, Y, R, L | The look (above) |
+| DOWN | Two views: the hangar as before on the left, from above on the right (`Renderer::beginView`) |
+| SELECT | A screenshot of the top screen to the SD card, `/data/blender-model-ds/screenshots/shot_001.bmp` and on (its path shown on the bottom screen), to copy off the card and compare with the emulator and a photo. In melonDS the shot goes to its SD image, `.melonds/dldi.bin`, synced to `.melonds/sd` when melonDS is closed normally |
+| START | Quits |
 
 ```bash
 bazel run //projects/examples/blender_model/ds:blender-model-ds   # needs Docker running (tools/devkitpro); opens melonDS
