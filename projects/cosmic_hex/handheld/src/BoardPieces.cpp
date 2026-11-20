@@ -260,11 +260,11 @@ struct KeptPlaces {
 };
 // Hex `hex`'s kept places, or none if it's beyond them
 const std::array<Scene::Vector3, 3> *keptAt(Hex hex) {
-  static const KeptPlaces kept; // (made on first use, once, whatever the thread)
+  static const KeptPlaces kKept; // (made on first use, once, whatever the thread)
   const int q = hex.q + kKeptRadius, r = hex.r + kKeptRadius;
   if (q < 0 || r < 0 || q >= kKeptSide || r >= kKeptSide)
     return nullptr;
-  return &kept.at[static_cast<std::size_t>(q)][static_cast<std::size_t>(r)];
+  return &kKept.at[static_cast<std::size_t>(q)][static_cast<std::size_t>(r)];
 }
 } // namespace
 
@@ -276,7 +276,7 @@ Scene::Vector3 BoardPieces::centre(Hex hex) {
 
 Scene::Vector3 BoardPieces::at(Corner corner) {
   if (const auto *kept = keptAt(corner.hex); kept && (corner.index == 0 || corner.index == 1))
-    return (*kept)[static_cast<std::size_t>(1 + corner.index)];
+    return (*kept)[1 + static_cast<std::size_t>(corner.index)];
   return onTable(kLayout.point(corner));
 }
 
