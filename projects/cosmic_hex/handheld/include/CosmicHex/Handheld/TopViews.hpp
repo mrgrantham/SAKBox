@@ -37,6 +37,10 @@ struct TopPictures {
   std::array<ScratchPadd::Scene::Texture, kResources> resources{};        // (resource cards')
   ScratchPadd::Scene::Mesh resourceSquare;                                // (and their square)
   std::array<ScratchPadd::Scene::Texture, 2> backs{};                     // (by Art::CardBack)
+  // The cards' pictures' widths (resource cards bigger: their titles), and
+  // each resource card's band colour (for its title's ink)
+  int resourceWidth = 44, cardWidth = 32;
+  std::array<ScratchPadd::Scene::Colour, kResources> resourceBands{};
 };
 
 // One frame's drawing
@@ -59,6 +63,10 @@ void drawDiscovery(const TopFrame &frame, const DiscoveryShow &show,
 // outlined (`closeUps`: the cards' pictures drawn sharp, in order)
 void drawDealtCards(const TopFrame &frame, const DealtShow &show, int chosen,
                     const std::array<ScratchPadd::PictureSlot, 2> &closeUps);
+// Show resources: `player`'s resources as piles along the bottom (a card
+// for each, five at most, a count past five), their action cards across
+// the top, each card coming in as `show` has it
+void drawResources(const TopFrame &frame, const Player &player, const CardsShow &show);
 // What everyone can see of a player, on a panel sliding down from the top
 void drawOtherPlayer(const TopFrame &frame, const PlayerView &view, float down);
 // Who goes first: the dice of each round, tumbling and settling, then the

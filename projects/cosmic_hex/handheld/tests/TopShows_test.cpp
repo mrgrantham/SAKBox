@@ -156,3 +156,18 @@ TEST(TopShowsTest, TheStarWaitsForTheChoice) {
   EXPECT_FALSE(show.at(*show.seconds(6)).waitingForChoice);
   EXPECT_TRUE(show.update(6 + HomePayShow::kSeconds).letGo);
 }
+
+// Show resources: each card in a little after the last; off the same way,
+// then gone
+TEST(TopShowsTest, ShowResourcesCardsInAndOut) {
+  CardsShow cards;
+  EXPECT_FALSE(cards.showing(0));
+  cards.open(1);
+  EXPECT_FLOAT_EQ(cards.arrived(0, 1 + CardsShow::kSecondsCard), 1);
+  EXPECT_LT(cards.arrived(3, 1 + CardsShow::kSecondsCard), 1); // (later ones still coming)
+  cards.close(5);
+  EXPECT_TRUE(cards.showing(5.1));
+  EXPECT_FLOAT_EQ(cards.arrived(0, 5 + CardsShow::kSecondsCard), 0);
+  EXPECT_FALSE(cards.showing(5 + CardsShow::kSecondsCard +
+                             CardsShow::kStagger * CardsShow::kMostCards + 0.01));
+}

@@ -1,6 +1,7 @@
 #include <CosmicHex/Handheld/TopViews.hpp>
 
 #include <CosmicHex/Handheld/BoardPieces.hpp>
+#include <CosmicHex/Handheld/CardsHeld.hpp>
 #include <CosmicHex/Handheld/GameWords.hpp>
 #include <CosmicHex/Handheld/Palette.hpp>
 #include <CosmicHex/Handheld/ScreenPictures.hpp>
@@ -185,6 +186,72 @@ void drawDealtCards(const TopFrame &f, const DealtShow &show, int chosen,
       f.overlay.rectangle(x - 3 * k, y - 3 * k, 2 * k, cardH + 6 * k, Palette::kHighlight);
       f.overlay.rectangle(x + w + k, y - 3 * k, 2 * k, cardH + 6 * k, Palette::kHighlight);
     }
+  }
+}
+
+// --------------------------------------------------------- Show resources
+
+void drawResources(const TopFrame &f, const Player &player, const CardsShow &show) {
+  if (!show.showing(f.now))
+    return;
+  const float k = f.k();
+  const TopPictures &p = f.pictures;
+  const auto rw = static_cast<float>(p.resourceWidth), rh = rw * 52 / 63;
+  constexpr float kPileStep = 5; // (pixels between a pile's cards: their bands show)
+  // Five piles across with a little room between, their bottoms just above
+  // the screen's edge
+  const float pileGap = 6 * k;
+  const float pilesLeft = (f.width - (5 * rw + 4 * pileGap)) / 2;
+  const float pileY = f.height - rh - 6 * k;
+  const float u = rw / Art::kCardWidth;
+  int order = 0;
+  for (int r = 0; r < kResources; ++r) {
+    const int held = player.resources[static_cast<std::size_t>(r)];
+    const int shown = std::max(1, std::min(held, 5));
+    const float x = pilesLeft + static_cast<float>(r) * (rw + pileGap);
+    for (int j = shown - 1; j >= 0; --j) {
+      // (each card under the front one 5 pixels higher: its band shows)
+      const float y = pileY - static_cast<float>(j) * kPileStep * k;
+      const float slid = y + (1 - show.arrived(order++, f.now)) * (f.height - y + 4);
+      f.renderer.draw(p.resourceSquare,
+                      onScreenAt(f.camera, f.width, f.height, x, slid, rw, rh,
+                                 kPictureDistance - 0.02f * static_cast<float>(shown - j)),
+                      {.shading = Scene::Material::Shading::Unlit,
+                       .texture = p.resources[static_cast<std::size_t>(r)],
+                       .alpha = static_cast<std::uint8_t>(held == 0 ? 10 : 31)});
+    }
+    // The title in the front card's band, dark on a light band, faint when
+    // there are none; past five, how many in a badge above the pile
+    const float front = pileY + (1 - show.arrived(order - 1, f.now)) * (f.height - pileY + 4);
+    const Scene::Colour band = p.resourceBands[static_cast<std::size_t>(r)];
+    const float light = 0.2126f * band.r + 0.7152f * band.g + 0.0722f * band.b;
+    const Scene::Colour ink = held == 0     ? Scene::Colour{120, 128, 145}
+                              : light > 140 ? Scene::Colour{16, 20, 30}
+                                            : Scene::Colour{242, 245, 251};
+    f.overlay.textCentred(x + rw / 2, front + (Art::kCardTitle.y + Art::kCardTitle.height / 2) * u,
+                          GameWords::of(static_cast<Resource>(r)), ink);
+    if (held > 5) {
+      const float top = pileY - static_cast<float>(shown - 1) * kPileStep * k;
+      const float bw = 14 * k, bh = 10 * k, by = top - 13 * k;
+      f.overlay.rectangle(x + rw / 2 - bw / 2, by, bw, bh, {58, 74, 106});
+      f.overlay.textCentred(x + rw / 2, by + bh / 2, std::to_string(held), Palette::kWords);
+    }
+  }
+  // The action cards across the top, smaller, each easing down, their
+  // short titles under them
+  std::vector<Art::Card> actions;
+  for (const int id : player.contracts)
+    if (const auto card = cardOf(id))
+      actions.push_back(*card);
+  const auto w = static_cast<float>(p.cardWidth), h = w * 52 / 63;
+  const float gap = 8 * k, total = static_cast<float>(actions.size()) * (w + gap) - gap;
+  for (std::size_t i = 0; i < actions.size(); ++i) {
+    const float x = (f.width - total) / 2 + static_cast<float>(i) * (w + gap), y = 44 * k;
+    const float in = show.arrived(order++, f.now);
+    picture(f, p.pictureSquare, p.cards[static_cast<std::size_t>(actions[i])], x,
+            y - (1 - in) * (y + h + 4), w, h);
+    f.overlay.textCentred(x + w / 2, y + h + 6 * k, Art::wordsOf(actions[i]).shortTitle,
+                          Palette::kWords);
   }
 }
 

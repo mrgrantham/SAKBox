@@ -8,6 +8,8 @@
 //   DealtShow      the two cards dealt after buying, thrown in and turned
 //   PanelShow      a view sliding down over the board and back up (another
 //                  player's)
+//   CardsShow      Show resources: your cards coming in one after another,
+//                  and going back off the same way
 //   FirstRollShow  who goes first: every player's die thrown, ties again
 //   HomePayShow    a home's pay on the home die: the die out of the home,
 //                  its face, the card big, then off to the player's hand
@@ -124,6 +126,27 @@ public:
 private:
   float seconds_;
   int which_ = -1;
+  ScratchPadd::Motion::Showing opened_, closing_;
+};
+
+// ---------------------------------------------------------------------------
+// Show resources: your cards easing in one after another (the piles from
+// below, the action cards from above), and back off the same way
+
+class CardsShow {
+public:
+  static constexpr float kSecondsCard = 0.25f, kStagger = 0.05f;
+  static constexpr int kMostCards = 5 * 5 + 12; // (five piles of five, twelve cards)
+
+  void open(double now);
+  void close(double now);
+  // Shown: open, or its cards still going off
+  bool showing(double now) const;
+  bool moving(double now) const { return showing(now); }
+  // How far card `order` has come in (0 off the screen, 1 in place)
+  float arrived(int order, double now) const;
+
+private:
   ScratchPadd::Motion::Showing opened_, closing_;
 };
 

@@ -149,6 +149,32 @@ float PanelShow::down(double now) const {
   return closing_.on() ? 1 - moved : moved;
 }
 
+// ------------------------------------------------------------------ Cards
+
+void CardsShow::open(double now) {
+  opened_.start(now);
+  closing_.stop();
+}
+
+void CardsShow::close(double now) {
+  if (opened_.on() && !closing_.on())
+    closing_.start(now);
+}
+
+bool CardsShow::showing(double now) const {
+  if (!opened_.on())
+    return false;
+  return !closing_.on() ||
+         closing_.seconds(now) < kSecondsCard + kStagger * static_cast<float>(kMostCards);
+}
+
+float CardsShow::arrived(int order, double now) const {
+  const Motion::Showing &from = closing_.on() ? closing_ : opened_;
+  const float since = static_cast<float>(from.seconds(now)) - kStagger * static_cast<float>(order);
+  const float moved = Motion::along(Motion::Curve::EaseInOut, since / kSecondsCard);
+  return closing_.on() ? 1 - moved : moved;
+}
+
 // -------------------------------------------------------------- First roll
 
 float FirstRollShow::duration(const FirstRoll &roll) {
