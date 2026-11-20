@@ -49,8 +49,8 @@ std::string describe(const State &before, const Action &action) {
   }
   case Kind::RevealFind: {
     const auto find = static_cast<std::size_t>(action.a);
-    return "A find turns over: " + std::string(find < kFindShown.size() ? kFindShown[find] : "?") +
-           ".";
+    return "An anomaly turns over: " +
+           std::string(find < kFindShown.size() ? kFindShown[find] : "?") + ".";
   }
   case Kind::TakeSalvage:
     return who + " takes " + resource(action.a) + " from the salvage.";

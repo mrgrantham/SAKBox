@@ -1617,7 +1617,7 @@ const std::vector<Contract> &contracts() {
        [](const State &s, int p) {
          return s.player[static_cast<std::size_t>(p)].badgesEarned >= 6;
        }},
-      {"Two finds kept from the zone", 1,
+      {"Two anomalies kept from the zone", 1,
        [](const State &s, int p) { return s.player[static_cast<std::size_t>(p)].findsKept >= 2; }},
       {"Stations on opposite sides of the board", 3,
        [](const State &s, int p) {
