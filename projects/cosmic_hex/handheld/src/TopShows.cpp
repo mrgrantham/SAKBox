@@ -142,12 +142,20 @@ bool PanelShow::showing(double now) const {
   return !closing_.on() || closing_.seconds(now) < seconds_;
 }
 
+bool PanelShow::inPlace(double now) const {
+  return opened_.on() && !closing_.on() && opened_.seconds(now) >= seconds_;
+}
+
 float PanelShow::down(double now) const {
   if (!opened_.on())
     return 0;
   const Motion::Showing &from = closing_.on() ? closing_ : opened_;
-  const float moved =
-      Motion::along(Motion::Curve::EaseInOut, static_cast<float>(from.seconds(now)) / seconds_);
+  // (Gentle: its movement spread evenly over the middle. On a DS the board
+  // under it holds the frame rate near 20 a second while it moves, so a
+  // curve that moves most of the way early, as Settle does, shows as a few
+  // big jumps)
+  const float t = std::min(1.0f, static_cast<float>(from.seconds(now)) / seconds_);
+  const float moved = Motion::along(Motion::Curve::Gentle, t);
   return closing_.on() ? 1 - moved : moved;
 }
 

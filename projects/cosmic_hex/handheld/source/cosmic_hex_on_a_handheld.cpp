@@ -145,7 +145,9 @@ constexpr std::array<ScriptedTap, 0> kScriptedTaps{};
 // The points bars' outline moving to the next player's row
 constexpr float kSecondsOutline = 0.35f;
 // How long the other players' view takes to slide down (or up)
-constexpr float kSecondsPanel = 0.3f;
+// (long enough to see it come: at 0.3 s a DS's 20 or so frames a second
+// showed it in four or five jumps)
+constexpr float kSecondsPanel = 0.45f;
 // a little after the last
 constexpr double kSecondsTitleFadeIn = 0.6;
 
@@ -904,9 +906,13 @@ private:
     renderer_->beginFrame(camera, boardEnvironment(1 - down));
     if (!shown && descentStarted_)
       shown = &preview_; // (the game's first state on its way: the same board)
-    renderer_->draw(stars_, Scene::Transform::identity(),
-                    {.shading = Scene::Material::Shading::Unlit});
-    if (shown) {
+    // (not under another player's panel once it covers the screen: the
+    // DS's frame is then the panel's alone)
+    const bool covered = others_.inPlace(showsNow());
+    if (!covered)
+      renderer_->draw(stars_, Scene::Transform::identity(),
+                      {.shading = Scene::Material::Shading::Unlit});
+    if (shown && !covered) {
       auto timing = profile_.time(kProfilePieces);
       drawGaps(*shown, Scene::Transform::identity());
       drawPieces(*shown, Scene::Transform::identity());

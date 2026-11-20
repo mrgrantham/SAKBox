@@ -125,6 +125,8 @@ public:
   bool moving(double now) const { return showing(now); }
   // How far down it is (0 above the screen, 1 in place), eased
   float down(double now) const;
+  // Whether it's come all the way down and settled (covering the screen)
+  bool inPlace(double now) const;
   int which() const { return which_; }
 
 private:

@@ -351,7 +351,9 @@ void drawOtherPlayer(const TopFrame &f, const PlayerView &view, float down) {
   // second row under the first when there are more (up to 12 shown), the
   // count by the label. What's under them moves down to make room
   constexpr int kBacksARow = 6, kBacksShown = 12;
-  const float backW = 28 * k, backH = backW * 88 / 63, backStep = 9 * k, rowStep = 18 * k;
+  // (36 wide, the user's: bigger; fanned closer, 8 apart, so six still fit
+  // in each column: 36 + 5 x 8 = 76, the columns at 84 and 170)
+  const float backW = 36 * k, backH = backW * 88 / 63, backStep = 8 * k, rowStep = 18 * k;
   const auto rowsOf = [&](int count) {
     return std::max(1, (std::min(count, kBacksShown) + kBacksARow - 1) / kBacksARow);
   };

@@ -98,8 +98,12 @@ TEST(TopShowsTest, APanelSlidesDownAndBackUp) {
   panel.open(2, 1);
   EXPECT_EQ(panel.which(), 2);
   EXPECT_FLOAT_EQ(panel.down(1), 0);
+  EXPECT_LT(panel.down(1.25), 1);
+  EXPECT_FALSE(panel.inPlace(1.25));
   EXPECT_FLOAT_EQ(panel.down(1.3), 1);
+  EXPECT_TRUE(panel.inPlace(1.31));
   panel.close(5);
+  EXPECT_FALSE(panel.inPlace(5.1));
   EXPECT_TRUE(panel.showing(5.1));
   EXPECT_FLOAT_EQ(panel.down(5.3), 0);
   EXPECT_FALSE(panel.showing(5.31));
