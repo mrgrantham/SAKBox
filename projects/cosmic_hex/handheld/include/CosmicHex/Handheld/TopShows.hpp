@@ -167,7 +167,9 @@ class FirstRollShow {
 public:
   static constexpr float kSecondsBetween = 0.5f;    // (after a die settles)
   static constexpr float kSecondsBetweenRounds = 1; // (the ties' new glass)
-  static constexpr float kSecondsRead = 2.4f;       // (the order, read)
+  static constexpr float kSecondsRead = 3.2f;       // (the order: sorted, then read)
+  static constexpr float kSecondsSort = 0.7f;       // (a player moving into order)
+  static constexpr float kSortStagger = 0.12f;      // (each after the one before)
 
   // Started for `roll`, the throws from `seed`, the physics stepped
   // `stepSeconds` at a time (PlatformProfile::diceStep)
@@ -192,6 +194,11 @@ public:
   double shownAt(std::size_t round, int player) const;
   static constexpr double kDieSize = 0.85; // (the roll's are 1.2)
   bool allLanded() const { return finishedAt_.has_value(); }
+  // How far the players have moved into their order once all have landed
+  // (0 in their lanes, 1 in order: 1st on the left), after a moment: each
+  // in turn (`order`: 0 the first to move), straight through time (the
+  // view gives it its curve)
+  float sorted(double now, int order = 0) const;
 
 private:
   void beginRound(std::size_t round, double now);
@@ -287,8 +294,9 @@ public:
   // the game as it was when the dice were thrown), to start once `start`
   // is called (when the dice have gone: the user's, not over the roll); and
   // each steal (after the blockade moves, or the pirate hideout's), a card
-  // flying from the victim to the thief; and each trade, the cards crossing
-  // between the two players (or to and from the bank)
+  // flying from the victim to the thief; each trade, the cards crossing
+  // between the two players (or to and from the bank); and what's built,
+  // its cost going to the bank (behind the ROUND hexagon)
   void saw(const std::vector<TableGame::Played> &moves, const State &before);
   void start(double now);
   bool waiting() const { return !cards_.empty() && !started_; }

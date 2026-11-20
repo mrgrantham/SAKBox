@@ -288,6 +288,16 @@ void FirstRollShow::hurry(double now) {
   update(now);
 }
 
+float FirstRollShow::sorted(double now, int order) const {
+  if (!finishedAt_)
+    return 0;
+  constexpr float kPause = 0.4f; // (the last number read first)
+  const float t =
+      (static_cast<float>(now - *finishedAt_) - kPause - kSortStagger * static_cast<float>(order)) /
+      kSecondsSort;
+  return std::clamp(t, 0.0f, 1.0f);
+}
+
 bool FirstRollShow::done(double now) const {
   return on_ && finishedAt_ && now - *finishedAt_ >= kSecondsRead;
 }
@@ -413,6 +423,19 @@ void RollPayShow::saw(const std::vector<TableGame::Played> &moves, const State &
         cross(move.player, before.turn, offer_.get);
       }
       offer_ = {};
+      break;
+    // Resources spent: to the bank (behind the ROUND hexagon, the user's)
+    case Action::Kind::BuildShip:
+      cross(before.turn, kBank, bundleOf(before.settings.shipCost));
+      break;
+    case Action::Kind::Settle:
+      cross(before.turn, kBank, bundleOf(before.settings.stationCost));
+      break;
+    case Action::Kind::BuildColony:
+      cross(before.turn, kBank, bundleOf(before.settings.colonyCost));
+      break;
+    case Action::Kind::BuyContract:
+      cross(before.turn, kBank, bundleOf(before.settings.contractCost));
       break;
     case Action::Kind::Trade: { // (with the bank)
       Resources give{};
@@ -624,7 +647,7 @@ bool HandShow::showing(double now) const {
 }
 
 float HandShow::piles(double now) const {
-  if (!showing(now))
+  if (!startedAt_ || !showing(now))
     return 0;
   const auto t = static_cast<float>(now - *startedAt_);
   if (t < kSecondsPiles)

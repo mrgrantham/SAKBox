@@ -493,6 +493,11 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow
   };
   const int players = static_cast<int>(roll.rounds.front().size());
   const Dice::DiceInTurn *dice = show.dice();
+  // Once all have landed: the players moving into their order (the
+  // user's), the dice and the lanes fading as they go
+  // (the dice fade as the first to move goes; the lanes go with them)
+  const float sorted = show.sorted(f.now);
+  const auto rankOf = [&](int p) { return (p - roll.first + players) % players; };
   // The dice of this round, each in its player's colour, in its own lane
   if (dice && f.pictures.die) {
     const auto toFloat = [](cyclone::real r) { return static_cast<float>(static_cast<double>(r)); };
@@ -507,10 +512,12 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow
           dieOnGlass(glass, {toFloat(at.x), toFloat(at.y), toFloat(at.z)},
                      {toFloat(turn.r), toFloat(turn.i), toFloat(turn.j), toFloat(turn.k)}, 0) *
               Scene::Transform::scaling({smaller, smaller, smaller}),
-          {.shading = Scene::Material::Shading::Lit, .colour = Palette::player(p)});
+          {.shading = Scene::Material::Shading::Lit,
+           .colour = Palette::player(p),
+           .alpha = static_cast<std::uint8_t>(31 * (1 - sorted))});
     }
     // The walls between the lanes: faint lines down the glass
-    for (int p = 1; p < players; ++p) {
+    for (int p = 1; p < players && sorted < 0.5f; ++p) {
       const double x = dice->laneMiddle(p) - dice->laneWidth() / 2;
       const auto top = onFloor(x, -Dice::DiceTray::kDepth / 2),
                  bottom = onFloor(x, Dice::DiceTray::kDepth / 2);
@@ -523,23 +530,46 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow
   // Each player's name over their lane, and under it their number rolling
   // into place as their die lands (an odometer, the user's); the numbers of
   // rounds before (the ties') small under it
-  for (int p = 0; p < players; ++p) {
-    float x = f.width / 2 + (static_cast<float>(p) - static_cast<float>(players - 1) / 2) * 58 * k;
+  // (a lane's place across the screen)
+  const auto laneX = [&](int lane) {
     if (dice)
-      if (const auto top = onFloor(dice->laneMiddle(p), -Dice::DiceTray::kDepth / 2))
-        x = (*top)[0];
+      if (const auto top = onFloor(dice->laneMiddle(lane), -Dice::DiceTray::kDepth / 2))
+        return (*top)[0];
+    return f.width / 2 + (static_cast<float>(lane) - static_cast<float>(players - 1) / 2) * 58 * k;
+  };
+  constexpr std::array<std::string_view, 4> kOrdinals{"1st", "2nd", "3rd", "4th"};
+  for (int p = 0; p < players; ++p) {
+    // From its lane to its place in the order, whimsically (the user's): a
+    // little wind-up back the other way, a hop up over the others, past its
+    // place and back (Anticipate, then Settle); each after the one before
+    const float t = show.sorted(f.now, rankOf(p));
+    const float swung = t < 0.5f ? 0.5f * Motion::along(Motion::Curve::Anticipate, 2 * t)
+                                 : 0.5f + 0.5f * Motion::along(Motion::Curve::Settle, 2 * t - 1);
+    const float x = laneX(p) + (laneX(rankOf(p)) - laneX(p)) * swung;
+    const float hop = rankOf(p) == p ? 0 : -14 * k * std::sin(kPi * t);
+    if (show.sorted(f.now, rankOf(p)) >= 1 && rankOf(p) < static_cast<int>(kOrdinals.size()))
+      overlay.textCentred(x, 60 * k, kOrdinals[static_cast<std::size_t>(rankOf(p))],
+                          rankOf(p) == 0 ? Palette::kHighlight : Palette::kDimWords, k);
     const auto round = static_cast<std::size_t>(show.round());
     const bool winner = show.allLanded() && p == roll.first;
+    // (sorted: those who sat out the last round's ties show their last throw)
+    if (sorted > 0 && show.shown(round, p) == 0)
+      for (std::size_t r = round; r-- > 0;)
+        if (const int n = show.shown(r, p)) {
+          overlay.textCentred(x, 44 * k + hop, std::to_string(n), Palette::kDimWords,
+                              std::round(1.5f * k));
+          break;
+        }
     if (const int n = show.shown(round, p))
-      odometer(f, x, 44 * k, n, static_cast<float>(f.now - show.shownAt(round, p)),
+      odometer(f, x, 44 * k + hop, n, static_cast<float>(f.now - show.shownAt(round, p)),
                winner ? Palette::kHighlight : Palette::kWords);
     std::string before;
     for (std::size_t r = 0; r < round && r < roll.rounds.size(); ++r)
       if (const int n = show.shown(r, p))
         before += (before.empty() ? "" : " ") + std::to_string(n);
-    if (!before.empty())
+    if (!before.empty() && sorted <= 0)
       overlay.textCentred(x, 58 * k, before, Palette::kDimWords, k);
-    overlay.textCentred(x, 28 * k, f.names.shortOf(p), Palette::player(p), k);
+    overlay.textCentred(x, 28 * k + hop, f.names.shortOf(p), Palette::player(p), k);
   }
   if (show.round() > 0 && !show.allLanded())
     overlay.textCentred(f.width / 2, 70 * k, "tied: they throw again", Palette::kHighlight, k);
@@ -595,8 +625,8 @@ void drawRollPay(const TopFrame &f, const RollPayShow &show, const State &state,
                                            (PointsBars::kDashWidth + PointsBars::kDashGap)) /
                                               2;
     const auto placeOf = [&](int player) {
-      if (player == RollPayShow::kBank) // (the bank: off the top of the screen's middle)
-        return std::pair{f.width / 2, -16 * k};
+      if (player == RollPayShow::kBank) // (the bank: behind the ROUND hexagon, top left)
+        return std::pair{22 * k, 19 * k};
       return player == you
                  ? std::pair{f.width * 0.7f, f.height + 24 * k}
                  : std::pair{barsRight + 6 * k,
@@ -617,7 +647,9 @@ void drawRollPay(const TopFrame &f, const RollPayShow &show, const State &state,
     const float y = Motion::arc(fromY, toY, -28 * k, m->fly);
     // Popping out of the planet (a settle), then shrinking as it goes to a
     // bot's bar (yours stays its size, off to your hand)
-    const float size = 20 * k * m->pop * (yours ? 1 : 1 - 0.6f * m->fly);
+    // (to the bank: shrinking away into the ROUND hexagon)
+    const float shrink = card.player == RollPayShow::kBank ? 1 - m->fly : 1;
+    const float size = 20 * k * m->pop * (yours ? 1 : 1 - 0.6f * m->fly) * shrink;
     if (size < 1)
       continue;
     // (a card stolen between two others: face down, as at a table)

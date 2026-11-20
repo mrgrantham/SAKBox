@@ -127,6 +127,11 @@ TEST(TopShowsTest, TheFirstRollThrowsInTurn) {
   EXPECT_EQ(show.shown(1, 0), 0); // (not in the ties' round)
   EXPECT_FALSE(show.done(now));
   EXPECT_TRUE(show.done(now + FirstRollShow::kSecondsRead));
+  // (then the players moved into order: not at once, all the way well
+  // before it's done)
+  EXPECT_FLOAT_EQ(show.sorted(now), 0);
+  EXPECT_FLOAT_EQ(show.sorted(now + FirstRollShow::kSecondsSort + 0.5), 1);
+  EXPECT_LT(show.sorted(now + 0.6, 2), show.sorted(now + 0.6, 0)); // (each after the last)
   // Impatient: A through it all, much sooner
   FirstRollShow quick;
   quick.start(roll, 9, 1.0 / 30, 0);
