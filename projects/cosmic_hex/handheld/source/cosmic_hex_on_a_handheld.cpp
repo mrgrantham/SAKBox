@@ -172,7 +172,9 @@ double secondsSince(Clock::time_point start) {
 // watched (the dealer's draws go straight on), and how long its slide or
 // flip takes
 constexpr double kSecondsAMove = 0.6;
-constexpr double kSecondsAnimating = 0.35;
+// (a ship's flight: long enough to see its engine burn, within a move's
+// time on screen)
+constexpr double kSecondsAnimating = 0.5;
 // A planet's number chip, once it's turned over, drops this far onto it
 // and settles in this long
 constexpr double kSecondsChipDrop = 0.35;
@@ -353,7 +355,7 @@ public:
     receive<TableSnapshot>([this](const TableSnapshot &snapshot) {
       // What moved since the last, animated from now
       if (latest_) {
-        motion_ = BoardMotion(latest_->state, snapshot.state);
+        motion_ = BoardMotion(latest_->state, snapshot.state, &motion_);
         // Tiles turned over: each shown big on the top screen, one after
         // another, once the ship's slide is done (DiscoveryShow)
         discovery_.arrived(latest_->state, snapshot.state, showsNow() + kSecondsAnimating);
@@ -443,6 +445,7 @@ public:
     station_ = renderer_->load(pieces.station.data());
     colony_ = renderer_->load(pieces.colony.data());
     ship_ = renderer_->load(pieces.ship.data());
+    flame_ = renderer_->load(pieces.flame.data());
     stars_ = renderer_->load(pieces.stars.data());
     hexRing_ = renderer_->load(pieces.hexRing.data());
     cornerRing_ = renderer_->load(pieces.cornerRing.data());
@@ -1068,10 +1071,24 @@ private:
       renderer_->draw(station.colony ? colony_ : station_,
                       placement * BoardPieces::onCorner(station.at),
                       toon(BoardColours::ofPlayer(station.owner)));
-    // Ships, sliding from where they were
-    for (std::size_t i = 0; i < state.ships.size(); ++i)
-      renderer_->draw(ship_, placement * Scene::Transform::translation(motion_.shipAt(i, t)),
-                      toon(BoardColours::ofPlayer(state.ships[i].owner)));
+    // Ships, flying from where they were, nose first, their engines
+    // burning as they speed up (BoardMotion)
+    for (std::size_t i = 0; i < state.ships.size(); ++i) {
+      const ShipPose pose = motion_.ship(i, t);
+      const Scene::Transform at = placement * Scene::Transform::translation(pose.at) *
+                                  Scene::Transform::rotation({0, 1, 0}, pose.heading);
+      renderer_->draw(ship_, at, toon(BoardColours::ofPlayer(state.ships[i].owner)));
+      if (pose.flame <= 0)
+        continue;
+      // (from the middle of its tail, swivelled, flickering a little)
+      const float flicker = 0.85f + 0.15f * std::sin(static_cast<float>(gameClock_.seconds()) * 47);
+      const float length = 0.65f * pose.flame * flicker;
+      renderer_->draw(flame_,
+                      at * Scene::Transform::translation({-0.27f, 0.21f, 0}) *
+                          Scene::Transform::rotation({0, 1, 0}, pose.gimbal) *
+                          Scene::Transform::scaling({length, 1, 1}),
+                      {.shading = Scene::Material::Shading::Unlit, .colour = {255, 110, 40}});
+    }
     if (state.blockade >= 0)
       renderer_->draw(ship_,
                       placement * BoardPieces::onHex(
@@ -1710,7 +1727,7 @@ private:
     }
   }
 
-  Scene::Mesh station_, colony_, ship_, stars_, hexRing_, cornerRing_;
+  Scene::Mesh station_, colony_, ship_, flame_, stars_, hexRing_, cornerRing_;
   // The pictures the board and the views over it draw with (TopViews)
   TopPictures pictures_;
   // Memory, measured (with the counting allocator in the build)

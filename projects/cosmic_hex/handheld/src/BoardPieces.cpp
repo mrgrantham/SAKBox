@@ -160,6 +160,17 @@ BoardPieces::BoardPieces() {
       right{-0.3f, 0.15f, 0.26f}, top{-0.18f, 0.36f, 0};
   ship.triangle(nose, left, top).triangle(nose, top, right).triangle(left, right, top);
   ship.triangle(nose, right, left);
+  // A ship's engine flame: a four-sided spike from a small square base at
+  // the origin back to a point 1 along -x
+  {
+    constexpr float kBase = 0.1f; // (thick enough to show on a DS: about 3 pixels)
+    const Scene::Vector3 tip{-1, 0, 0};
+    const std::array<Scene::Vector3, 4> base{
+        Scene::Vector3{0, kBase, 0}, Scene::Vector3{0, 0, kBase}, Scene::Vector3{0, -kBase, 0},
+        Scene::Vector3{0, 0, -kBase}};
+    for (std::size_t k = 0; k < 4; ++k)
+      flame.triangle(base[k], tip, base[(k + 1) % 4]);
+  }
   // Stars: about 160 across a disc 22 wide, 1 below the table, faint and
   // a little bluish, in a few brightnesses
   SeededRandom::Generator random(0x57A25);

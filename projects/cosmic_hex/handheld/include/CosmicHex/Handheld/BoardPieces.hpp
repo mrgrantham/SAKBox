@@ -72,6 +72,7 @@ struct BoardPieces {
   Scene::MeshBuilder station;    // a small box
   Scene::MeshBuilder colony;     // a taller box with a roof
   Scene::MeshBuilder ship;       // a dart, pointing along +x
+  Scene::MeshBuilder flame;      // a thin spike along -x from its base, 1 long (scaled to the burn)
   Scene::MeshBuilder hexRing;    // a thin ring round a hex, for the blockade's chosen hex
   Scene::MeshBuilder cornerRing; // a small ring round a corner, for the touched corner
   // A tall hexagonal column round a tile, its six sides both ways (seen

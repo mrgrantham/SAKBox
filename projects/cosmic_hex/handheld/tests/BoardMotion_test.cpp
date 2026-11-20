@@ -5,6 +5,8 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
+
 #include <numbers>
 
 using namespace CosmicHex;
@@ -22,19 +24,45 @@ float x(const ScratchPadd::Scene::Vector3 &v) { return static_cast<float>(v.x); 
 float z(const ScratchPadd::Scene::Vector3 &v) { return static_cast<float>(v.z); }
 } // namespace
 
-TEST(BoardMotionTest, AMovedShipSlidesStraight) {
+TEST(BoardMotionTest, AMovedShipFliesThere) {
   const State before = twoShips();
   State after = before;
   after.ships[0].corner = Corner{{0, 1}, 0};
   const BoardMotion motion(before, after);
   const auto from = BoardPieces::at(before.ships[0].corner);
   const auto to = BoardPieces::at(after.ships[0].corner);
+  // Halfway along, bowed a little off the straight line
   const auto half = motion.shipAt(0, 0.5f);
-  EXPECT_NEAR(x(half), (x(from) + x(to)) / 2, 1e-5);
-  EXPECT_NEAR(z(half), (z(from) + z(to)) / 2, 1e-5);
+  const float off = std::hypot(x(half) - (x(from) + x(to)) / 2, z(half) - (z(from) + z(to)) / 2);
+  EXPECT_NEAR(off, BoardMotion::kBow * (to - from).length(), 1e-3);
+  EXPECT_NEAR(x(motion.shipAt(0, 0)), x(from), 1e-5);
   EXPECT_NEAR(x(motion.shipAt(0, 1)), x(to), 1e-5);
+  EXPECT_NEAR(z(motion.shipAt(0, 1)), z(to), 1e-5);
   // The other ship stays put
   EXPECT_NEAR(x(motion.shipAt(1, 0)), x(BoardPieces::at(before.ships[1].corner)), 1e-5);
+}
+
+// Its engine burns while it speeds up (the flame swivelled, steering it
+// round the arc) and is out as it coasts in; its nose follows the flight,
+// and it keeps facing that way after, through the next move's motion
+TEST(BoardMotionTest, AShipBurnsThenCoastsAndKeepsItsHeading) {
+  const State before = twoShips();
+  State after = before;
+  after.ships[0].corner = Corner{{0, 1}, 0};
+  const BoardMotion motion(before, after);
+  const ShipPose early = motion.ship(0, 0.2f), late = motion.ship(0, 0.8f);
+  EXPECT_GT(early.flame, 0.3f);
+  EXPECT_NE(early.gimbal, 0.0f);
+  EXPECT_LE(std::abs(early.gimbal), BoardMotion::kMostGimbal);
+  EXPECT_FLOAT_EQ(late.flame, 0);
+  const ShipPose arrived = motion.ship(0, 1);
+  EXPECT_FLOAT_EQ(arrived.flame, 0);
+  EXPECT_NEAR(motion.ship(0, 0.999f).heading, arrived.heading, 0.05f); // (no snap at the end)
+  // The next move moves the other ship: this one keeps its heading
+  State next = after;
+  next.ships[1].corner = Corner{{1, 1}, 0};
+  const BoardMotion then(after, next, &motion);
+  EXPECT_FLOAT_EQ(then.ship(0, 0.5f).heading, arrived.heading);
 }
 
 TEST(BoardMotionTest, AShipThatCameOrWentDoesntSlide) {

@@ -2,12 +2,15 @@
 
 #include <CosmicHex/Handheld/BoardPieces.hpp>
 
+#include <ScratchPadd/Motion/Motion.hpp>
+
 #include <algorithm>
+#include <cmath>
 #include <numbers>
 
 namespace CosmicHex::Handheld {
 
-BoardMotion::BoardMotion(const State &before, const State &after) {
+BoardMotion::BoardMotion(const State &before, const State &after, const BoardMotion *last) {
   // Ships match one for one when no ship came or went: a move changes one
   // ship's corner and nothing else
   const bool sameShips =
@@ -17,6 +20,17 @@ BoardMotion::BoardMotion(const State &before, const State &after) {
   for (std::size_t i = 0; i < after.ships.size(); ++i) {
     shipTo_.push_back(BoardPieces::at(after.ships[i].corner));
     shipFrom_.push_back(sameShips ? BoardPieces::at(before.ships[i].corner) : shipTo_.back());
+    // Facing the way it was flying as it arrived (the arc's last
+    // direction: the line less the bow's turn back in), else as it was
+    const ScratchPadd::Scene::Vector3 way = shipTo_.back() - shipFrom_.back();
+    float heading = 0;
+    if (way.length() > 1e-4f) {
+      const ScratchPadd::Scene::Vector3 left{way.z, 0, -way.x};
+      const ScratchPadd::Scene::Vector3 last = way - left * (kBow * std::numbers::pi_v<float>);
+      heading = std::atan2(-last.z, last.x);
+    } else if (sameShips && last && i < last->headingAtRest_.size())
+      heading = last->headingAtRest_[i];
+    headingAtRest_.push_back(heading);
   }
   // Tiles turning over: face down before, face up after
   for (std::size_t i = 0; i < after.planets.size(); ++i)
@@ -27,12 +41,44 @@ BoardMotion::BoardMotion(const State &before, const State &after) {
                             after.zone[i].flipped);
 }
 
-ScratchPadd::Scene::Vector3 BoardMotion::shipAt(std::size_t ship, float t) const {
+ScratchPadd::Scene::Vector3 BoardMotion::flightAt(std::size_t ship, float t) const {
+  const auto &from = shipFrom_[ship], &to = shipTo_[ship];
+  const float s =
+      ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::Gentle, std::clamp(t, 0.0f, 1.0f));
+  // (bowing out to the flight's left, square to it on the table)
+  const ScratchPadd::Scene::Vector3 way = to - from;
+  const ScratchPadd::Scene::Vector3 left{way.z, 0, -way.x};
+  return from + way * s + left * (kBow * std::sin(std::numbers::pi_v<float> * s));
+}
+
+ShipPose BoardMotion::ship(std::size_t ship, float t) const {
   if (ship >= shipTo_.size())
     return {};
-  const float s = std::clamp(t, 0.0f, 1.0f);
-  const auto &from = shipFrom_[ship], &to = shipTo_[ship];
-  return from + (to - from) * s;
+  ShipPose pose;
+  pose.at = flightAt(ship, t);
+  pose.heading = headingAtRest_[ship];
+  const ScratchPadd::Scene::Vector3 way = shipTo_[ship] - shipFrom_[ship];
+  const float length = way.length();
+  if (length < 1e-4f || t <= 0 || t >= 1)
+    return pose;
+  // Its velocity and acceleration along the flight, from nearby moments
+  constexpr float kH = 1.0f / 256;
+  const auto before = flightAt(ship, t - kH), after = flightAt(ship, t + kH);
+  const ScratchPadd::Scene::Vector3 velocity = (after - before) * (1 / (2 * kH));
+  const ScratchPadd::Scene::Vector3 push = (after + before - pose.at * 2) * (1 / (kH * kH));
+  if (velocity.length() > 1e-4f)
+    pose.heading = std::atan2(-velocity.z, velocity.x); // (nose first)
+  // The push in the ship's own axes (x its nose, z its right side)
+  const float c = std::cos(pose.heading), s = std::sin(pose.heading);
+  const float forward = push.x * c - push.z * s;
+  const float sideways = push.x * s + push.z * c;
+  // Burning while it speeds up, as hard as it pushes (the Gentle curve's
+  // hardest push is near 6 lengths a t squared); swivelled against the
+  // sideways part (the flame goes the other way from the push)
+  pose.flame = std::clamp(forward / (5 * length), 0.0f, 1.0f);
+  if (pose.flame > 0)
+    pose.gimbal = std::clamp(std::atan2(-sideways, forward), -kMostGimbal, kMostGimbal);
+  return pose;
 }
 
 namespace {
