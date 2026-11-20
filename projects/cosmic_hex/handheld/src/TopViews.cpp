@@ -44,6 +44,27 @@ void backdrop(const TopFrame &f, float top, Scene::Colour colour, float alpha) {
 
 // ---------------------------------------------------------------- Discovery
 
+namespace {
+// A number token's number over its chip, on a tile at `pose` facing you
+void tokenNumber(const TopFrame &f, const Scene::Transform &pose, int number) {
+  const float digitsDown = kChipDown - 0.24f * kChipRadius; // (the digits' middle)
+  float x = 0, y = 0, edgeX = 0, edgeY = 0;
+  if (!f.renderer.toScreen(pose.apply({0, kChipLift, digitsDown}), x, y) ||
+      !f.renderer.toScreen(pose.apply({kChipRadius, kChipLift, digitsDown}), edgeX, edgeY))
+    return;
+  const float across = 2 * std::hypot(edgeX - x, edgeY - y); // (the chip, on the screen)
+  const std::string words = std::to_string(number);
+  // (a whole scale, as the overlay draws sharpest, the digits' height)
+  const float scale =
+      std::max(1.0f, std::round(0.36f * across / Scene::Overlay::inkOf("8", 1).height));
+  const auto ink = Scene::Overlay::inkOf(words, scale);
+  constexpr Scene::Colour kChip{242, 234, 216}, kInk{30, 30, 36}; // (make_number_chips.py's)
+  const float w = std::max(ink.width + 4, 0.62f * across), h = ink.height + 4;
+  f.overlay.rectangle(x - w / 2, y - h / 2, w, h, kChip);
+  f.overlay.textCentred(x, y, words, kInk, scale);
+}
+} // namespace
+
 void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
                    const ScratchPadd::PictureSlot &closeUp) {
   const auto moment = show.moment(f.now);
@@ -114,6 +135,12 @@ void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
       f.overlay.textCentred(f.width / 2, f.height / 2 + 64 * k, found->gives, Palette::kSoftWords,
                             1.5f * k);
     }
+    // The token's number written sharp over its picture once it's landed
+    // (the user's A: a small texture's digits blur; the words are crisp
+    // on every screen), on the chip's own cream, where its digits are (the
+    // upper part: 20 to 56 of its picture's 100)
+    if (found->number > 0 && moment->chip >= 1)
+      tokenNumber(f, pose, found->number);
   }
 }
 
