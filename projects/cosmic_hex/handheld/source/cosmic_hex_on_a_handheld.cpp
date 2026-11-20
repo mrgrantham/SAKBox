@@ -50,6 +50,7 @@
 #include <CosmicHex/Handheld/PlayerNames.hpp>
 #include <CosmicHex/Handheld/PointsBars.hpp>
 #include <CosmicHex/Handheld/RecipePixels.hpp>
+#include <CosmicHex/Handheld/ScorePops.hpp>
 #include <CosmicHex/Handheld/ScreenFlow.hpp>
 #include <CosmicHex/Handheld/ScreenPictures.hpp>
 #include <CosmicHex/Handheld/SettingsScreen.hpp>
@@ -410,6 +411,15 @@ public:
       gameClock_.setPaused(snapshot.paused);
       if (moved)
         motionStarted_ = gameClock_.seconds();
+      // Points and badges won: popping in (ScorePops)
+      {
+        std::vector<int> points, badges;
+        for (int p = 0; p < snapshot.state.players; ++p) {
+          points.push_back(CosmicHex::points(snapshot.state, p));
+          badges.push_back(snapshot.state.player[static_cast<std::size_t>(p)].badges);
+        }
+        scorePops_.saw(points, badges, showsNow());
+      }
       latest_ = snapshot;
       ++snapshots_; // (the top screen has something new to show)
       bottomDirty_ = true;
@@ -1151,6 +1161,7 @@ private:
     }
     for (const PointsBars::Bar &bar : PointsBars::of(state, kTopWidth, outlineRow))
       overlay.rectangle(bar.x, bar.y, bar.width, bar.height, bar.colour);
+    drawPointsPopping(overlay, state);
     drawCorners(overlay, state);
     // (the -watch builds: memory, measured, above the last move)
     if (kWatchAtStart && !memoryLine_.empty())
@@ -1189,6 +1200,40 @@ private:
     }
   }
 
+  // How big a pop draws something (ScorePops' size): its overshoot made
+  // plain (Settle's is a tenth: on a dash 2 pixels high, nothing to see)
+  static float popped(float size) { return size + 3 * std::max(0.0f, size - 1); }
+
+  // Points just won popping in over their dashes (ScorePops): grey till
+  // its turn, then growing past its size in white and settling in the
+  // player's colour
+  void drawPointsPopping(Scene::Overlay &overlay, const State &state) {
+    const double now = showsNow();
+    if (!scorePops_.popping(now))
+      return;
+    const int target = state.settings.winPoints;
+    const float width = static_cast<float>(target) * PointsBars::kDashWidth +
+                        static_cast<float>(target - 1) * PointsBars::kDashGap;
+    const float left = (static_cast<float>(kTopWidth) - width) / 2;
+    for (int p = 0; p < state.players; ++p)
+      for (int d = 0; d < target; ++d) {
+        const float size = scorePops_.dash(p, d, now);
+        if (size == 1)
+          continue;
+        const float x =
+            left + static_cast<float>(d) * (PointsBars::kDashWidth + PointsBars::kDashGap);
+        const float y = PointsBars::kTop +
+                        static_cast<float>(p) * (PointsBars::kRowHeight + PointsBars::kRowGap);
+        overlay.rectangle(x, y, PointsBars::kDashWidth, PointsBars::kRowHeight,
+                          PointsBars::kStillToWin);
+        const float w = PointsBars::kDashWidth * popped(size);
+        const float h = PointsBars::kRowHeight * (1 + 15 * std::max(0.0f, size - 1));
+        overlay.rectangle(x + PointsBars::kDashWidth / 2 - w / 2,
+                          y + PointsBars::kRowHeight / 2 - h / 2, w, h,
+                          size > 1 ? Palette::kWords : BoardColours::ofPlayer(p));
+      }
+  }
+
   // The top corners (the user's): the round top left, in a
   // turquoise hexagon with ROUND under it (calmer than the roll's amber: it's
   // always there), and the badges top right, towards the next point (3 make
@@ -1216,9 +1261,11 @@ private:
     const float bx = static_cast<float>(kTopWidth) - 36 * k;
     for (int i = 0; i < 3; ++i) {
       const float x = bx + static_cast<float>(i) * 12 * k, y = 16 * k;
-      if (i < badges)
-        overlay.hexagon(x, y, 5 * k, kAmber, true);
-      else
+      // (a badge just won popping in: ScorePops)
+      const float size = scorePops_.badge(whose, i, showsNow());
+      if (i < badges && size > 0)
+        overlay.hexagon(x, y, 5 * k * popped(size), kAmber, true);
+      if (i >= badges || size < 1)
         hexagonEdge(x, y, 5 * k, kEmpty);
     }
     overlay.textCentred(bx + 12 * k, 30 * k, "BADGES", kDim);
@@ -1878,6 +1925,8 @@ private:
     if (shownInfo_ != BottomScreen::Info::None || cards_.moving(showsNow()) || outlineMovedAt_)
       return true; // (an info view coming in or going, the points' outline)
     // (the views over the board: each says)
+    if (scorePops_.popping(showsNow()))
+      return true; // (points or badges popping in)
     if (dealt_.moving() || others_.moving(showsNow()) || discovery_.moving(showsNow()) ||
         homePay_.moving(showsNow()) || rollPay_.moving(showsNow()))
       return true;
@@ -1976,6 +2025,7 @@ private:
   FirstRollShow firstRoll_;         // (who goes first)
   HomePayShow homePay_;             // (a home's pay on its die)
   RollPayShow rollPay_;             // (a roll's pay, card by card)
+  ScorePops scorePops_;             // (points and badges won, popping in)
   ScratchPadd::StillFrames still_;  // (when the top screen can hold its last frame)
   bool youPaused_ = false;          // (watching: paused with A, so the PAUSED band shows)
   // Why the game is held, if it is: one bit each. The table is told to hold

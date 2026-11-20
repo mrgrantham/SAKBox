@@ -28,6 +28,7 @@ cc_library(
         "src/PointsBars.cpp",
         "src/ScreenFlow.cpp",
         "src/ScreenPictures.cpp",
+        "src/ScorePops.cpp",
         "src/SettingsScreen.cpp",
         "src/StartMenu.cpp",
         "src/TableGame.cpp",
@@ -61,6 +62,7 @@ cc_library(
         "include/CosmicHex/Handheld/RecipePixels.hpp",
         "include/CosmicHex/Handheld/ScreenFlow.hpp",
         "include/CosmicHex/Handheld/ScreenPictures.hpp",
+        "include/CosmicHex/Handheld/ScorePops.hpp",
         "include/CosmicHex/Handheld/SettingsScreen.hpp",
         "include/CosmicHex/Handheld/StartMenu.hpp",
         "include/CosmicHex/Handheld/TableGame.hpp",
@@ -356,6 +358,16 @@ cc_test(
         ":handheld",
         "//projects/expected_capabilities",
         "//projects/scratchpadd/scene/desktop",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "ScorePops_test",
+    size = "small",
+    srcs = ["tests/ScorePops_test.cpp"],
+    deps = [
+        ":handheld",
         "@gtest//:gtest_main",
     ],
 )
