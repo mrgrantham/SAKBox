@@ -270,13 +270,16 @@ class RollPayShow {
 public:
   static constexpr float kSecondsPop = 0.2f, kSecondsFly = 0.6f, kStagger = 0.12f;
   struct Card {
-    int planet; // (its index in State::planets)
+    int planet; // (its index in State::planets; -1 for one stolen)
     int player;
     Resource resource;
+    int from = -1; // (stolen: from this player, to `player`, the thief)
   };
   // The moves made since the last look: a roll's pay queued (from `before`,
   // the game as it was when the dice were thrown), to start once `start`
-  // is called (when the dice have gone: the user's, not over the roll)
+  // is called (when the dice have gone: the user's, not over the roll); and
+  // each steal (after the blockade moves, or the pirate hideout's), a card
+  // flying from the victim to the thief
   void saw(const std::vector<TableGame::Played> &moves, const State &before);
   void start(double now);
   bool waiting() const { return !cards_.empty() && !started_; }
@@ -298,6 +301,7 @@ public:
 
 private:
   std::vector<Card> cards_;
+  std::vector<int> victims_; // (who the next steals are from, in order)
   double startAt_ = 0;
   bool started_ = false, held_ = false;
 };

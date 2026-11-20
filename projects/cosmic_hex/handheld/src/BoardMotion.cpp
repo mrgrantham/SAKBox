@@ -21,17 +21,25 @@ BoardMotion::BoardMotion(const State &before, const State &after, const BoardMot
   for (std::size_t i = 0; i < after.ships.size(); ++i) {
     shipTo_.push_back(BoardPieces::at(after.ships[i].corner));
     shipFrom_.push_back(sameShips ? BoardPieces::at(before.ships[i].corner) : shipTo_.back());
-    // Facing the way it was flying as it arrived (the arc's last
-    // direction: the line less the bow's turn back in), else as it was
-    const ScratchPadd::Scene::Vector3 way = shipTo_.back() - shipFrom_.back();
-    float heading = 0;
-    if (way.length() > 1e-4f) {
-      const ScratchPadd::Scene::Vector3 left{way.z, 0, -way.x};
-      const ScratchPadd::Scene::Vector3 last = way - left * (kBow * std::numbers::pi_v<float>);
-      heading = std::atan2(-last.z, last.x);
-    } else if (sameShips && last && i < last->headingAtRest_.size())
-      heading = last->headingAtRest_[i];
-    headingAtRest_.push_back(heading);
+    // Facing the way it was flying as it arrived, else as it was
+    const float was =
+        sameShips && last && i < last->headingAtRest_.size() ? last->headingAtRest_[i] : 0;
+    headingAtRest_.push_back(
+        Flight{shipFrom_.back(), shipTo_.back(), 0}.arrivingHeading().value_or(was));
+  }
+  // The blockade: swooping from the planet it was on to the next (or
+  // dropping onto the first, from above)
+  if (after.blockade >= 0) {
+    const auto to =
+        BoardPieces::centre(after.planets[static_cast<std::size_t>(after.blockade)].hex);
+    const auto from =
+        before.blockade >= 0
+            ? BoardPieces::centre(before.planets[static_cast<std::size_t>(before.blockade)].hex)
+            : to + ScratchPadd::Scene::Vector3{0, kDropHeight, 0};
+    blockade_ = Flight{from, to, before.blockade >= 0 ? kSwoop : 0};
+    blockadeMoves_ = before.blockade != after.blockade;
+    const float was = last ? last->blockadeHeading_ : 0;
+    blockadeHeading_ = blockadeMoves_ ? blockade_->arrivingHeading().value_or(was) : was;
   }
   // Stations built: in `after` and not in `before` as they are (a
   // station become a colony is built again)
@@ -47,32 +55,41 @@ BoardMotion::BoardMotion(const State &before, const State &after, const BoardMot
                             after.zone[i].flipped);
 }
 
-ScratchPadd::Scene::Vector3 BoardMotion::flightAt(std::size_t ship, float t) const {
-  const auto &from = shipFrom_[ship], &to = shipTo_[ship];
-  const float s =
-      ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::Gentle, std::clamp(t, 0.0f, 1.0f));
-  // (bowing out to the flight's left, square to it on the table)
-  const ScratchPadd::Scene::Vector3 way = to - from;
+std::optional<float> BoardMotion::Flight::arrivingHeading() const {
+  // (the arc's last direction: the line less the bow's turn back in)
+  const ScratchPadd::Scene::Vector3 way{to.x - from.x, 0, to.z - from.z};
+  if (way.length() < 1e-4f)
+    return std::nullopt;
   const ScratchPadd::Scene::Vector3 left{way.z, 0, -way.x};
-  return from + way * s + left * (kBow * std::sin(std::numbers::pi_v<float> * s));
+  const ScratchPadd::Scene::Vector3 last = way - left * (kBow * std::numbers::pi_v<float>);
+  return std::atan2(-last.z, last.x);
 }
 
-ShipPose BoardMotion::ship(std::size_t ship, float t) const {
-  if (ship >= shipTo_.size())
-    return {};
+ScratchPadd::Scene::Vector3 BoardMotion::Flight::at(float t) const {
+  const float s =
+      ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::Gentle, std::clamp(t, 0.0f, 1.0f));
+  // (bowing out to the flight's left, square to it on the table, and
+  // hopping up off the table and down again)
+  const ScratchPadd::Scene::Vector3 way = to - from;
+  const ScratchPadd::Scene::Vector3 left{way.z, 0, -way.x};
+  const float arc = std::sin(std::numbers::pi_v<float> * s);
+  return from + way * s + left * (kBow * arc) + ScratchPadd::Scene::Vector3{0, hop * arc, 0};
+}
+
+ShipPose BoardMotion::Flight::pose(float t, float restingHeading) const {
   ShipPose pose;
-  pose.at = flightAt(ship, t);
-  pose.heading = headingAtRest_[ship];
-  const ScratchPadd::Scene::Vector3 way = shipTo_[ship] - shipFrom_[ship];
+  pose.at = at(t);
+  pose.heading = restingHeading;
+  const ScratchPadd::Scene::Vector3 way = to - from;
   const float length = way.length();
   if (length < 1e-4f || t <= 0 || t >= 1)
     return pose;
   // Its velocity and acceleration along the flight, from nearby moments
   constexpr float kH = 1.0f / 256;
-  const auto before = flightAt(ship, t - kH), after = flightAt(ship, t + kH);
+  const auto before = at(t - kH), after = at(t + kH);
   const ScratchPadd::Scene::Vector3 velocity = (after - before) * (1 / (2 * kH));
   const ScratchPadd::Scene::Vector3 push = (after + before - pose.at * 2) * (1 / (kH * kH));
-  if (velocity.length() > 1e-4f)
+  if (std::hypot(velocity.x, velocity.z) > 1e-4f)
     pose.heading = std::atan2(-velocity.z, velocity.x); // (nose first)
   // The push in the ship's own axes (x its nose, z its right side)
   const float c = std::cos(pose.heading), s = std::sin(pose.heading);
@@ -87,8 +104,22 @@ ShipPose BoardMotion::ship(std::size_t ship, float t) const {
   return pose;
 }
 
+ShipPose BoardMotion::ship(std::size_t ship, float t) const {
+  if (ship >= shipTo_.size())
+    return {};
+  return Flight{shipFrom_[ship], shipTo_[ship], 0}.pose(t, headingAtRest_[ship]);
+}
+
+std::optional<ShipPose> BoardMotion::blockade(float t) const {
+  if (!blockade_)
+    return std::nullopt;
+  if (!blockadeMoves_)
+    return blockade_->pose(1, blockadeHeading_);
+  return blockade_->pose(t, blockadeHeading_);
+}
+
 bool BoardMotion::anything() const {
-  if (shipsCameOrWent_)
+  if (shipsCameOrWent_ || blockadeMoves_)
     return true;
   for (std::size_t i = 0; i < shipTo_.size(); ++i)
     if ((shipTo_[i] - shipFrom_[i]).length() > 1e-4f)

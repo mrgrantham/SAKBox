@@ -1003,6 +1003,23 @@ private:
           {.shading = Scene::Material::Shading::Unlit, .colour = {150, 160, 180}, .alpha = 4});
   }
 
+  // A ship at `pose` in `colour`, its engine's flame when it burns
+  // (swivelled, flickering a little, from the middle of its tail)
+  void drawShip(const ShipPose &pose, const Scene::Transform &placement, Scene::Colour colour) {
+    const Scene::Transform at = placement * Scene::Transform::translation(pose.at) *
+                                Scene::Transform::rotation({0, 1, 0}, pose.heading);
+    renderer_->draw(ship_, at, {.shading = Scene::Material::Shading::Toon, .colour = colour});
+    if (pose.flame <= 0)
+      return;
+    const float flicker = 0.85f + 0.15f * std::sin(static_cast<float>(gameClock_.seconds()) * 47);
+    const float length = 0.65f * pose.flame * flicker;
+    renderer_->draw(flame_,
+                    at * Scene::Transform::translation({-0.27f, 0.21f, 0}) *
+                        Scene::Transform::rotation({0, 1, 0}, pose.gimbal) *
+                        Scene::Transform::scaling({length, 1, 1}),
+                    {.shading = Scene::Material::Shading::Unlit, .colour = {255, 110, 40}});
+  }
+
   // A board's tiles, chips, stations and ships, placed by `placement`
   void drawPieces(const State &state, const Scene::Transform &placement) {
     // How far through the latest move's animation (0 to 1)
@@ -1100,27 +1117,11 @@ private:
     }
     // Ships, flying from where they were, nose first, their engines
     // burning as they speed up (BoardMotion)
-    for (std::size_t i = 0; i < state.ships.size(); ++i) {
-      const ShipPose pose = motion_.ship(i, t);
-      const Scene::Transform at = placement * Scene::Transform::translation(pose.at) *
-                                  Scene::Transform::rotation({0, 1, 0}, pose.heading);
-      renderer_->draw(ship_, at, toon(BoardColours::ofPlayer(state.ships[i].owner)));
-      if (pose.flame <= 0)
-        continue;
-      // (from the middle of its tail, swivelled, flickering a little)
-      const float flicker = 0.85f + 0.15f * std::sin(static_cast<float>(gameClock_.seconds()) * 47);
-      const float length = 0.65f * pose.flame * flicker;
-      renderer_->draw(flame_,
-                      at * Scene::Transform::translation({-0.27f, 0.21f, 0}) *
-                          Scene::Transform::rotation({0, 1, 0}, pose.gimbal) *
-                          Scene::Transform::scaling({length, 1, 1}),
-                      {.shading = Scene::Material::Shading::Unlit, .colour = {255, 110, 40}});
-    }
-    if (state.blockade >= 0)
-      renderer_->draw(ship_,
-                      placement * BoardPieces::onHex(
-                                      state.planets[static_cast<std::size_t>(state.blockade)].hex),
-                      toon(BoardColours::kBlockade));
+    for (std::size_t i = 0; i < state.ships.size(); ++i)
+      drawShip(motion_.ship(i, t), placement, BoardColours::ofPlayer(state.ships[i].owner));
+    // The blockade, swooping to its planet
+    if (const auto pose = motion_.blockade(t))
+      drawShip(*pose, placement, BoardColours::kBlockade);
   }
 
   // The bottom screen: each player's points and resources, and the last

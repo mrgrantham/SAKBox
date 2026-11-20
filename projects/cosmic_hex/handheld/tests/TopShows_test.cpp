@@ -218,3 +218,24 @@ TEST(TopShowsTest, ARollsPayFliesCardByCard) {
   seven.saw({{0, Action{Action::Kind::Roll, 3, 4}}}, state); // (a 7 pays nothing)
   EXPECT_TRUE(seven.cards().empty());
 }
+
+// A steal: after the blockade names who it's from, the card flies from
+// them to the player whose turn it is; the pirate hideout's, from each in
+// the order the game has them
+TEST(TopShowsTest, AStealFliesFromTheVictim) {
+  State before;
+  before.turn = 2;
+  RollPayShow show;
+  show.saw({{2, Action{Action::Kind::MoveBlockade, 3, 1}}, {-1, Action{Action::Kind::Steal, 4}}},
+           before);
+  ASSERT_EQ(show.cards().size(), 1u);
+  EXPECT_EQ(show.cards()[0].from, 1);
+  EXPECT_EQ(show.cards()[0].player, 2);
+  EXPECT_EQ(show.cards()[0].planet, -1);
+  before.victims = {0, 3};
+  RollPayShow pirates;
+  pirates.saw({{-1, Action{Action::Kind::Steal, 0}}, {-1, Action{Action::Kind::Steal, 2}}}, before);
+  ASSERT_EQ(pirates.cards().size(), 2u);
+  EXPECT_EQ(pirates.cards()[0].from, 0);
+  EXPECT_EQ(pirates.cards()[1].from, 3);
+}

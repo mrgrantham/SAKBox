@@ -360,7 +360,18 @@ HomePayShow::Step HomePayShow::update(double now) {
 // --------------------------------------------------------------- Roll pay
 
 void RollPayShow::saw(const std::vector<TableGame::Played> &moves, const State &before) {
+  // (who's to be stolen from: as the game had it, then as the blockade
+  // names them; the thief is the player whose turn it is)
+  if (!moves.empty())
+    victims_ = before.victims;
   for (const TableGame::Played &move : moves) {
+    if (move.action.kind == Action::Kind::MoveBlockade && move.action.b >= 0)
+      victims_ = {move.action.b};
+    if (move.action.kind == Action::Kind::Steal && !victims_.empty() && move.action.a >= 0 &&
+        move.action.a < kResources) {
+      cards_.push_back({-1, before.turn, static_cast<Resource>(move.action.a), victims_.front()});
+      victims_.erase(victims_.begin());
+    }
     if (move.action.kind != Action::Kind::Roll)
       continue;
     const int roll = move.action.a + move.action.b;

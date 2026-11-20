@@ -118,3 +118,34 @@ TEST(BoardMotionTest, NothingMovesBetweenTheSameStates) {
   moved.ships[0].corner = Corner{{0, 1}, 0};
   EXPECT_TRUE(BoardMotion(state, moved).anything());
 }
+
+// The blockade swoops from planet to planet: up off the board midway,
+// burning early, on the next planet at the end, keeping its heading; it
+// drops onto the first
+TEST(BoardMotionTest, TheBlockadeSwoops) {
+  State before = twoShips();
+  before.planets[0].hex = Hex{0, 0};
+  before.planets[1].hex = Hex{2, -1};
+  before.blockade = 0;
+  State after = before;
+  after.blockade = 1;
+  const BoardMotion motion(before, after);
+  EXPECT_TRUE(motion.anything());
+  ASSERT_TRUE(motion.blockade(0.5f).has_value());
+  EXPECT_GT(motion.blockade(0.5f)->at.y, 0.8f * BoardMotion::kSwoop);
+  EXPECT_GT(motion.blockade(0.2f)->flame, 0);
+  const auto end = BoardPieces::centre(after.planets[1].hex);
+  EXPECT_NEAR(x(motion.blockade(1)->at), x(end), 1e-5);
+  EXPECT_NEAR(z(motion.blockade(1)->at), z(end), 1e-5);
+  // Nothing else moving: it stays, facing the same way
+  const BoardMotion still(after, after, &motion);
+  EXPECT_FALSE(still.anything());
+  EXPECT_FLOAT_EQ(still.blockade(0.5f)->heading, motion.blockade(1)->heading);
+  EXPECT_NEAR(x(still.blockade(0.5f)->at), x(end), 1e-5);
+  // None, then one: it drops onto it from above
+  State none = before;
+  none.blockade = -1;
+  const BoardMotion first(none, after);
+  EXPECT_GT(first.blockade(0)->at.y, 1.0f);
+  EXPECT_FALSE(BoardMotion(none, none).blockade(0).has_value());
+}

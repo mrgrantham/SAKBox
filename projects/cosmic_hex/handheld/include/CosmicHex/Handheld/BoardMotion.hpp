@@ -62,6 +62,11 @@ public:
   // Ship `ship` (of `after`) at `t` (0: where it was, 1: where it is). A
   // new ship, or one when ships came or went (one settled), is where it is
   ShipPose ship(std::size_t ship, float t) const;
+  // The blockade (the pirates' ship) at `t`: swooping from the planet it
+  // was on, up off the board and diving down onto the next, as a ship
+  // flies; dropping onto the first; nothing when there's none
+  std::optional<ShipPose> blockade(float t) const;
+  static constexpr float kSwoop = 1.2f; // (how high it swoops, in hexes)
   ScratchPadd::Scene::Vector3 shipAt(std::size_t ship, float t) const {
     return this->ship(ship, t).at;
   }
@@ -85,12 +90,23 @@ public:
   std::optional<float> siteTurn(std::size_t site, float t) const;
 
 private:
-  ScratchPadd::Scene::Vector3 flightAt(std::size_t ship, float t) const;
+  // A flight from one place to another (BoardMotion's ships and blockade):
+  // along an arc bowing to the left, hopping `hop` up off the table
+  struct Flight {
+    ScratchPadd::Scene::Vector3 from, to;
+    float hop = 0;
+    ScratchPadd::Scene::Vector3 at(float t) const;
+    ShipPose pose(float t, float restingHeading) const;
+    std::optional<float> arrivingHeading() const; // (none if it doesn't go anywhere)
+  };
 
   std::vector<ScratchPadd::Scene::Vector3> shipFrom_, shipTo_;
   std::vector<float> headingAtRest_; // (each ship's, once it's arrived)
   std::vector<bool> planetFlipping_, siteFlipping_, stationBuilt_;
   bool shipsCameOrWent_ = false;
+  std::optional<Flight> blockade_;
+  bool blockadeMoves_ = false;
+  float blockadeHeading_ = 0;
 };
 
 } // namespace CosmicHex::Handheld

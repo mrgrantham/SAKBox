@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <tuple>
 
 namespace CosmicHex::Handheld {
 
@@ -403,7 +404,7 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow
     for (std::size_t r = 0; r <= static_cast<std::size_t>(show.round()) && r < roll.rounds.size();
          ++r)
       if (const int n = show.shown(r, p))
-        numbers += (numbers.empty() ? "" : "  ") + std::to_string(n);
+        numbers += (numbers.empty() ? "" : " ") + std::to_string(n);
     const bool winner = show.allLanded() && p == roll.first;
     overlay.textCentred(x, 42 * k, numbers, winner ? Palette::kHighlight : Palette::kWords,
                         1.5f * k);
@@ -435,7 +436,7 @@ void drawRollPay(const TopFrame &f, const RollPayShow &show, const State &state,
   // resource's colour, in as its first card pops out, out as its last lands
   std::vector<std::pair<int, float>> lit; // (planet, how strongly)
   for (std::size_t i = 0; i < show.cards().size(); ++i)
-    if (const auto m = show.at(i, f.now)) {
+    if (const auto m = show.at(i, f.now); m && show.cards()[i].planet >= 0) {
       const float strength = m->pop * (1 - m->fly * m->fly);
       const int planet = show.cards()[i].planet;
       const auto it = std::ranges::find(lit, planet, &std::pair<int, float>::first);
@@ -457,18 +458,27 @@ void drawRollPay(const TopFrame &f, const RollPayShow &show, const State &state,
     if (!m)
       continue;
     const RollPayShow::Card &card = show.cards()[i];
-    const Planet &planet = state.planets[static_cast<std::size_t>(card.planet)];
-    float fromX = f.width / 2, fromY = f.height / 2;
-    f.renderer.toScreen(BoardPieces::centre(planet.hex), fromX, fromY);
-    // Where it goes: your hand below, or the player's row of the points bars
+    // A player's place: your hand below, or their row of the points bars
     const float barsRight = f.width / 2 + (static_cast<float>(state.settings.winPoints) *
                                            (PointsBars::kDashWidth + PointsBars::kDashGap)) /
                                               2;
+    const auto placeOf = [&](int player) {
+      return player == you
+                 ? std::pair{f.width * 0.7f, f.height + 24 * k}
+                 : std::pair{barsRight + 6 * k,
+                             PointsBars::kTop + static_cast<float>(player) *
+                                                    (PointsBars::kRowHeight + PointsBars::kRowGap)};
+    };
+    // Where it comes from: its planet, or the player it's stolen from
+    float fromX = f.width / 2, fromY = f.height / 2;
+    if (card.planet >= 0)
+      f.renderer.toScreen(
+          BoardPieces::centre(state.planets[static_cast<std::size_t>(card.planet)].hex), fromX,
+          fromY);
+    else
+      std::tie(fromX, fromY) = placeOf(card.from);
     const bool yours = card.player == you;
-    const float toX = yours ? f.width * 0.7f : barsRight + 6 * k;
-    const float toY = yours ? f.height + 24 * k
-                            : PointsBars::kTop + static_cast<float>(card.player) *
-                                                     (PointsBars::kRowHeight + PointsBars::kRowGap);
+    const auto [toX, toY] = placeOf(card.player);
     const float x = Motion::arc(fromX, toX, 0.0f, m->fly);
     const float y = Motion::arc(fromY, toY, -28 * k, m->fly);
     // Popping out of the planet (a settle), then shrinking as it goes to a
@@ -476,8 +486,12 @@ void drawRollPay(const TopFrame &f, const RollPayShow &show, const State &state,
     const float size = 20 * k * m->pop * (yours ? 1 : 1 - 0.6f * m->fly);
     if (size < 1)
       continue;
-    picture(f, p.resourceSquare, p.resources[static_cast<std::size_t>(card.resource)], x - size / 2,
-            y - size * 52 / 63 / 2, size, size * 52 / 63);
+    // (a card stolen between two others: face down, as at a table)
+    const bool hidden = card.from >= 0 && card.player != you && card.from != you;
+    picture(f, p.resourceSquare,
+            hidden ? p.backs[static_cast<std::size_t>(Art::kResourceBack)]
+                   : p.resources[static_cast<std::size_t>(card.resource)],
+            x - size / 2, y - size * 52 / 63 / 2, size, size * 52 / 63);
   }
 }
 
