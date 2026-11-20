@@ -1,6 +1,8 @@
 #include <CosmicHex/Handheld/Palette.hpp>
 #include <CosmicHex/Handheld/SettingsScreen.hpp>
 
+#include <array>
+
 namespace CosmicHex::Handheld {
 
 namespace {
@@ -8,15 +10,30 @@ const ScratchPadd::Buttons::Style kButtons{.face = {31, 42, 64, 255},
                                            .edge = {58, 74, 106, 255},
                                            .words = Palette::kWords,
                                            .focus = Palette::kHighlight};
+constexpr std::array<std::string_view, 3> kAnimationWords{"Full", "Quick", "Off"};
 } // namespace
+
+std::string_view wordOf(Animations animations) {
+  return kAnimationWords[static_cast<std::size_t>(animations)];
+}
+
+std::optional<Animations> animationsFrom(std::string_view word) {
+  for (std::size_t i = 0; i < kAnimationWords.size(); ++i)
+    if (word == kAnimationWords[i])
+      return static_cast<Animations>(i);
+  return std::nullopt;
+}
+
+double rateOf(Animations animations) { return animations == Animations::Quick ? 2 : 1; }
 
 SettingsScreen::SettingsScreen(int width, int height) : width_(width), height_(height) {
   setButtons();
 }
 
-void SettingsScreen::open(std::string name, bool fromConsole) {
+void SettingsScreen::open(std::string name, bool fromConsole, Animations animations) {
   name_ = std::move(name);
   fromConsole_ = fromConsole;
+  animations_ = animations;
   keyboard_.reset();
   setButtons();
   buttons_.setFocus(kChange);
@@ -25,7 +42,10 @@ void SettingsScreen::open(std::string name, bool fromConsole) {
 void SettingsScreen::setButtons() {
   const float k = static_cast<float>(width_) / 256;
   buttons_.set({{.id = kChange, .area = {16 * k, 88 * k, 96 * k, 22 * k}, .label = "Change"},
-                {.id = kBack, .area = {16 * k, 160 * k, 96 * k, 22 * k}, .label = "Back"}});
+                {.id = kAnimations,
+                 .area = {16 * k, 130 * k, 96 * k, 22 * k},
+                 .label = std::string(wordOf(animations_))},
+                {.id = kBack, .area = {16 * k, 164 * k, 96 * k, 22 * k}, .label = "Back"}});
 }
 
 SettingsScreen::Outcome SettingsScreen::typed() {
@@ -59,6 +79,14 @@ SettingsScreen::Outcome SettingsScreen::press(Key key, double now) {
       buttons_.press(*focused, now);
       if (*focused == kBack)
         return Outcome::Back;
+      if (*focused == kAnimations) {
+        // (Full, Quick, Off, and round again)
+        animations_ = static_cast<Animations>((static_cast<int>(animations_) + 1) % 3);
+        setButtons();
+        buttons_.setFocus(kAnimations);
+        buttons_.press(kAnimations, now);
+        return Outcome::AnimationsChanged;
+      }
       keyboard_.emplace(name_, kLongestName);
       keyboard_->layOut(width_, height_);
     }
@@ -95,6 +123,12 @@ void SettingsScreen::draw(ScratchPadd::Canvas &canvas, double now) {
   canvas.text(24 * k, 62 * k, name_, Palette::kWords, k >= 1.2f ? 2.0f : 1.5f);
   if (fromConsole_)
     canvas.text(144 * k, 44 * k, "from the console", Palette::kDimWords);
+  canvas.text(16 * k, 120 * k, "Animations", Palette::kDimWords);
+  canvas.text(120 * k, 137 * k,
+              animations_ == Animations::Full    ? "every flourish"
+              : animations_ == Animations::Quick ? "twice as fast"
+                                                 : "straight to the end",
+              Palette::kDimWords);
   buttons_.setTime(now);
   buttons_.draw(canvas, kButtons);
 }

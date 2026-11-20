@@ -26,3 +26,15 @@ TEST(GameClockTest, RunsPausesAndChangesRate) {
   clock.setPaused(false, start + 22s); // (already running: nothing changes)
   EXPECT_DOUBLE_EQ(clock.seconds(start + 22s), 6);
 }
+
+// Skipping ahead: game time moves on at once, running or paused, and runs
+// on from there
+TEST(GameClockTest, SkipsAhead) {
+  const auto start = GameClock::RealClock::time_point{};
+  GameClock clock(start);
+  clock.skipAhead(5);
+  EXPECT_DOUBLE_EQ(clock.seconds(start + std::chrono::seconds(1)), 6);
+  clock.setPaused(true, start + std::chrono::seconds(1));
+  clock.skipAhead(2);
+  EXPECT_DOUBLE_EQ(clock.seconds(start + std::chrono::seconds(9)), 8);
+}

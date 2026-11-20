@@ -11,6 +11,15 @@ What was chosen. **Why:** the reasons. **Not:** the alternatives turned down, an
 
 ## Cosmic Hex: the game
 
+**Animations: Full, Quick or Off, and B skips** (2026-11-20)
+B (Back) takes every animation running straight to its end frame (a second B does B's usual job); the Settings' Animations is Full, Quick (twice as fast) or Off (skipped every frame), kept on the card. **Why:** someone playing through quickly shouldn't wait on flourishes (the user's). One clock for the shows (`showClock_`) and the game's clock run at the setting's rate, and skipping moves the shows' clock on past any end, so each show needs no skip code of its own; the dice are stepped on to where they land at once, so the roll is still the physics'. **Not:** a skip method on every show (more code, easy to miss one).
+
+**Who goes first: physics dice, one at a time** (2026-11-20)
+Each player's die, in their colour, is thrown into the glass in turn and settles on the number the game rolled; A throws the next at once. Each throw is rehearsed unseen first, and the die drawn with its numbers turned so the side that lands up shows the chosen number. **Why:** the user's: real dice, each settling before the next. **Not:** throwing until the physics happens to give the number (unbounded), or flat pictures of dice (built first, and not what was agreed).
+
+**The home die: a white hexagonal prism** (2026-11-20)
+An extruded white hexagon, a resource's colour on each of five sides and the star on the sixth, rolling about its long axis in 3D and landing with the chosen side facing you. **Why:** the user's: six sides for six outcomes, and it reads as a die of its own.
+
 **Finds are called Anomalies** (2026-11-20)
 The deep-space zone's face-down tiles (salvage, ruins, alien outposts, the pirate hideout, or nothing) are Anomalies wherever a player reads about them. **Why:** more exciting and space-themed (the user's pick). **Not:** Discoveries (planets are discovered too: the two would blur). In the code they stay `Find` (the rules' enumeration, the art's `find_*` files): a rename there would touch every file for no change a player sees.
 

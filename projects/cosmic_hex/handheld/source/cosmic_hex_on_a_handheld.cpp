@@ -349,13 +349,14 @@ private:
 class ScreenPadd : public ScratchPadd::Base {
 public:
   ScreenPadd(ScratchPadd::System *system) : Base(system) {
+    paceAnimations();
     receive<TableSnapshot>([this](const TableSnapshot &snapshot) {
       // What moved since the last, animated from now
       if (latest_) {
         motion_ = BoardMotion(latest_->state, snapshot.state);
         // Tiles turned over: each shown big on the top screen, one after
         // another, once the ship's slide is done (DiscoveryShow)
-        discovery_.arrived(latest_->state, snapshot.state, now() + kSecondsAnimating);
+        discovery_.arrived(latest_->state, snapshot.state, showsNow() + kSecondsAnimating);
       }
       // A new turn (after the setup's placing): its banner
       const CosmicHex::Phase phase = snapshot.state.phase;
@@ -374,7 +375,7 @@ public:
                       yours ? "roll the dice" : "thinking...", BoardColours::ofPlayer(turn));
       }
       // A home's pay on its die: after the turn's banner (HomePayShow)
-      homePay_.saw(snapshot.played, now() + banner_.remaining(gameClock_.seconds()));
+      homePay_.saw(snapshot.played, showsNow() + banner_.remaining(gameClock_.seconds()));
       // A roll's pay: once the dice are pulled away (RollPayShow)
       if (latest_)
         rollPay_.saw(snapshot.played, latest_->state);
@@ -384,7 +385,7 @@ public:
                              snapshot.state.phase == CosmicHex::Phase::KeepContract;
         const auto choice = keeping ? keepChoiceOf(snapshot.state, snapshot.moves) : std::nullopt;
         if (choice)
-          dealt_.deal(choice->cards, now());
+          dealt_.deal(choice->cards, showsNow());
         else
           dealt_.stop();
       }
@@ -537,14 +538,14 @@ private:
     if (bottomScreen_ && bottomScreen_->info() != shownInfo_) {
       // (Show resources: its cards in as it opens, back off as it closes)
       if (bottomScreen_->info() == BottomScreen::Info::Resources)
-        cards_.open(now());
+        cards_.open(showsNow());
       else if (shownInfo_ == BottomScreen::Info::Resources)
-        cards_.close(now());
+        cards_.close(showsNow());
       // (another player's panel: down as it opens, up as it closes)
       if (bottomScreen_->info() == BottomScreen::Info::Player)
-        others_.open(bottomScreen_->infoPlayer(), now());
+        others_.open(bottomScreen_->infoPlayer(), showsNow());
       else if (shownInfo_ == BottomScreen::Info::Player)
-        others_.close(now());
+        others_.close(showsNow());
       shownInfo_ = bottomScreen_->info();
       if (flow_.screen() == ScreenFlow::Screen::Game)
         holdFor(Hold::Info, shownInfo_ != BottomScreen::Info::None);
@@ -572,8 +573,10 @@ private:
       }
     }
     profile_.frameStarted();
-    firstRoll_.update(now());
-    if (firstRoll_.done(now()))
+    if (animations_ == Animations::Off && skippable())
+      skipAnimations();
+    firstRoll_.update(showsNow());
+    if (firstRoll_.done(showsNow()))
       endFirstRoll();
     if (bottomDirty_) {
       auto timing = profile_.time(kProfileBottom);
@@ -591,7 +594,7 @@ private:
     // about a quarter of a second, while the screen is still)
     if (dealt_.needsCloseUp()) {
       closeUpCards(dealt_.cards());
-      dealt_.closeUpDrawn(now());
+      dealt_.closeUpDrawn(showsNow());
     }
     // (the map's faces at the whole board's size, and the bottom screen's
     // pictures, are drawn at the start: starting())
@@ -717,7 +720,7 @@ private:
     const bool ready =
         latest_ &&
         (yourRollWaits(*latest_) ? rollAsked_ : !banner_.showing(gameClock_.seconds())) &&
-        !homePay_.moving(now()); // (and the home's pay shown first)
+        !homePay_.moving(showsNow()); // (and the home's pay shown first)
     if (dice_ == DiceStage::Idle && latest_ && latest_->waitingForDice &&
         latest_->diceSeed != thrownSeed_ && ready) {
       rollAsked_ = false;
@@ -862,7 +865,7 @@ private:
         if (latest_) // (real time: the game's clock is held)
           firstRoll_.start(latest_->firstRoll,
                            static_cast<std::uint64_t>(Clock::now().time_since_epoch().count()),
-                           kThisPlatform.diceStep, now());
+                           kThisPlatform.diceStep, showsNow());
     }
     const Scene::Camera camera = cameraBetween(topDownCamera(), gameCamera(turn_), down);
     renderer_->beginFrame(camera, boardEnvironment(1 - down));
@@ -876,7 +879,7 @@ private:
       drawPieces(*shown, Scene::Transform::identity());
     }
     // (behind another player's view, the dice wait unseen: the game's held)
-    if (!others_.showing(now()))
+    if (!others_.showing(showsNow()))
       drawDice(camera);
     // What shows over the board for a while (TopViews; on a DS words are on
     // a layer over every shape, so only one at a time)
@@ -887,23 +890,23 @@ private:
                          static_cast<float>(kTopHeight),
                          pictures_,
                          names_,
-                         now()};
+                         showsNow()};
     // (a roll's pay, over the board, the HUD's words still showing: the
     // bots' cards fly to their rows of the points bars)
-    if (latest_ && rollPay_.moving(now()))
+    if (latest_ && rollPay_.moving(showsNow()))
       drawRollPay(frame, rollPay_, latest_->state, mode_ == Mode::Playing ? 0 : -1);
     // (Show resources, over the board, under the views below)
-    if (latest_ && cards_.showing(now()))
+    if (latest_ && cards_.showing(showsNow()))
       drawResources(frame,
                     latest_->state.player[static_cast<std::size_t>(infoPlayer(latest_->state))],
                     cards_);
     if (firstRoll_.on() && latest_)
       drawFirstRoll(frame, latest_->firstRoll, firstRoll_);
-    else if (others_.showing(now()) && latest_ && others_.which() >= 0)
-      drawOtherPlayer(frame, viewOf(latest_->state, others_.which()), others_.down(now()));
-    else if (discovery_.moving(now()))
+    else if (others_.showing(showsNow()) && latest_ && others_.which() >= 0)
+      drawOtherPlayer(frame, viewOf(latest_->state, others_.which()), others_.down(showsNow()));
+    else if (discovery_.moving(showsNow()))
       drawDiscovery(frame, discovery_, closeUpFace_);
-    else if (homePay_.moving(now()) && latest_)
+    else if (homePay_.moving(showsNow()) && latest_)
       drawHomePay(frame, homePay_, latest_->state,
                   mode_ == Mode::Playing && homePay_.current()->player == 0, closeUpCards_[0]);
     else if (dealt_.on())
@@ -1022,8 +1025,8 @@ private:
       // (one turned over is shown big first: face down here till it's
       // back, then simply face up: Discovery)
       const CosmicHex::Hex hex = state.planets[i].hex;
-      if (discovery_.stillToShow(hex, now())) {
-        if (!discovery_.flying(hex, now()))
+      if (discovery_.stillToShow(hex, showsNow())) {
+        if (!discovery_.flying(hex, showsNow()))
           drawTile(hex, std::nullopt, CosmicHex::Art::Face::PlanetFaceDown,
                    CosmicHex::Art::Face::PlanetFaceDown);
         continue;
@@ -1053,8 +1056,8 @@ private:
     }
     for (std::size_t i = 0; i < state.zone.size(); ++i) {
       const CosmicHex::Hex hex = state.zone[i].hex;
-      if (discovery_.stillToShow(hex, now())) {
-        if (!discovery_.flying(hex, now()))
+      if (discovery_.stillToShow(hex, showsNow())) {
+        if (!discovery_.flying(hex, showsNow()))
           drawTile(hex, std::nullopt, CosmicHex::Art::Face::FindFaceDown,
                    CosmicHex::Art::Face::FindFaceDown);
       } else
@@ -1127,12 +1130,12 @@ private:
     if (kWatchAtStart && !memoryBusiest_.empty())
       overlay.text(4, kTopHeight - 38, memoryBusiest_.substr(0, kCharsPerLine), {120, 220, 160});
     if (!latest_->lastMoves.empty() && shownInfo_ == BottomScreen::Info::None &&
-        !cards_.showing(now()) && !others_.showing(now()))
+        !cards_.showing(showsNow()) && !others_.showing(showsNow()))
       overlay.text(4, kTopHeight - 14, latest_->lastMoves.back().substr(0, kCharsPerLine),
                    Palette::kSoftWords);
     // (the list of moves: debug builds only, when turned on)
     if (mode_ == Mode::Playing && latest_->yourMove && shownInfo_ == BottomScreen::Info::None &&
-        !cards_.showing(now()) && bottomScreen_ && bottomScreen_->showingMoveList())
+        !cards_.showing(showsNow()) && bottomScreen_ && bottomScreen_->showingMoveList())
       drawMoves(overlay);
     drawBanner(overlay);
     if (state.winner >= 0) {
@@ -1225,10 +1228,15 @@ private:
     // a DS and 3DS, A and B)
     const Button confirm = lastPad_.buttonFor(Input::Role::Confirm);
     const Button back = lastPad_.buttonFor(Input::Role::Back);
+    // (B: an animation straight to its end; pressed again, B's own job)
+    if (pressed.pressed(back) && skippable()) {
+      skipAnimations();
+      return;
+    }
     // (A: on from who goes first)
     if (firstRoll_.on() && pressed.pressed(confirm)) {
-      firstRoll_.hurry(now()); // (the next die now; once all have landed, on)
-      if (firstRoll_.done(now()))
+      firstRoll_.hurry(showsNow()); // (the next die now; once all have landed, on)
+      if (firstRoll_.done(showsNow()))
         endFirstRoll();
       return;
     }
@@ -1536,7 +1544,7 @@ private:
             // Tiles turned over still face down on the map until the top
             // screen has shown them, then each fades in (Discovery)
             marks.faceDown = discovery_.waitingAfterCurrent();
-            if (const auto revealing = discovery_.revealing(now()))
+            if (const auto revealing = discovery_.revealing(showsNow()))
               marks.revealing =
                   BoardPicture::Marks::Revealing{.hex = revealing->hex, .shown = revealing->shown};
             picture_->draw(latest_->state, marks);
@@ -1758,8 +1766,8 @@ private:
   void updateRollPay() {
     // (once the dice have gone from the screen: not over the roll)
     if (rollPay_.waiting() && dice_ == DiceStage::Idle)
-      rollPay_.start(now());
-    const RollPayShow::Step step = rollPay_.update(now());
+      rollPay_.start(showsNow());
+    const RollPayShow::Step step = rollPay_.update(showsNow());
     if (step.hold || step.letGo)
       holdFor(Hold::RollPay, step.hold);
   }
@@ -1772,7 +1780,7 @@ private:
       if (!closeUpCards_[0].showing(static_cast<int>(card)))
         closeUpCards({card});
     }
-    const HomePayShow::Step step = homePay_.update(now());
+    const HomePayShow::Step step = homePay_.update(showsNow());
     if (step.hold || step.letGo)
       holdFor(Hold::HomePay, step.hold);
   }
@@ -1781,7 +1789,7 @@ private:
   // it too), the bottom map drawn again as its tile fades in
   void updateDiscovery() {
     const DiscoveryShow::Step step =
-        discovery_.update(now(), [this](CosmicHex::Art::Face face) { closeUpTile(face); });
+        discovery_.update(showsNow(), [this](CosmicHex::Art::Face face) { closeUpTile(face); });
     if (step.hold || step.letGo)
       holdFor(Hold::Discovery, step.hold);
     if (step.redrawMap)
@@ -1822,11 +1830,11 @@ private:
       return true; // (pieces still moving, or a number chip dropping)
     if (banner_.showing(gameClock_.seconds()))
       return true; // (the turn's banner moving)
-    if (shownInfo_ != BottomScreen::Info::None || cards_.moving(now()) || outlineMovedAt_)
+    if (shownInfo_ != BottomScreen::Info::None || cards_.moving(showsNow()) || outlineMovedAt_)
       return true; // (an info view coming in or going, the points' outline)
     // (the views over the board: each says)
-    if (dealt_.moving() || others_.moving(now()) || discovery_.moving(now()) ||
-        homePay_.moving(now()) || rollPay_.moving(now()))
+    if (dealt_.moving() || others_.moving(showsNow()) || discovery_.moving(showsNow()) ||
+        homePay_.moving(showsNow()) || rollPay_.moving(showsNow()))
       return true;
     return false;
   }
@@ -1862,8 +1870,8 @@ private:
       spdlog::info("frames: {}", profileLine_);
     }
     // (not over a view that fills the screen: its words would be lost)
-    if (firstRoll_.on() || others_.showing(now()) || dealt_.on() || discovery_.moving(now()) ||
-        homePay_.moving(now()))
+    if (firstRoll_.on() || others_.showing(showsNow()) || dealt_.on() ||
+        discovery_.moving(showsNow()) || homePay_.moving(showsNow()))
       return;
     // (three lines where the screen's narrow)
     for (std::size_t from = 0, row = 0; from < profileLine_.size() && row < 4;
@@ -1901,8 +1909,13 @@ private:
   bool pressDrawn_ = false;                    // (a button's press glow drawn last frame)
   bool rollAsked_ = false;                     // (you've said to throw the dice: Roll or A)
   Clock::time_point startedAt_ = Clock::now(); // (the scripted taps' times)
-  // The app's real clock, in seconds: the shows over the board run on it
+  // The app's real clock, in seconds (menus, buttons)
   double now() const { return secondsSince(startedAt_); }
+  // The shows' clock (what shows over the board): real time at the
+  // Animations setting's pace (twice as fast when Quick), jumping ahead
+  // when an animation's skipped; it runs while the game's held
+  ScratchPadd::GameClock showClock_;
+  double showsNow() const { return showClock_.seconds(); }
   ScratchPadd::Banner banner_{static_cast<float>(kTopWidth)};
   // The info views (Show resources): which is shown, since when, and
   // whether it holds the game; the cards' pictures for them
@@ -1911,7 +1924,7 @@ private:
   std::optional<Clock::time_point> outlineMovedAt_; // (the turn's outline moving: since)
   int outlineFrom_ = 0;                             // (from this player's row)
   // What shows over the board for a while (TopShows; drawn by TopViews),
-  // each on the app's real clock (now()): they run while the game's held
+  // each on the shows' clock (showsNow())
   DiscoveryShow discovery_;         // (tiles turned over)
   DealtShow dealt_;                 // (the two cards dealt)
   PanelShow others_{kSecondsPanel}; // (another player's panel)
@@ -1960,6 +1973,85 @@ private:
         .bytes = std::make_shared<const ScratchPadd::Storage::Bytes>(name.begin(), name.end())});
   }
   PlayerNames names_;
+  // How much the game animates (the user's: Full, Quick or Off), kept on
+  // the card
+  static constexpr const char *kAnimationsFile = "animations.txt";
+  Animations animations_ = savedAnimations();
+  static Animations savedAnimations() {
+    const auto bytes = ScratchPadd::Storage::loadFile(
+        ScratchPadd::Storage::Folders::forApp().files + kAnimationsFile);
+    if (!bytes)
+      return Animations::Full;
+    return animationsFrom(std::string(bytes->begin(), bytes->end())).value_or(Animations::Full);
+  }
+  void saveAnimations() {
+    const std::string_view word = wordOf(animations_);
+    sendTo<ScratchPadd::Storage::StoragePadd>(ScratchPadd::Storage::SaveFile{
+        .path = kAnimationsFile,
+        .bytes = std::make_shared<const ScratchPadd::Storage::Bytes>(word.begin(), word.end())});
+  }
+  // The board's moves, the dice and the shows at the setting's pace
+  void paceAnimations() {
+    gameClock_.setRate(rateOf(animations_));
+    showClock_.setRate(rateOf(animations_));
+  }
+
+  // Whether something is animating that B (Back) can skip to its end: the
+  // dice, who goes first, the board's pieces moving, the turn's banner, a
+  // tile turned over, a home's or a roll's pay, the cards dealt coming in
+  bool skippable() const {
+    if (flow_.screen() != ScreenFlow::Screen::Game || !latest_)
+      return false;
+    if (dice_ != DiceStage::Idle || firstRoll_.on())
+      return true;
+    if (gameClock_.seconds() - motionStarted_ < kSecondsAnimating + kSecondsChipDrop)
+      return true;
+    if (banner_.showing(gameClock_.seconds()))
+      return true;
+    const double t = showsNow();
+    const bool dealing =
+        dealt_.on() && !dealt_.cards().empty() && dealt_.turned(dealt_.cards().size() - 1, t) < 1;
+    return dealing || discovery_.moving(t) || homePay_.moving(t) || rollPay_.moving(t);
+  }
+  // Every animation straight to its end frame (the user's: B, or every
+  // frame when Animations is Off)
+  void skipAnimations() {
+    // The shows: their clock on past any of their ends
+    static constexpr double kPastAnyShow = 30;
+    showClock_.skipAhead(kPastAnyShow);
+    // Who goes first: each die set down and the order read
+    for (int i = 0; i < 16 && firstRoll_.on() && !firstRoll_.done(showsNow()); ++i)
+      firstRoll_.hurry(showsNow());
+    if (firstRoll_.done(showsNow()))
+      endFirstRoll();
+    // The board's pieces where they were going, the turn's banner gone
+    motionStarted_ =
+        std::min(motionStarted_, gameClock_.seconds() - kSecondsAnimating - kSecondsChipDrop);
+    banner_.stop();
+    skipDice();
+  }
+  // The dice a stage on: rolling, the physics run on to where they land
+  // (all at once: a moment on a DS) and the roll shown; showing, sent and
+  // pulled away; being pulled, gone
+  void skipDice() {
+    if (dice_ == DiceStage::Rolling) {
+      const auto most = static_cast<int>(kMostSecondsRolling / kThisPlatform.diceStep);
+      for (int i = 0; i < most && !tray_.settled(); ++i)
+        tray_.step(kThisPlatform.diceStep);
+      if (!tray_.settled())
+        return; // (the watchdog throws them again)
+      dice_ = DiceStage::Showing;
+      shownSeconds_ = 0;
+      rolled_ = tray_.faces();
+      diceOwed_ = 0;
+      lastDiceTime_ = gameClock_.seconds();
+    } else if (dice_ == DiceStage::Showing) {
+      shownSeconds_ = kSecondsShowingDice; // (sent and pulled next frame)
+    } else if (dice_ == DiceStage::Pulling) {
+      dice_ = DiceStage::Idle;
+    }
+  }
+
   // Close-ups (PlatformProfile::closeUpSize): a discovered tile's face and
   // the two cards dealt, drawn sharp when they're shown, into slots loaded
   // once and reused (PictureSlot)
@@ -2061,7 +2153,7 @@ private:
       if (button < kTitle.size())
         apply(flow_.on(kTitle[button]));
       if (flow_.screen() == ScreenFlow::Screen::Settings)
-        settings_.open(yourName_, yourName_ == consoleName_ && !consoleName_.empty());
+        settings_.open(yourName_, yourName_ == consoleName_ && !consoleName_.empty(), animations_);
       updatePreview();
       return;
     }
@@ -2077,6 +2169,10 @@ private:
     if (outcome == SettingsScreen::Outcome::NameChanged) {
       yourName_ = settings_.name();
       saveName(yourName_);
+    } else if (outcome == SettingsScreen::Outcome::AnimationsChanged) {
+      animations_ = settings_.animations();
+      paceAnimations();
+      saveAnimations();
     } else if (outcome == SettingsScreen::Outcome::Back) {
       apply(flow_.on(ScreenFlow::Event::Back));
     }

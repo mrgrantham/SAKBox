@@ -8,6 +8,7 @@
 //   clock.setPaused(true);              // game time stops...
 //   clock.setRate(2);                   // ...and, once going again, runs twice as fast
 //   double t = clock.seconds();         // game seconds so far
+//   clock.skipAhead(5);                 // five game seconds on at once (a skip)
 //
 // Every call can be given the real time to use (for tests); by default it's
 // now.
@@ -44,6 +45,10 @@ public:
     bank(now);
     rate_ = rate;
   }
+
+  // Game time moved on `seconds` at once (skipping to animations' ends);
+  // paused or not
+  void skipAhead(double seconds) { banked_ += seconds; }
 
 private:
   // The time so far kept, and counted afresh from `now`
