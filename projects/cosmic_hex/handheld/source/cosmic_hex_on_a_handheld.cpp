@@ -143,7 +143,9 @@ constexpr std::array<ScriptedTap, 0> kScriptedTaps{};
 // How long the title takes to fade in from black, once the start's work
 // is done
 // The points bars' outline moving to the next player's row
-constexpr float kSecondsOutline = 0.35f;
+// (0.6 s, the user's: at 0.35 s, a row's 5 pixels, as the turn's banner
+// came in, it read as a jump)
+constexpr float kSecondsOutline = 0.6f;
 // How long the other players' view takes to slide down (or up)
 // (long enough to see it come: at 0.3 s a DS's 20 or so frames a second
 // showed it in four or five jumps)
@@ -410,7 +412,7 @@ public:
       // A new turn: the points bars' outline moves to its row
       if (latest_ && snapshot.state.turn != latest_->state.turn) {
         outlineFrom_ = latest_->state.turn;
-        outlineMovedAt_ = Clock::now();
+        outlineMovedAt_ = showsNow();
       }
       // (pausing the game pauses its clock, so its animations and dice stop too)
       gameClock_.setPaused(snapshot.paused);
@@ -850,10 +852,24 @@ private:
     const float small = kTopWidth >= 400 ? 1.5f : 1;
     const float radius = kTopWidth >= 400 ? 50.0f : 42.0f;
     const float x = (*middle)[0], y = (*middle)[1];
+    // Popping in as the dice settle (the user's: as the home's card does):
+    // the hexagon growing a little past its size and settling, the words
+    // growing with it in whole steps (the overlay's sharpest), the pair's
+    // line once it's full size
+    const float popped = ScratchPadd::Motion::along(
+        ScratchPadd::Motion::Curve::Settle,
+        std::min(1.0f, static_cast<float>(shownSeconds_) / kSecondsRollPop));
     // Both solid: a see-through hexagon's six triangles were blended twice
     // along the edges they share, which showed as dark lines
-    overlay.hexagon(x, y, radius + 3, Palette::kHighlight); // (an amber edge)
-    overlay.hexagon(x, y, radius, {12, 18, 30, 255});
+    overlay.hexagon(x, y, (radius + 3) * popped, Palette::kHighlight); // (an amber edge)
+    overlay.hexagon(x, y, radius * popped, {12, 18, 30, 255});
+    if (popped < 0.3f)
+      return;
+    const float grown = std::max(1.0f, std::round(big * std::min(1.0f, popped)));
+    if (popped < 0.95f && dice_ == DiceStage::Showing) {
+      overlay.textCentred(x, y, total, Palette::kHighlight, grown);
+      return;
+    }
     // The total over the two dice, the two lines together centred on the
     // hexagon by their letters' own pixels (Overlay::textCentred)
     const auto totalInk = Scene::Overlay::inkOf(total, big),
@@ -1212,7 +1228,7 @@ private:
     if (outlineMovedAt_) {
       const float moved = ScratchPadd::Motion::along(
           ScratchPadd::Motion::Curve::EaseInOut,
-          static_cast<float>(secondsSince(*outlineMovedAt_)) / kSecondsOutline);
+          static_cast<float>(showsNow() - *outlineMovedAt_) / kSecondsOutline);
       if (moved >= 1)
         outlineMovedAt_.reset();
       else
@@ -2064,6 +2080,7 @@ private:
   // The physics dice
   enum class DiceStage : std::uint8_t { Idle, Rolling, Showing, Pulling };
   static constexpr double kSecondsShowingDice = 0.75;
+  static constexpr float kSecondsRollPop = 0.3f; // (the roll's number popping in)
   Dice::DiceTray tray_;
   Scene::Mesh die_;
   DiceStage dice_ = DiceStage::Idle;
@@ -2099,9 +2116,9 @@ private:
   // The info views (Show resources): which is shown, since when, and
   // whether it holds the game; the cards' pictures for them
   BottomScreen::Info shownInfo_ = BottomScreen::Info::None;
-  CardsShow cards_;                                 // (Show resources' cards in and off)
-  std::optional<Clock::time_point> outlineMovedAt_; // (the turn's outline moving: since)
-  int outlineFrom_ = 0;                             // (from this player's row)
+  CardsShow cards_;                      // (Show resources' cards in and off)
+  std::optional<double> outlineMovedAt_; // (the turn's outline moving: since, on the shows' clock)
+  int outlineFrom_ = 0;                  // (from this player's row)
   // What shows over the board for a while (TopShows; drawn by TopViews),
   // each on the shows' clock (showsNow())
   DiscoveryShow discovery_;         // (tiles turned over)
