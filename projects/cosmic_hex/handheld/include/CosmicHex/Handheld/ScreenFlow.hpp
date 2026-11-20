@@ -3,7 +3,8 @@
 // Embedded Systems, "State Machines": the states drawn first, then kept
 // apart so each can be tested). The screens:
 //
-//   Title     the 3D title on top; Play or Quit below
+//   Title     the 3D title on top; Play, Settings or Quit below
+//   Settings  the title on top; your name below (SettingsScreen)
 //   Setup     the game's settings below (StartMenu), the board on top
 //   Game      playing, or watching the bots
 //   Paused    the game held, a menu below: Resume, Restart, Title, Quit
@@ -11,6 +12,7 @@
 //
 //   Title --Play--> Setup --Start--> Game --someone wins--> Won --any--> Title
 //                   Setup --Back--> Title
+//   Title --Settings--> Settings --Back--> Title
 //   Game --START--> Paused --Resume--> Game
 //                   Paused --Restart--> Game (a new game, the same settings)
 //                   Paused --Title--> Title,  Paused --Quit--> (the app ends)
@@ -29,11 +31,12 @@ namespace CosmicHex::Handheld {
 
 class ScreenFlow {
 public:
-  enum class Screen : std::uint8_t { Title, Setup, Game, Paused, Won };
+  enum class Screen : std::uint8_t { Title, Setup, Game, Paused, Won, Settings };
   enum class Event : std::uint8_t {
-    Play,     // (Title) to the settings
+    Play,     // (Title) to the game's setup
+    Settings, // (Title) to the settings
     Start,    // (Setup) begin the game as set
-    Back,     // (Setup) back to the title
+    Back,     // (Setup, Settings) back to the title
     Pause,    // (Game) START: hold it, with the menu
     Resume,   // (Paused) back to the game
     Restart,  // (Paused) a new game, the same settings

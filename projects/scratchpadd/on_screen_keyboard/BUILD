@@ -1,11 +1,11 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
-# Typing a short text on a touch screen or with a pad (Keyboard.hpp): a
+# Typing a short text on a touch screen or with a pad (OnScreenKeyboard.hpp): a
 # field above QWERTY keys, on the Buttons library.
 cc_library(
-    name = "keyboard",
-    srcs = ["src/Keyboard.cpp"],
-    hdrs = ["include/ScratchPadd/Keyboard/Keyboard.hpp"],
+    name = "on_screen_keyboard",
+    srcs = ["src/OnScreenKeyboard.cpp"],
+    hdrs = ["include/ScratchPadd/OnScreenKeyboard/OnScreenKeyboard.hpp"],
     strip_include_prefix = "include/",
     visibility = ["//visibility:public"],
     deps = [
@@ -25,11 +25,11 @@ filegroup(
 )
 
 cc_test(
-    name = "Keyboard_test",
+    name = "OnScreenKeyboard_test",
     size = "small",
-    srcs = ["tests/Keyboard_test.cpp"],
+    srcs = ["tests/OnScreenKeyboard_test.cpp"],
     deps = [
-        ":keyboard",
+        ":on_screen_keyboard",
         "@gtest//:gtest_main",
     ],
 )

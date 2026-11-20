@@ -1,10 +1,10 @@
 // Typing on the keyboard: by touch and by pad, capitals, spaces, deleting,
 // the most letters, and Done
-#include <ScratchPadd/Keyboard/Keyboard.hpp>
+#include <ScratchPadd/OnScreenKeyboard/OnScreenKeyboard.hpp>
 
 #include <gtest/gtest.h>
 
-using ScratchPadd::Keyboard;
+using ScratchPadd::OnScreenKeyboard;
 
 namespace {
 // The middle of a key on a DS's screen (the keyboard's layout)
@@ -13,8 +13,8 @@ std::pair<int, int> keyAt(int row, int column) {
 }
 } // namespace
 
-TEST(KeyboardTest, TouchTypesAName) {
-  Keyboard keyboard;
+TEST(OnScreenKeyboardTest, TouchTypesAName) {
+  OnScreenKeyboard keyboard;
   EXPECT_TRUE(keyboard.shifted());   // (the first letter a capital)
   const auto [jx, jy] = keyAt(1, 6); // J
   keyboard.touch(jx, jy, 0);
@@ -25,25 +25,25 @@ TEST(KeyboardTest, TouchTypesAName) {
   keyboard.touch(170, 150, 0); // Del
   EXPECT_EQ(keyboard.text(), "J");
   keyboard.touch(220, 150, 0); // Done
-  EXPECT_EQ(keyboard.outcome(), Keyboard::Outcome::Done);
+  EXPECT_EQ(keyboard.outcome(), OnScreenKeyboard::Outcome::Done);
 }
 
-TEST(KeyboardTest, ThePadMovesAndTypes) {
-  Keyboard keyboard("A", 3);
-  keyboard.press(Keyboard::Key::Confirm, 0); // (Q, focused first)
-  keyboard.press(Keyboard::Key::Right, 0);
-  keyboard.press(Keyboard::Key::Confirm, 0); // W
+TEST(OnScreenKeyboardTest, ThePadMovesAndTypes) {
+  OnScreenKeyboard keyboard("A", 3);
+  keyboard.press(OnScreenKeyboard::Key::Confirm, 0); // (Q, focused first)
+  keyboard.press(OnScreenKeyboard::Key::Right, 0);
+  keyboard.press(OnScreenKeyboard::Key::Confirm, 0); // W
   EXPECT_EQ(keyboard.text(), "Aqw");
-  keyboard.press(Keyboard::Key::Confirm, 0); // (three at most)
+  keyboard.press(OnScreenKeyboard::Key::Confirm, 0); // (three at most)
   EXPECT_EQ(keyboard.text(), "Aqw");
-  keyboard.press(Keyboard::Key::Back, 0);
+  keyboard.press(OnScreenKeyboard::Key::Back, 0);
   EXPECT_EQ(keyboard.text(), "Aq");
-  keyboard.press(Keyboard::Key::Done, 0);
-  EXPECT_EQ(keyboard.outcome(), Keyboard::Outcome::Done);
+  keyboard.press(OnScreenKeyboard::Key::Done, 0);
+  EXPECT_EQ(keyboard.outcome(), OnScreenKeyboard::Outcome::Done);
 }
 
-TEST(KeyboardTest, SpacesInsideButNotAtTheEnds) {
-  Keyboard keyboard;
+TEST(OnScreenKeyboardTest, SpacesInsideButNotAtTheEnds) {
+  OnScreenKeyboard keyboard;
   keyboard.touch(100, 150, 0); // Space, before anything: nothing
   EXPECT_EQ(keyboard.text(), "");
   const auto [ax, ay] = keyAt(1, 0); // A
@@ -54,8 +54,8 @@ TEST(KeyboardTest, SpacesInsideButNotAtTheEnds) {
   EXPECT_EQ(keyboard.text(), "A");
 }
 
-TEST(KeyboardTest, ItDraws) {
-  Keyboard keyboard("Nova");
+TEST(OnScreenKeyboardTest, ItDraws) {
+  OnScreenKeyboard keyboard("Nova");
   ScratchPadd::Canvas canvas(256, 192);
   keyboard.draw(canvas, {}, 0);
   EXPECT_NE(canvas.pixels()[20 * 256 + 16], canvas.pixels()[0]); // (the field's outline)

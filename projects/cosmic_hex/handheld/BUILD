@@ -28,6 +28,7 @@ cc_library(
         "src/PointsBars.cpp",
         "src/ScreenFlow.cpp",
         "src/ScreenPictures.cpp",
+        "src/SettingsScreen.cpp",
         "src/StartMenu.cpp",
         "src/TableGame.cpp",
         "src/TopShows.cpp",
@@ -60,6 +61,7 @@ cc_library(
         "include/CosmicHex/Handheld/RecipePixels.hpp",
         "include/CosmicHex/Handheld/ScreenFlow.hpp",
         "include/CosmicHex/Handheld/ScreenPictures.hpp",
+        "include/CosmicHex/Handheld/SettingsScreen.hpp",
         "include/CosmicHex/Handheld/StartMenu.hpp",
         "include/CosmicHex/Handheld/TableGame.hpp",
         "include/CosmicHex/Handheld/TopShows.hpp",
@@ -71,6 +73,7 @@ cc_library(
     deps = [
         "//projects/scratchpadd/banner",
         "//projects/scratchpadd/buttons",
+        "//projects/scratchpadd/on_screen_keyboard",
         "//projects/scratchpadd/picture_slot",
         "//projects/scratchpadd/still_frames",
         "//projects/scratchpadd/canvas",
@@ -353,6 +356,16 @@ cc_test(
         ":handheld",
         "//projects/expected_capabilities",
         "//projects/scratchpadd/scene/desktop",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "SettingsScreen_test",
+    size = "small",
+    srcs = ["tests/SettingsScreen_test.cpp"],
+    deps = [
+        ":handheld",
         "@gtest//:gtest_main",
     ],
 )

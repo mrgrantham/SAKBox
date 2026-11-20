@@ -52,6 +52,7 @@
 #include <CosmicHex/Handheld/RecipePixels.hpp>
 #include <CosmicHex/Handheld/ScreenFlow.hpp>
 #include <CosmicHex/Handheld/ScreenPictures.hpp>
+#include <CosmicHex/Handheld/SettingsScreen.hpp>
 #include <CosmicHex/Handheld/StartMenu.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
 #include <CosmicHex/Handheld/TopShows.hpp>
@@ -75,6 +76,9 @@
 #include <ScratchPadd/Input/GamePadd.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
+#include <ScratchPadd/Storage/Files.hpp>
+#include <ScratchPadd/Storage/Folders.hpp>
+#include <ScratchPadd/Storage/Messages.hpp>
 #include <ScratchPadd/Storage/StoragePadd.hpp>
 #include <ScratchPadd/TextureRecipe/TextureRecipe.hpp>
 
@@ -548,6 +552,8 @@ private:
     }
     // A pressed button's glow (drawn again while it fades), and a tapped
     // button's message, for a second and a half
+    if (flow_.screen() == ScreenFlow::Screen::Settings && settings_.pressing(now()))
+      bottomDirty_ = true; // (a key's glow fading)
     if (bottomScreen_) {
       bottomScreen_->setTime(secondsSince(startedAt_));
       if (bottomScreen_->pressing() || pressDrawn_)
@@ -602,7 +608,8 @@ private:
     // The top screen: the title scene (the title, and once a game's won);
     // the board chosen, turning slowly (setup); or the game's board
     const ScreenFlow::Screen screen = flow_.screen();
-    if (kTitleScene && (screen == ScreenFlow::Screen::Title || screen == ScreenFlow::Screen::Won)) {
+    if (kTitleScene && (screen == ScreenFlow::Screen::Title || screen == ScreenFlow::Screen::Won ||
+                        screen == ScreenFlow::Screen::Settings)) {
       drawTitle();
       drawing.reset();
       profile_.frameEnded();
@@ -1389,6 +1396,19 @@ private:
       setupOutcome(outcome);
       return;
     }
+    case ScreenFlow::Screen::Settings: {
+      using Key = SettingsScreen::Key;
+      for (const auto &[button, key] :
+           {std::pair{Button::Up, Key::Up}, std::pair{Button::Down, Key::Down},
+            std::pair{Button::Left, Key::Left}, std::pair{Button::Right, Key::Right},
+            std::pair{confirm, Key::Confirm}, std::pair{back, Key::Back},
+            std::pair{Button::Start, Key::Done}})
+        if (pressed.pressed(button)) {
+          settingsOutcome(settings_.press(key, now()));
+          bottomDirty_ = true;
+        }
+      return;
+    }
     case ScreenFlow::Screen::Won:
       if (pressed.pressed(confirm) || pressed.pressed(back))
         apply(flow_.on(ScreenFlow::Event::Continue));
@@ -1492,6 +1512,8 @@ private:
           updatePreview();
         } else if (screen == ScreenFlow::Screen::Won) {
           apply(flow_.on(ScreenFlow::Event::Continue));
+        } else if (screen == ScreenFlow::Screen::Settings) {
+          settingsOutcome(settings_.touch(touch.x, touch.y, now()));
         } else {
           ButtonMenu &menu = screen == ScreenFlow::Screen::Title ? titleMenu_ : pauseMenu_;
           if (const auto chosen = menu.touch(touch.x, touch.y, kBottomWidth, kBottomHeight))
@@ -1599,6 +1621,9 @@ private:
     } else if (screen == ScreenFlow::Screen::Setup) {
       menuPicture_.draw(menu_);
       drawn = menuPicture_.pixels();
+    } else if (screen == ScreenFlow::Screen::Settings) {
+      settings_.draw(*bottomCanvas_, now());
+      drawn = bottomCanvas_->pixels();
     } else {
       if (!latest_)
         return;
@@ -1958,7 +1983,8 @@ private:
 
   bool onAMenuScreen() const {
     const ScreenFlow::Screen screen = flow_.screen();
-    return screen == ScreenFlow::Screen::Title || screen == ScreenFlow::Screen::Setup;
+    return screen == ScreenFlow::Screen::Title || screen == ScreenFlow::Screen::Setup ||
+           screen == ScreenFlow::Screen::Settings;
   }
 
   void showProfile() {
@@ -2035,7 +2061,23 @@ private:
   bool youPaused_ = false;          // (watching: paused with A, so the PAUSED band shows)
   // Who's who: your name (the console's owner's), the bots' (PlayerNames),
   // made as each game starts
-  std::string ownerName_ = ScratchPadd::OwnerName::get();
+  // (yours: as you set it in the settings, kept on the card, or else the
+  // console's owner name)
+  std::string consoleName_ = ScratchPadd::OwnerName::get();
+  std::string yourName_ = savedName().value_or(consoleName_);
+  static constexpr const char *kNameFile = "name.txt";
+  static std::optional<std::string> savedName() {
+    const auto bytes =
+        ScratchPadd::Storage::loadFile(ScratchPadd::Storage::Folders::forApp().files + kNameFile);
+    if (!bytes || bytes->empty())
+      return std::nullopt;
+    return std::string(bytes->begin(), bytes->end());
+  }
+  void saveName(const std::string &name) {
+    sendTo<ScratchPadd::Storage::StoragePadd>(ScratchPadd::Storage::SaveFile{
+        .path = kNameFile,
+        .bytes = std::make_shared<const ScratchPadd::Storage::Bytes>(name.begin(), name.end())});
+  }
   PlayerNames names_;
   // Close-ups (PlatformProfile::closeUpSize): a discovered tile's face and
   // the two cards dealt, drawn sharp when they're shown, into slots loaded
@@ -2063,7 +2105,9 @@ private:
   Mode mode_ = Mode::Watching;
   bool quitting_ = false;
   // The title's and the pause menu's buttons, and the setup's menu
-  ButtonMenu titleMenu_{{"Play", "Quit"}};
+  ButtonMenu titleMenu_{{"Play", "Settings", "Quit"}};
+  // The settings (from the title): your name, changed on a keyboard
+  SettingsScreen settings_{kBottomWidth, kBottomHeight};
   ButtonMenu pauseMenu_{{"Resume", "Restart", "Title", "Quit"}};
   StartMenu menu_;
   MenuPicture menuPicture_{kBottomWidth, kBottomHeight};
@@ -2137,7 +2181,11 @@ private:
   void choose(std::size_t button) {
     using Event = ScreenFlow::Event;
     if (flow_.screen() == ScreenFlow::Screen::Title) {
-      apply(flow_.on(button == 0 ? Event::Play : Event::Quit));
+      static constexpr std::array<Event, 3> kTitle{Event::Play, Event::Settings, Event::Quit};
+      if (button < kTitle.size())
+        apply(flow_.on(kTitle[button]));
+      if (flow_.screen() == ScreenFlow::Screen::Settings)
+        settings_.open(yourName_, yourName_ == consoleName_ && !consoleName_.empty());
       updatePreview();
       return;
     }
@@ -2145,6 +2193,17 @@ private:
                                                  Event::Quit};
     if (button < kPause.size())
       apply(flow_.on(kPause[button]));
+  }
+
+  // The settings' answer: your name changed (kept on the card), or back to
+  // the title
+  void settingsOutcome(SettingsScreen::Outcome outcome) {
+    if (outcome == SettingsScreen::Outcome::NameChanged) {
+      yourName_ = settings_.name();
+      saveName(yourName_);
+    } else if (outcome == SettingsScreen::Outcome::Back) {
+      apply(flow_.on(ScreenFlow::Event::Back));
+    }
   }
 
   // The setup's menu: Start or Back
@@ -2193,7 +2252,7 @@ private:
     bottomDirty_ = true;
     youPaused_ = false;
     names_ =
-        PlayerNames::forGame(menu_.players(), play ? 0 : -1, ownerName_,
+        PlayerNames::forGame(menu_.players(), play ? 0 : -1, yourName_,
                              static_cast<std::uint64_t>(Clock::now().time_since_epoch().count()));
     if (bottomScreen_)
       bottomScreen_->setNames(names_);

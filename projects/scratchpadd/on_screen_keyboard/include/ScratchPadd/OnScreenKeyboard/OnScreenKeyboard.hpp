@@ -1,12 +1,12 @@
-// Keyboard.hpp - typing a short text on a touch screen, or with a pad: a
+// OnScreenKeyboard.hpp - typing a short text on a touch screen, or with a pad: a
 // field above a QWERTY keyboard, drawn on a Canvas with the Buttons
 // library (so a touch finds its key, the D-pad moves between keys, and a
 // press glows). For a name, a save's title, a high score's initials.
 //
-//   Keyboard keyboard("James", 10);           // its text so far, its most
-//   keyboard.touch(x, y, now) / keyboard.press(Keyboard::Key::Confirm, now)
+//   OnScreenKeyboard keyboard("James", 10);           // its text so far, its most
+//   keyboard.touch(x, y, now) / keyboard.press(OnScreenKeyboard::Key::Confirm, now)
 //   keyboard.draw(canvas, style, now);
-//   if (keyboard.outcome() == Keyboard::Outcome::Done) use keyboard.text()
+//   if (keyboard.outcome() == OnScreenKeyboard::Outcome::Done) use keyboard.text()
 //
 // The keys: the letters, Shift (the next letter in capitals; the first
 // letter is a capital by itself), Space, Del and Done. On a pad: the D-pad
@@ -21,9 +21,9 @@
 
 namespace ScratchPadd {
 
-class Keyboard {
+class OnScreenKeyboard {
 public:
-  explicit Keyboard(std::string text = {}, std::size_t most = 10);
+  explicit OnScreenKeyboard(std::string text = {}, std::size_t most = 10);
 
   // Where it goes: `width` x `height` pixels (sized for a DS's 256 x 192,
   // scaled to others)

@@ -1,4 +1,4 @@
-#include <ScratchPadd/Keyboard/Keyboard.hpp>
+#include <ScratchPadd/OnScreenKeyboard/OnScreenKeyboard.hpp>
 
 #include <array>
 #include <cctype>
@@ -10,20 +10,21 @@ namespace {
 constexpr std::array<std::string_view, 3> kRows{"QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"};
 } // namespace
 
-Keyboard::Keyboard(std::string text, std::size_t most) : text_(std::move(text)), most_(most) {
+OnScreenKeyboard::OnScreenKeyboard(std::string text, std::size_t most)
+    : text_(std::move(text)), most_(most) {
   if (text_.size() > most_)
     text_.resize(most_);
   shift_ = text_.empty(); // (a name's first letter a capital)
   setKeys();
 }
 
-void Keyboard::layOut(int width, int height) {
+void OnScreenKeyboard::layOut(int width, int height) {
   width_ = width;
   height_ = height;
   setKeys();
 }
 
-void Keyboard::setKeys() {
+void OnScreenKeyboard::setKeys() {
   const float k = static_cast<float>(width_) / 256;
   std::vector<Buttons::Button> keys;
   // Three rows of letters, each a little further in, as on a keyboard
@@ -47,7 +48,7 @@ void Keyboard::setKeys() {
     panel_.setFocus(static_cast<int>('Q'));
 }
 
-void Keyboard::type(int id) {
+void OnScreenKeyboard::type(int id) {
   if (outcome_ == Outcome::Done)
     return;
   switch (id) {
@@ -79,7 +80,7 @@ void Keyboard::type(int id) {
   setKeys();
 }
 
-void Keyboard::press(Key key, double now) {
+void OnScreenKeyboard::press(Key key, double now) {
   switch (key) {
   case Key::Up:
     panel_.move(Buttons::Direction::Up);
@@ -110,7 +111,7 @@ void Keyboard::press(Key key, double now) {
   }
 }
 
-void Keyboard::touch(int x, int y, double now) {
+void OnScreenKeyboard::touch(int x, int y, double now) {
   if (const auto key = panel_.at(x, y)) {
     panel_.setFocus(*key);
     panel_.press(*key, now);
@@ -118,7 +119,7 @@ void Keyboard::touch(int x, int y, double now) {
   }
 }
 
-void Keyboard::draw(Canvas &canvas, const Style &style, double now) {
+void OnScreenKeyboard::draw(Canvas &canvas, const Style &style, double now) {
   const float k = static_cast<float>(width_) / 256;
   canvas.clear(style.background);
   // The field: the text so far, a cursor after it while typing

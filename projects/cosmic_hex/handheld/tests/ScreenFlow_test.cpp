@@ -91,3 +91,13 @@ TEST(ButtonMenuTest, ChoosingByButtonsAndTouch) {
     EXPECT_FALSE(menu.touch(0, 0, w, h).has_value());
   }
 }
+
+// The settings: from the title, and back to it
+TEST(ScreenFlowTest, TheSettingsFromTheTitleAndBack) {
+  ScreenFlow flow;
+  EXPECT_TRUE(flow.on(ScreenFlow::Event::Settings).changed);
+  EXPECT_EQ(flow.screen(), ScreenFlow::Screen::Settings);
+  EXPECT_FALSE(flow.on(ScreenFlow::Event::Start).changed); // (nothing to start here)
+  EXPECT_TRUE(flow.on(ScreenFlow::Event::Back).changed);
+  EXPECT_EQ(flow.screen(), ScreenFlow::Screen::Title);
+}

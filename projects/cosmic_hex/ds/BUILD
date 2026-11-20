@@ -15,6 +15,7 @@ SOURCES = {
     "//projects/scratchpadd/startup_splash:sources": "scratchpadd/startup_splash",
     "//projects/scratchpadd/owner_name:sources": "scratchpadd/owner_name",
     "//projects/scratchpadd/banner:sources": "scratchpadd/banner",
+    "//projects/scratchpadd/on_screen_keyboard:sources": "scratchpadd/on_screen_keyboard",
     "//projects/scratchpadd/picture_slot:sources": "scratchpadd/picture_slot",
     "//projects/scratchpadd/still_frames:sources": "scratchpadd/still_frames",
     "//projects/scratchpadd/console_screens:sources": "scratchpadd/console_screens",

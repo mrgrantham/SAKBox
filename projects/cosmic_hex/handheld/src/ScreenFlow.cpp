@@ -13,6 +13,8 @@ ScreenFlow::Step ScreenFlow::on(Event event) {
   case Screen::Title:
     if (event == Event::Play)
       go(Screen::Setup);
+    else if (event == Event::Settings)
+      go(Screen::Settings);
     else if (event == Event::Quit)
       step.quit = true;
     break;
@@ -47,6 +49,10 @@ ScreenFlow::Step ScreenFlow::on(Event event) {
     } else if (event == Event::Quit) {
       step.quit = true;
     }
+    break;
+  case Screen::Settings:
+    if (event == Event::Back)
+      go(Screen::Title);
     break;
   case Screen::Won:
     if (event == Event::Continue) {
