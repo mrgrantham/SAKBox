@@ -50,8 +50,12 @@ template <typename Sample>
 std::vector<float> makeLoop(std::uint32_t sampleRate, float seconds, Sample sample) {
   constexpr float kBlendSeconds = 0.05f;
   const auto length = static_cast<std::size_t>(seconds * static_cast<float>(sampleRate));
-  const auto blend = static_cast<std::size_t>(kBlendSeconds * static_cast<float>(sampleRate));
   const std::vector<float> made = make(sampleRate, seconds + kBlendSeconds, sample);
+  // (what was made past the loop's end, rounded on its own, may be a sample
+  // short of the blend's length: it read past the end)
+  const std::size_t blend =
+      std::min(static_cast<std::size_t>(kBlendSeconds * static_cast<float>(sampleRate)),
+               made.size() > length ? made.size() - length : 0);
   std::vector<float> samples(made.begin(), made.begin() + static_cast<std::ptrdiff_t>(length));
   float peak = 0;
   for (std::size_t i = 0; i < length; ++i) {

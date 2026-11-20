@@ -210,6 +210,7 @@ template <int IntBits, int FracBits> class FixedPoint {
 public:
   // The underlying integer type: the value multiplied by 2^FracBits.
   using Fixed = std::conditional_t<IntBits + FracBits == 32, std::int32_t, std::int64_t>;
+  using Unsigned = std::make_unsigned_t<Fixed>;
   static constexpr int kIntegerBits = IntBits;
   static constexpr int kFractionalBits = FracBits;
 
@@ -251,13 +252,19 @@ public:
   // The raw fixed-point representation: the value times 2^FracBits.
   constexpr Fixed valueFixed() const { return valueFixed_; }
 
+  // (past the range, wrapping round, as the hardware does: done unsigned,
+  // where C++ defines it, rather than signed, where overflow is undefined)
   constexpr FixedPoint operator+(const FixedPoint &b) const {
-    return fromFixed(valueFixed_ + b.valueFixed_);
+    return fromFixed(static_cast<Fixed>(static_cast<Unsigned>(valueFixed_) +
+                                        static_cast<Unsigned>(b.valueFixed_)));
   }
   constexpr FixedPoint operator-(const FixedPoint &b) const {
-    return fromFixed(valueFixed_ - b.valueFixed_);
+    return fromFixed(static_cast<Fixed>(static_cast<Unsigned>(valueFixed_) -
+                                        static_cast<Unsigned>(b.valueFixed_)));
   }
-  constexpr FixedPoint operator-() const { return fromFixed(-valueFixed_); }
+  constexpr FixedPoint operator-() const {
+    return fromFixed(static_cast<Fixed>(Unsigned{0} - static_cast<Unsigned>(valueFixed_)));
+  }
 
   // Rounds toward negative infinity in the last place (see the top).
   FixedPoint operator*(const FixedPoint &b) const {

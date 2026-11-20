@@ -615,7 +615,14 @@ void WBigInt::multiply(WBigInt* pBigNumber, unsigned int nUInt)
 		((unsigned int*)&rev)[1] = ((unsigned int*)&prod)[0];
 		*((int64_t*)&m_pBits[n]) += rev;
 #else // BYTE_ORDER_BIG_ENDIAN
-		*((int64_t*)&m_pBits[n]) += (int64_t)pBigNumber->m_pBits[n] * (int64_t)nUInt;
+		// SAKBox: two of the 32-bit words as one 64-bit number, through
+		// memcpy (they needn't be 8-byte aligned: storing through a cast
+		// pointer was undefined), and unsigned (the same bits, wrapping
+		// defined)
+		uint64_t pair;
+		memcpy(&pair, &m_pBits[n], sizeof pair);
+		pair += (uint64_t)pBigNumber->m_pBits[n] * (uint64_t)nUInt;
+		memcpy(&m_pBits[n], &pair, sizeof pair);
 #endif // !BYTE_ORDER_BIG_ENDIAN
 	}
 }

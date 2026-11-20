@@ -104,3 +104,6 @@ build:asan-ubsan --copt=-fno-sanitize-recover=undefined --copt=-fno-omit-frame-p
 build:asan-ubsan --copt=-U_FORTIFY_SOURCE --copt=-Wno-macro-redefined
 build:asan-ubsan --test_env=UBSAN_OPTIONS=print_stacktrace=1
 build:asan-ubsan --test_env=ASAN_OPTIONS=detect_leaks=0
+# (the sanitizers make tests several times slower: Waffles' whole suite ran
+# past its time; five times Bazel's usual limits, short to eternal)
+build:asan-ubsan --test_timeout=300,1500,4500,18000

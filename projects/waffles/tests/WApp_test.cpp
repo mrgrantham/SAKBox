@@ -12,6 +12,7 @@
 
 #ifndef WINDOWS
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #endif
 
@@ -165,10 +166,24 @@ TEST(SignalHandlerTest, ReportsSigintAndSigterm) {
 // crash report). Now a segfault ends the program as usual.
 namespace {
 // How a segfault ends a program: by the signal, or on Windows (which has no
-// signals to die by) with exit code 3
+// signals to die by) with exit code 3, or under AddressSanitizer (which
+// catches it, reports it and ends the program its own way)
+#if defined(__SANITIZE_ADDRESS__)
+#define WAPP_TEST_ASAN 1
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define WAPP_TEST_ASAN 1
+#endif
+#endif
 auto endedBySegfault() {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   return testing::ExitedWithCode(3);
+#elif defined(WAPP_TEST_ASAN)
+  // (AddressSanitizer reports it, then aborts on macOS or exits on Linux:
+  // either way it ends, which is what's being checked)
+  return [](int status) {
+    return WIFSIGNALED(status) || (WIFEXITED(status) && WEXITSTATUS(status) != 0);
+  };
 #else
   return testing::KilledBySignal(SIGSEGV);
 #endif

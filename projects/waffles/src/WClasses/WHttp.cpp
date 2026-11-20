@@ -866,6 +866,16 @@ void WHttpServer::serveRequests()
 	}
 }
 
+namespace
+{
+	// SAKBox: a response couldn't be sent, and the connection is gone (send()
+	// disconnected it, which deletes it): process() must not touch it again
+	struct WHttpConnectionLost : public std::exception
+	{
+		const char* what() const noexcept override { return "connection lost"; }
+	};
+} // namespace
+
 bool WHttpServer::process()
 {
 	unsigned char* pIn;
@@ -873,11 +883,12 @@ bool WHttpServer::process()
 	bool bDidSomething = false;
 	while(true)
 	{
-		WTCPConnection* pCon;
+		WTCPConnection* pCon = nullptr;
 		size_t nMessageSize = m_pSocket->receive(m_pReceiveBuf, 2048, &pCon);
-		WHttpConnection* pConn = (WHttpConnection*)pCon;
 		if(nMessageSize == 0)
 			break;
+		// SAKBox: cast once something came (it cast the uninitialised pointer)
+		WHttpConnection* pConn = (WHttpConnection*)pCon;
 		bDidSomething = true;
 		pIn = (unsigned char*)m_pReceiveBuf;
 		while(nMessageSize > 0)
@@ -908,6 +919,11 @@ bool WHttpServer::process()
 							std::cout << "Hung up on a bad HTTP request: " << e.what() << "\n";
 							m_pSocket->disconnect(pConn); // (deletes pConn)
 							nMessageSize = 0; // drop the rest of what it sent
+							break;
+						}
+						catch(const WHttpConnectionLost&)
+						{
+							nMessageSize = 0; // SAKBox: gone (deleted): it was used after
 							break;
 						}
 						pConn->m_nPos = 0;
@@ -1011,6 +1027,7 @@ void WHttpServer::processHeaderLine(WHttpConnection* pConn, const char* szLine)
 				catch(std::exception& e)
 				{
 					std::cout << "Error: Failed to send GET response: " << e.what() << "\n";
+					throw WHttpConnectionLost(); // SAKBox: (process() stops with it)
 				}
 			}
 			else
@@ -1036,6 +1053,7 @@ void WHttpServer::processHeaderLine(WHttpConnection* pConn, const char* szLine)
 			catch(std::exception& e)
 			{
 				std::cout << "Error: Failed to send HEAD response: " << e.what() << "\n";
+				throw WHttpConnectionLost(); // SAKBox: (process() stops with it)
 			}
 		}
 		else if(pConn->m_eRequestType == WHttpConnection::Post)

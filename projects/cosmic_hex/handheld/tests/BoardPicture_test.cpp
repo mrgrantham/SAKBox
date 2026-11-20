@@ -209,7 +209,8 @@ TEST(BoardPictureTest, DrawingWhatChangedMatchesDrawingItAll) {
         auto pixels = kept.pixelsToDrawOver();
         for (int y = 170; y < 190; ++y)
           for (int x = 4; x < 26; ++x)
-            pixels[static_cast<std::size_t>(y * 256 + x)] = {255, 0, 255, 255};
+            pixels[static_cast<std::size_t>(y) * 256 + static_cast<std::size_t>(x)] = {255, 0, 255,
+                                                                                       255};
         kept.redrawNext({4, 170, 22, 20});
       }
       kept.draw(state, marks);

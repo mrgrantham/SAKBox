@@ -44,7 +44,7 @@ TEST(FilesTest, LoadsAnUnfinishedSaveAndNothingFromNothing) {
 TEST(FilesTest, SaysWhyItCouldntSave) {
   const std::string blocker = scratch("blocker");
   std::filesystem::create_directories(scratch(""));
-  std::ofstream{blocker}; // a file where a folder should be
+  std::ofstream(blocker).close(); // a file where a folder should be
   ASSERT_TRUE(std::filesystem::is_regular_file(blocker));
   std::string error;
   EXPECT_FALSE(ScratchPadd::Storage::saveFile(blocker + "/inside.bin", bytesOf("x"), error));

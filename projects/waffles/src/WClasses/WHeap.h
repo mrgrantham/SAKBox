@@ -27,8 +27,11 @@
 namespace WClasses
 {
 
-#define ALIGN_BYTES 1 // For byte-addressable machines
-//#define ALIGN_BYTES (sizeof(void*)) // For pointer-addressable machines
+// SAKBox: pointer-aligned everywhere. Aligned to a byte, WDom's nodes and
+// fields (pointers, doubles, long longs) sat at odd addresses: x86 and ARM
+// read them anyway, but it's undefined behaviour (UndefinedBehaviorSanitizer
+// stops at it), and a compiler may assume it doesn't happen
+#define ALIGN_BYTES (sizeof(void*))
 #define ALIGN_DOWN(p) (((p) / ALIGN_BYTES) * ALIGN_BYTES)
 #define ALIGN_UP(p) ALIGN_DOWN((p) + ALIGN_BYTES - 1)
 

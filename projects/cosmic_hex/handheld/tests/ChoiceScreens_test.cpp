@@ -78,6 +78,7 @@ TEST(ChoiceScreensTest, TheBuildScreen) {
 
 TEST(ChoiceScreensTest, TheResourcePicker) {
   std::vector<Action> legal;
+  legal.reserve(kResources);
   for (int r = 0; r < kResources; ++r)
     legal.push_back({Action::Kind::ChooseHome, r});
   const Pickers::ResourceChoice choice{"Your home pays 1", "Choose which resource", 1, legal};

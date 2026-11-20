@@ -14,11 +14,11 @@ using Bytes = std::vector<std::uint8_t>;
 
 inline void putBig(Bytes &out, std::uint32_t value, int bytes) {
   for (int i = bytes - 1; i >= 0; --i)
-    out.push_back(static_cast<std::uint8_t>(value >> (8 * i)));
+    out.push_back(i < 4 ? static_cast<std::uint8_t>(value >> (8 * i)) : 0); // (past it: zeros)
 }
 inline void putLittle(Bytes &out, std::uint32_t value, int bytes) {
   for (int i = 0; i < bytes; ++i)
-    out.push_back(static_cast<std::uint8_t>(value >> (8 * i)));
+    out.push_back(i < 4 ? static_cast<std::uint8_t>(value >> (8 * i)) : 0); // (past it: zeros)
 }
 
 // One event of a MIDI file: `tick` (480 to a beat, at 120 beats a minute:

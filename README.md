@@ -184,6 +184,7 @@ bazel test --config=asan-ubsan //...
 - **AddressSanitizer** stops a test at a read or write out of bounds, or after a free. (Leaks aren't checked: macOS has no leak checker on Apple silicon.)
 - **UndefinedBehaviorSanitizer** stops it at signed overflow, a shift too far, a misaligned read or a bad cast: the bugs that behave on a Mac and not on an ARM console.
 - Each stops at the first problem, with where it happened.
+- Time limits are five times Bazel's usual under them (Waffles' whole suite takes about 7 minutes).
 
 ### Heap budgets
 
