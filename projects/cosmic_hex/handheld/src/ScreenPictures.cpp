@@ -31,6 +31,21 @@ Scene::Transform onScreenAt(const Scene::Camera &camera, float screenWidth, floa
                                     middle + right * left + up * bottom);
 }
 
+Scene::Transform solidOnScreen(const Scene::Camera &camera, float screenWidth, float screenHeight,
+                               float x, float y, float pixels, float distance) {
+  const Scene::Vector3 forward = (camera.target - camera.eye).normalised();
+  const Scene::Vector3 right = forward.cross(camera.up).normalised();
+  const Scene::Vector3 up = right.cross(forward);
+  const float tall =
+      2 * distance * std::tan(static_cast<float>(camera.fieldOfView) * 3.14159265f / 360);
+  const float pixel = tall / screenHeight;
+  const float unit = pixels * pixel;
+  const Scene::Vector3 at = camera.eye + forward * distance +
+                            right * ((x - screenWidth / 2) * pixel) +
+                            up * ((screenHeight / 2 - y) * pixel);
+  return Scene::Transform::fromAxes(right * unit, up * unit, -forward * unit, at);
+}
+
 PaddedPicture padded(const std::vector<Scene::Colour> &pixels, int width, int height) {
   const auto powerOfTwo = [](int n) {
     int p = 8; // (the DS's smallest)

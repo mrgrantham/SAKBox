@@ -109,3 +109,32 @@ TEST(DicePiecesTest, SlidesOnTheDicesCurve) {
     last = now;
   }
 }
+
+// The home die: every face facing out (its normal away from the middle),
+// a few dozen triangles, and each side brought to face the viewer (+z) by
+// its turn, its colour the one there
+TEST(DicePiecesTest, TheHomeDieShowsEachSide) {
+  const std::array<Scene::Colour, 5> colours{
+      Scene::Colour{200, 0, 0}, {0, 200, 0}, {0, 0, 200}, {200, 200, 0}, {0, 200, 200}};
+  const Scene::Colour star{250, 180, 40};
+  const Scene::MeshBuilder built = homeDie(colours, star);
+  const Scene::MeshData mesh = built.data();
+  EXPECT_LT(mesh.indices.size() / 3, 120u);
+  for (const Scene::Vertex &v : mesh.vertices)
+    EXPECT_GT(v.normal.dot(v.position), 0); // (outward: the middle is the origin)
+  for (int face = 0; face < 6; ++face) {
+    const float turn = homeDieTurn(face);
+    // The colour of the inset whose normal faces most nearly +z once turned
+    float best = -2;
+    Scene::Colour seen{};
+    for (const Scene::Vertex &v : mesh.vertices) {
+      const float z = v.normal.y * std::sin(turn) + v.normal.z * std::cos(turn);
+      if (z > best + 1e-4f && !(v.colour == Scene::Colour{244, 242, 236})) {
+        best = z;
+        seen = v.colour;
+      }
+    }
+    EXPECT_NEAR(best, 1, 1e-4f) << face;
+    EXPECT_TRUE(seen == (face < 5 ? colours[static_cast<std::size_t>(face)] : star)) << face;
+  }
+}

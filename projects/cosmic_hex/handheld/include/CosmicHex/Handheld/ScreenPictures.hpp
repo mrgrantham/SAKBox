@@ -33,6 +33,13 @@ ScratchPadd::Scene::Transform onScreenAt(const ScratchPadd::Scene::Camera &camer
                                          float screenWidth, float screenHeight, float x, float y,
                                          float w, float h, float distance = kPictureDistance);
 
+// Where to draw a solid (a mesh in 3D) centred on the pixel (x, y),
+// `pixels` on the screen to its unit, `distance` in front of the camera,
+// its x right, y up and z towards the camera
+ScratchPadd::Scene::Transform solidOnScreen(const ScratchPadd::Scene::Camera &camera,
+                                            float screenWidth, float screenHeight, float x, float y,
+                                            float pixels, float distance = kPictureDistance + 0.4f);
+
 // A picture (RGBA, rows from the top) padded with see-through pixels to
 // the next power of two each way, as the DS's textures must be; uMax and
 // vMax are the picture's share of it

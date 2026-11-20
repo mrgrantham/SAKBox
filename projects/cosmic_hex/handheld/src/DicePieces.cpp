@@ -174,4 +174,61 @@ Scene::Transform dieOnGlass(const Scene::Transform &glass, const Scene::Vector3 
   return glass * Scene::Transform::fromAxes(ax, ay, az, position - Scene::Vector3{offset, 0, 0});
 }
 
+namespace {
+// A point on the home die's hexagon at `angle` about x, `radius` from it:
+// angle 0 straight at +z, turning towards -y
+Scene::Vector3 aroundX(float x, float angle, float radius) {
+  return {x, -std::sin(angle) * radius, std::cos(angle) * radius};
+}
+} // namespace
+
+float homeDieTurn(int face) { return -static_cast<float>(face) * 3.14159265f / 3; }
+
+Scene::MeshBuilder homeDie(const std::array<Scene::Colour, 5> &resources, Scene::Colour star) {
+  constexpr float kPi = 3.14159265f, kSixth = kPi / 3;
+  constexpr float kApothem = 0.5f;                      // (1 across its sides)
+  const float corner = kApothem / std::cos(kSixth / 2); // (its corners' radius)
+  constexpr float kLength = 1.3f;                       // (along x)
+  constexpr Scene::Colour kWhite{244, 242, 236};
+  const float a = kLength / 2;
+  Scene::MeshBuilder m;
+  for (int side = 0; side < 6; ++side) {
+    const float mid = static_cast<float>(side) * kSixth;
+    const float l = mid - kSixth / 2, r = mid + kSixth / 2;
+    // The side: a long white quad, facing out (its normal at `mid`)
+    m.quad(aroundX(-a, r, corner), aroundX(a, r, corner), aroundX(a, l, corner),
+           aroundX(-a, l, corner), kWhite);
+    // The ends: a triangle of each white hexagon cap
+    m.triangle({a, 0, 0}, aroundX(a, l, corner), aroundX(a, r, corner), kWhite);
+    m.triangle({-a, 0, 0}, aroundX(-a, r, corner), aroundX(-a, l, corner), kWhite);
+    // On the side, just proud of it: a coloured hexagon (a resource) or the
+    // star, in the side's own plane
+    // (a twentieth of its width proud: closer, the DS's depth buffer mixed
+    // the two at a slant)
+    const Scene::Vector3 out = aroundX(0, mid, kApothem + 0.05f);
+    const Scene::Vector3 along{1, 0, 0};
+    const Scene::Vector3 across = aroundX(0, mid + kPi / 2, 1); // (in the side's plane)
+    const auto on = [&](float u, float v) { return out + along * u + across * v; };
+    const float size = 0.26f;
+    if (side < 5) {
+      for (int t = 0; t < 6; ++t) {
+        const float t0 = static_cast<float>(t) * kSixth, t1 = t0 + kSixth;
+        m.triangle(out, on(std::cos(t1) * size, std::sin(t1) * size),
+                   on(std::cos(t0) * size, std::sin(t0) * size),
+                   resources[static_cast<std::size_t>(side)]);
+      }
+    } else {
+      // A five-pointed star, its points out and in by turns
+      for (int t = 0; t < 10; ++t) {
+        const float t0 = static_cast<float>(t) * kPi / 5, t1 = t0 + kPi / 5;
+        const float r0 = t % 2 == 0 ? size * 1.15f : size * 0.48f;
+        const float r1 = t % 2 == 0 ? size * 0.48f : size * 1.15f;
+        m.triangle(out, on(-std::sin(t1) * r1, std::cos(t1) * r1),
+                   on(-std::sin(t0) * r0, std::cos(t0) * r0), star);
+      }
+    }
+  }
+  return m;
+}
+
 } // namespace CosmicHex::Handheld

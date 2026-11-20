@@ -40,19 +40,6 @@ void backdrop(const TopFrame &f, float top, Scene::Colour colour, float alpha) {
        .colour = colour,
        .alpha = static_cast<std::uint8_t>(alpha)});
 }
-// A square turned by `angle` (radians) about its middle: two triangles (the
-// overlay's rectangles don't turn)
-void turnedSquare(Scene::Overlay &overlay, float x, float y, float half, float angle,
-                  Scene::Colour colour) {
-  std::array<std::array<float, 2>, 4> c{};
-  for (int i = 0; i < 4; ++i) {
-    const float a = angle + kPi / 4 + static_cast<float>(i) * kPi / 2;
-    c[static_cast<std::size_t>(i)] = {x + half * std::sqrt(2.0f) * std::cos(a),
-                                      y + half * std::sqrt(2.0f) * std::sin(a)};
-  }
-  overlay.triangle(c[0][0], c[0][1], c[1][0], c[1][1], c[2][0], c[2][1], colour);
-  overlay.triangle(c[0][0], c[0][1], c[2][0], c[2][1], c[3][0], c[3][1], colour);
-}
 } // namespace
 
 // ---------------------------------------------------------------- Discovery
@@ -469,29 +456,7 @@ void drawRollPay(const TopFrame &f, const RollPayShow &show, const State &state,
 
 // ---------------------------------------------------------------- Home pay
 
-namespace {
-// A five-pointed star (the home die's "your choice" face), from triangles
-void star(Scene::Overlay &overlay, float x, float y, float r, Scene::Colour colour) {
-  std::array<std::array<float, 2>, 10> p{};
-  for (int i = 0; i < 10; ++i) {
-    const float a = -kPi / 2 + static_cast<float>(i) * kPi / 5;
-    const float d = i % 2 == 0 ? r : r * 0.42f;
-    p[static_cast<std::size_t>(i)] = {x + d * std::cos(a), y + d * std::sin(a)};
-  }
-  for (int i = 0; i < 10; ++i) {
-    const auto &a = p[static_cast<std::size_t>(i)];
-    const auto &b = p[static_cast<std::size_t>((i + 1) % 10)];
-    overlay.triangle(x, y, a[0], a[1], b[0], b[1], colour);
-  }
-}
-// A home die's face: a resource's colour as a disc, or the star
-void dieFace(Scene::Overlay &overlay, float x, float y, float half, int face) {
-  if (face >= kResources)
-    star(overlay, x, y, half * 0.75f, Palette::kHighlight);
-  else
-    overlay.hexagon(x, y, half * 0.6f, BoardColours::ofKind(static_cast<PlanetKind>(face)), true);
-}
-} // namespace
+namespace {} // namespace
 
 void drawHomePay(const TopFrame &f, const HomePayShow &show, const State &state, bool yours,
                  const ScratchPadd::PictureSlot &closeUp) {
@@ -519,19 +484,28 @@ void drawHomePay(const TopFrame &f, const HomePayShow &show, const State &state,
   const float rise = Motion::along(Motion::Curve::Anticipate, m.up);
   const float dieX = Motion::arc(homeX, topX, -10 * k, rise);
   const float dieY = Motion::arc(homeY, topY, -26 * k, rise);
-  // Tumbling: turning less and less, its faces flickering; landing on its
-  // face with a small pop (Settle: a small thing may squash a little)
-  const float landed = Motion::along(Motion::Curve::Settle, m.settle);
-  const float half =
-      (6 + 10 * std::min(1.0f, m.up)) * k * (m.settle > 0 ? 0.85f + 0.15f * landed : 1);
-  const float angle = (1 - m.tumble) * (1 - m.tumble) * 7 + (1 - m.up) * 2;
-  const bool showsFace = m.tumble >= 1;
-  const int face =
-      showsFace ? pay->face : (pay->face + 1 + static_cast<int>(*seconds * 12)) % (kResources + 1);
-  if (m.away < 1) {
-    turnedSquare(overlay, dieX, dieY, half + 1.5f * k, angle, BoardColours::ofPlayer(pay->player));
-    turnedSquare(overlay, dieX, dieY, half, angle, {244, 242, 236, 255});
-    dieFace(overlay, dieX, dieY, half, face);
+  // The die (the user's: an extruded white hexagon, a resource's colour on
+  // each side, the star on the sixth) rolling about its long axis as it
+  // flies, slowing, landing with the side chosen facing you, a small
+  // wobble as it settles (Settle: a small thing may squash a little)
+  if (m.away < 1 && f.pictures.homeDie) {
+    constexpr float kTurn = 6.2831853f;
+    const float flown = (m.up * HomePayShow::kSecondsUp + m.tumble * HomePayShow::kSecondsTumble) /
+                        (HomePayShow::kSecondsUp + HomePayShow::kSecondsTumble);
+    const float slowing = 1 - (1 - flown) * (1 - flown) * (1 - flown); // (fast, then slower)
+    const float wobble = std::sin(m.settle * kTurn) * (1 - m.settle) * 0.35f;
+    const float roll = homeDieTurn(pay->face) - (1 - slowing) * 3 * kTurn + wobble;
+    const float landed = Motion::along(Motion::Curve::Settle, m.settle);
+    const float size =
+        (12 + 18 * std::min(1.0f, m.up)) * k * (m.settle > 0 ? 0.9f + 0.1f * landed : 1);
+    // (turned a little about the vertical, so an end shows: a prism, not a
+    // flat hexagon; less once it's landed)
+    const float tilt = 0.25f + 0.35f * (1 - slowing);
+    f.renderer.draw(f.pictures.homeDie,
+                    solidOnScreen(f.camera, f.width, f.height, dieX, dieY, size) *
+                        Scene::Transform::rotation({0, 1, 0}, tilt) *
+                        Scene::Transform::rotation({1, 0, 0}, roll),
+                    {.shading = Scene::Material::Shading::Lit});
   }
   const std::string whose = yours ? "Your home" : f.names[pay->player] + "'s home";
   if (m.up > 0 && m.away <= 0)

@@ -447,6 +447,13 @@ public:
     cornerRing_ = renderer_->load(pieces.cornerRing.data());
     die_ = renderer_->load(DicePieces(static_cast<float>(Dice::DiceTray::kDieSize)).die.data());
     pictures_.die = die_;
+    {
+      std::array<Scene::Colour, 5> sides{};
+      for (int r = 0; r < CosmicHex::kResources; ++r)
+        sides[static_cast<std::size_t>(r)] =
+            BoardColours::ofKind(static_cast<CosmicHex::PlanetKind>(r));
+      pictures_.homeDie = renderer_->load(homeDie(sides, Palette::kHighlight).data());
+    }
     // The title scene: the 3D title, the rocket, the night sky
     // (fewer stars on the DS: each is two of its 2048 polygons)
     title_.emplace(*renderer_, Assets::kRocket,

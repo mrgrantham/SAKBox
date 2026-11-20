@@ -26,6 +26,14 @@ struct DicePieces {
   Scene::MeshBuilder die;
 };
 
+// The home die (the user's): an extruded white hexagon, a long prism
+// lying along x, a coloured hexagon inset on each of its six sides: side
+// i (0 to 4) in `resources[i]`, side 5 the star in `star`. Side i faces
+// +z after turning it homeDieTurn(i) about x; 1 across its sides
+Scene::MeshBuilder homeDie(const std::array<Scene::Colour, 5> &resources, Scene::Colour star);
+// The turn about x (radians) that brings side `face` to face +z
+float homeDieTurn(int face);
+
 // The container's coordinates (x across the screen, y towards the viewer,
 // z down the screen; DiceTray's, looking down from above) to the world's: in
 // front of `camera`, `distance` from its eye, scaled so `width` by `depth`
