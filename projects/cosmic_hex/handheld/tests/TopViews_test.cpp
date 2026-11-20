@@ -101,8 +101,12 @@ TEST_F(TopViewsTest, DealtCardsOtherPlayersAndTheFirstRoll) {
   FirstRoll roll;
   roll.first = 1;
   roll.rounds = {{4, 6, 6, 2}, {0, 5, 3, 0}};
-  frames(every(0, FirstRollShow::duration(roll)),
-         [&](const TopFrame &f) { drawFirstRoll(f, roll, static_cast<float>(f.now)); });
+  FirstRollShow show;
+  show.start(roll, 3, 1.0 / 30, 0);
+  frames(every(0, 12, 0.1), [&](const TopFrame &f) {
+    show.update(f.now);
+    drawFirstRoll(f, roll, show);
+  });
 }
 
 TEST_F(TopViewsTest, ARollsPayFromStartToEnd) {

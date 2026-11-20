@@ -29,6 +29,7 @@ namespace CosmicHex::Handheld {
 // The pictures the views draw with, loaded once by the app
 struct TopPictures {
   ScratchPadd::Scene::Mesh hexTile, numberChip, column; // (the board's own pieces)
+  ScratchPadd::Scene::Mesh die;                         // (the dice's, DicePieces)
   // Flat squares, each with its pictures' texture corners (ScreenPictures)
   ScratchPadd::Scene::Mesh pictureSquare, backSquare, closeUpCardSquare;
   std::array<ScratchPadd::Scene::Texture, Art::kFaces> faces{};
@@ -69,9 +70,9 @@ void drawDealtCards(const TopFrame &frame, const DealtShow &show, int chosen,
 void drawResources(const TopFrame &frame, const Player &player, const CardsShow &show);
 // What everyone can see of a player, on a panel sliding down from the top
 void drawOtherPlayer(const TopFrame &frame, const PlayerView &view, float down);
-// Who goes first: the dice of each round, tumbling and settling, then the
-// order by name
-void drawFirstRoll(const TopFrame &frame, const FirstRoll &roll, float seconds);
+// Who goes first: each player's die in the glass in their colour, their
+// numbers by their names as they land, then the order by name
+void drawFirstRoll(const TopFrame &frame, const FirstRoll &roll, const FirstRollShow &show);
 // What a roll pays: each card out of its planet and off along an arc to
 // its owner (`you`, playing: down to the bottom screen; a bot's, or
 // everyone's when watching: up to their row of the points bars)

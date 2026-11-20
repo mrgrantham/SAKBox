@@ -446,6 +446,7 @@ public:
     hexRing_ = renderer_->load(pieces.hexRing.data());
     cornerRing_ = renderer_->load(pieces.cornerRing.data());
     die_ = renderer_->load(DicePieces(static_cast<float>(Dice::DiceTray::kDieSize)).die.data());
+    pictures_.die = die_;
     // The title scene: the 3D title, the rocket, the night sky
     // (fewer stars on the DS: each is two of its 2048 polygons)
     title_.emplace(*renderer_, Assets::kRocket,
@@ -564,7 +565,8 @@ private:
       }
     }
     profile_.frameStarted();
-    if (latest_ && firstRoll_.done(now(), latest_->firstRoll))
+    firstRoll_.update(now());
+    if (firstRoll_.done(now()))
       endFirstRoll();
     if (bottomDirty_) {
       auto timing = profile_.time(kProfileBottom);
@@ -850,7 +852,10 @@ private:
       descentStarted_.reset();
       // (down: who goes first, shown, the game still held; then it goes on)
       if (flow_.screen() == ScreenFlow::Screen::Game)
-        firstRoll_.start(now()); // (real time: the game's clock is held)
+        if (latest_) // (real time: the game's clock is held)
+          firstRoll_.start(latest_->firstRoll,
+                           static_cast<std::uint64_t>(Clock::now().time_since_epoch().count()),
+                           kThisPlatform.diceStep, now());
     }
     const Scene::Camera camera = cameraBetween(topDownCamera(), gameCamera(turn_), down);
     renderer_->beginFrame(camera, boardEnvironment(1 - down));
@@ -886,7 +891,7 @@ private:
                     latest_->state.player[static_cast<std::size_t>(infoPlayer(latest_->state))],
                     cards_);
     if (firstRoll_.on() && latest_)
-      drawFirstRoll(frame, latest_->firstRoll, firstRoll_.seconds(now()));
+      drawFirstRoll(frame, latest_->firstRoll, firstRoll_);
     else if (others_.showing(now()) && latest_ && others_.which() >= 0)
       drawOtherPlayer(frame, viewOf(latest_->state, others_.which()), others_.down(now()));
     else if (discovery_.moving(now()))
@@ -1215,7 +1220,9 @@ private:
     const Button back = lastPad_.buttonFor(Input::Role::Back);
     // (A: on from who goes first)
     if (firstRoll_.on() && pressed.pressed(confirm)) {
-      endFirstRoll();
+      firstRoll_.hurry(now()); // (the next die now; once all have landed, on)
+      if (firstRoll_.done(now()))
+        endFirstRoll();
       return;
     }
     switch (flow_.screen()) {

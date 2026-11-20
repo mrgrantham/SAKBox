@@ -6,8 +6,14 @@ load("//projects/cyclone:real.bzl", "real_binary")
 # the roll. dice_fairness throws them many times to check they're fair.
 cc_library(
     name = "dice",
-    srcs = ["src/DiceTray.cpp"],
-    hdrs = ["include/CosmicHex/Dice/DiceTray.hpp"],
+    srcs = [
+        "src/DiceInTurn.cpp",
+        "src/DiceTray.cpp",
+    ],
+    hdrs = [
+        "include/CosmicHex/Dice/DiceInTurn.hpp",
+        "include/CosmicHex/Dice/DiceTray.hpp",
+    ],
     strip_include_prefix = "include/",
     visibility = ["//projects/cosmic_hex:__subpackages__"],
     deps = [
@@ -20,6 +26,16 @@ cc_test(
     name = "DiceTray_test",
     size = "small",
     srcs = ["tests/DiceTray_test.cpp"],
+    deps = [
+        ":dice",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "DiceInTurn_test",
+    size = "small",
+    srcs = ["tests/DiceInTurn_test.cpp"],
     deps = [
         ":dice",
         "@gtest//:gtest_main",
@@ -50,6 +66,7 @@ filegroup(
     name = "sources",
     srcs = glob([
         "include/**",
+        "src/DiceInTurn.cpp",
         "src/DiceTray.cpp",
     ]),
     visibility = ["//visibility:public"],

@@ -177,21 +177,108 @@ float CardsShow::arrived(int order, double now) const {
 
 // -------------------------------------------------------------- First roll
 
-float FirstRollShow::duration(const FirstRoll &roll) {
-  return kSecondsRound * static_cast<float>(std::min(roll.rounds.size(), kRoundsShown)) +
-         kSecondsRead;
+void FirstRollShow::start(const FirstRoll &roll, std::uint64_t seed, double stepSeconds,
+                          double now) {
+  roll_ = roll;
+  seed_ = seed;
+  step_ = stepSeconds;
+  on_ = !roll.rounds.empty();
+  shown_.assign(roll.rounds.size(), std::vector<int>(kMaxPlayers, 0));
+  finishedAt_.reset();
+  if (on_)
+    beginRound(0, now);
 }
 
-std::optional<float> FirstRollShow::tumble(std::size_t round, float seconds) {
-  const float startsAt = kSecondsRound * static_cast<float>(round);
-  if (seconds < startsAt)
-    return std::nullopt;
-  return std::min(1.0f, (seconds - startsAt) / kSecondsTumble);
+void FirstRollShow::stop() {
+  on_ = false;
+  dice_.reset();
 }
 
-bool FirstRollShow::settled(const FirstRoll &roll, float seconds) {
-  const std::size_t rounds = std::min(roll.rounds.size(), kRoundsShown);
-  return rounds > 0 && seconds >= kSecondsRound * static_cast<float>(rounds - 1) + kSecondsTumble;
+void FirstRollShow::beginRound(std::size_t round, double now) {
+  round_ = round;
+  next_ = 0;
+  throwers_.clear();
+  const std::vector<int> &faces = roll_.rounds[round];
+  for (std::size_t p = 0; p < faces.size(); ++p)
+    if (faces[p] > 0)
+      throwers_.push_back(static_cast<int>(p));
+  dice_ = std::make_unique<Dice::DiceInTurn>(step_);
+  simulated_ = now;
+  landedAt_ = now - kSecondsBetween; // (the first thrown at once)
+}
+
+void FirstRollShow::throwNext(double now) {
+  if (!dice_ || next_ >= throwers_.size())
+    return;
+  const int player = throwers_[next_];
+  dice_->throwDie(static_cast<int>(next_), seed_ * 31 + round_ * 7 + next_,
+                  roll_.rounds[round_][static_cast<std::size_t>(player)]);
+  ++next_;
+  landedAt_.reset();
+  simulated_ = now;
+}
+
+void FirstRollShow::update(double now) {
+  if (!on_ || !dice_)
+    return;
+  // The physics stepped to now, a fixed step at a time (a few at most a
+  // frame, so a slow frame doesn't stall)
+  for (int steps = 0; simulated_ + step_ <= now && steps < 4; ++steps) {
+    dice_->step();
+    simulated_ += step_;
+  }
+  if (simulated_ + step_ <= now)
+    simulated_ = now;
+  if (dice_->moving())
+    return;
+  // A die has landed: its number by its player's name
+  for (std::size_t i = 0; i < next_; ++i)
+    if (dice_->settled(static_cast<int>(i)))
+      shown_[round_][static_cast<std::size_t>(throwers_[i])] =
+          roll_.rounds[round_][static_cast<std::size_t>(throwers_[i])];
+  if (!landedAt_)
+    landedAt_ = now;
+  if (next_ < throwers_.size()) {
+    if (now - *landedAt_ >= kSecondsBetween)
+      throwNext(now);
+    return;
+  }
+  if (round_ + 1 < roll_.rounds.size()) {
+    if (now - *landedAt_ >= kSecondsBetweenRounds)
+      beginRound(round_ + 1, now);
+    return;
+  }
+  if (!finishedAt_)
+    finishedAt_ = now;
+}
+
+void FirstRollShow::hurry(double now) {
+  if (!on_)
+    return;
+  if (finishedAt_) {
+    finishedAt_ = now - kSecondsRead; // (read already: on to the game)
+    return;
+  }
+  if (next_ < throwers_.size()) {
+    throwNext(now); // (the moving die set down where it lands)
+    return;
+  }
+  // (the round's last die moving, or the round done: the next round now)
+  if (dice_ && dice_->moving())
+    for (std::size_t i = 0; i < next_; ++i)
+      dice_->settleNow(static_cast<int>(i));
+  landedAt_ = now - kSecondsBetweenRounds;
+  update(now);
+}
+
+bool FirstRollShow::done(double now) const {
+  return on_ && finishedAt_ && now - *finishedAt_ >= kSecondsRead;
+}
+
+int FirstRollShow::shown(std::size_t round, int player) const {
+  if (round >= shown_.size() || player < 0 || player >= kMaxPlayers)
+    return 0;
+  return shown_[round][static_cast<std::size_t>(player)];
 }
 
 // --------------------------------------------------------------- Home pay

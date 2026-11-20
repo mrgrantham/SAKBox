@@ -105,23 +105,34 @@ TEST(TopShowsTest, APanelSlidesDownAndBackUp) {
   EXPECT_FALSE(panel.showing(5.31));
 }
 
-// Who goes first: each round thrown after the last, then time to read
-TEST(TopShowsTest, TheFirstRollsRoundsThenTheOrder) {
+// Who goes first: each player's die thrown in turn, landing on their
+// number; the ties again; A hurries; then time to read the order
+TEST(TopShowsTest, TheFirstRollThrowsInTurn) {
   FirstRoll roll;
   roll.first = 2;
   roll.rounds = {{5, 6, 6, 1}, {0, 2, 4, 0}};
-  EXPECT_FLOAT_EQ(FirstRollShow::duration(roll),
-                  2 * FirstRollShow::kSecondsRound + FirstRollShow::kSecondsRead);
-  EXPECT_FLOAT_EQ(*FirstRollShow::tumble(0, 0), 0);
-  EXPECT_FALSE(FirstRollShow::tumble(1, 1.0f).has_value());
-  EXPECT_FLOAT_EQ(*FirstRollShow::tumble(1, FirstRollShow::kSecondsRound + 5), 1);
-  EXPECT_FALSE(FirstRollShow::settled(roll, FirstRollShow::kSecondsRound));
-  EXPECT_TRUE(
-      FirstRollShow::settled(roll, FirstRollShow::kSecondsRound + FirstRollShow::kSecondsTumble));
   FirstRollShow show;
-  show.start(100);
-  EXPECT_FALSE(show.done(101, roll));
-  EXPECT_TRUE(show.done(100 + FirstRollShow::duration(roll), roll));
+  show.start(roll, 9, 1.0 / 30, 0);
+  ASSERT_TRUE(show.on());
+  double now = 0;
+  for (; now < 60 && !show.allLanded(); now += 1.0 / 30)
+    show.update(now);
+  ASSERT_TRUE(show.allLanded());
+  EXPECT_EQ(show.shown(0, 1), 6);
+  EXPECT_EQ(show.shown(1, 2), 4);
+  EXPECT_EQ(show.shown(1, 0), 0); // (not in the ties' round)
+  EXPECT_FALSE(show.done(now));
+  EXPECT_TRUE(show.done(now + FirstRollShow::kSecondsRead));
+  // Impatient: A through it all, much sooner
+  FirstRollShow quick;
+  quick.start(roll, 9, 1.0 / 30, 0);
+  double t = 0;
+  for (int presses = 0; presses < 20 && !quick.done(t); ++presses) {
+    quick.hurry(t);
+    quick.update(t += 0.05);
+  }
+  EXPECT_TRUE(quick.done(t));
+  EXPECT_LT(t, 2.0);
 }
 
 // A home's pay: the die out, tumbling, settled; the card big, then away;

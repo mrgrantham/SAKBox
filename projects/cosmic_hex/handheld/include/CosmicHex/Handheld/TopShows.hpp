@@ -20,12 +20,14 @@
 // the game is held). Each answers moving(now); the app's frame asks them all.
 #pragma once
 
+#include <CosmicHex/Dice/DiceInTurn.hpp>
 #include <CosmicHex/Handheld/Discovery.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
 
 #include <ScratchPadd/Motion/Motion.hpp>
 
 #include <functional>
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -153,32 +155,52 @@ private:
 };
 
 // ---------------------------------------------------------------------------
-// Who goes first: every player's die thrown at once, tumbling and settling;
-// those tied throw again on the next row; then the order
+// Who goes first (the user's): each player's die thrown into the glass in
+// turn by the physics (Dice::DiceInTurn), settling on the number the game
+// rolled for them, then the next; those tied throw again, in a new glass;
+// then the order. Impatient (A): the next throw at once, the moving die set
+// down where it lands; once all have landed, on to the game
 
 class FirstRollShow {
 public:
-  static constexpr float kSecondsRound = 1.4f, kSecondsTumble = 0.9f;
-  static constexpr float kSecondsRead = 2.6f;
-  static constexpr std::size_t kRoundsShown = 3;
+  static constexpr float kSecondsBetween = 0.5f;    // (after a die settles)
+  static constexpr float kSecondsBetweenRounds = 1; // (the ties' new glass)
+  static constexpr float kSecondsRead = 2.4f;       // (the order, read)
 
-  void start(double now) { shown_.start(now); }
-  void stop() { shown_.stop(); }
-  bool on() const { return shown_.on(); }
-  bool moving() const { return on(); }
-  float seconds(double now) const { return static_cast<float>(shown_.seconds(now)); }
-  // How long it shows for `roll`; whether that's up
-  static float duration(const FirstRoll &roll);
-  bool done(double now, const FirstRoll &roll) const {
-    return on() && seconds(now) >= duration(roll);
-  }
-  // Round r's dice: how far through their tumble (0 to 1; nothing before
-  // they're thrown); whether the last round has settled (the order shows)
-  static std::optional<float> tumble(std::size_t round, float seconds);
-  static bool settled(const FirstRoll &roll, float seconds);
+  // Started for `roll`, the throws from `seed`, the physics stepped
+  // `stepSeconds` at a time (PlatformProfile::diceStep)
+  void start(const FirstRoll &roll, std::uint64_t seed, double stepSeconds, double now);
+  void stop();
+  bool on() const { return on_; }
+  bool moving() const { return on_; }
+  // Each frame: the physics stepped to `now`, the next die thrown when it's due
+  void update(double now);
+  // A: the next die thrown now; once all have landed, done
+  void hurry(double now);
+  bool done(double now) const;
+
+  // For drawing: this round's glass and whose die is which (its index the
+  // die's), each player's numbers so far, and whether the order's known
+  const Dice::DiceInTurn *dice() const { return dice_.get(); }
+  const std::vector<int> &throwers() const { return throwers_; }
+  int round() const { return round_; }
+  // Player p's settled number in round r (0: none yet, or not thrown)
+  int shown(std::size_t round, int player) const;
+  bool allLanded() const { return finishedAt_.has_value(); }
 
 private:
-  ScratchPadd::Motion::Showing shown_;
+  void beginRound(std::size_t round, double now);
+  void throwNext(double now);
+
+  FirstRoll roll_;
+  std::uint64_t seed_ = 0;
+  double step_ = 1.0 / 60, simulated_ = 0;
+  bool on_ = false;
+  std::size_t round_ = 0, next_ = 0;
+  std::vector<int> throwers_; // (this round's: die i is throwers_[i]'s)
+  std::vector<std::vector<int>> shown_;
+  std::unique_ptr<Dice::DiceInTurn> dice_;
+  std::optional<double> landedAt_, finishedAt_;
 };
 
 // ---------------------------------------------------------------------------

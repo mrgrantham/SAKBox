@@ -1,7 +1,9 @@
 #include <CosmicHex/Handheld/TopViews.hpp>
 
+#include <CosmicHex/Dice/DiceTray.hpp>
 #include <CosmicHex/Handheld/BoardPieces.hpp>
 #include <CosmicHex/Handheld/CardsHeld.hpp>
+#include <CosmicHex/Handheld/DicePieces.hpp>
 #include <CosmicHex/Handheld/GameWords.hpp>
 #include <CosmicHex/Handheld/Palette.hpp>
 #include <CosmicHex/Handheld/PointsBars.hpp>
@@ -345,65 +347,68 @@ void drawOtherPlayer(const TopFrame &f, const PlayerView &view, float down) {
 
 // -------------------------------------------------------------- First roll
 
-void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, float since) {
+void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow &show) {
   if (roll.rounds.empty())
     return;
   const float k = f.k();
   Scene::Overlay &overlay = f.overlay;
-  overlay.rectangle(0, 0, f.width, f.height, {10, 15, 26, 240});
-  overlay.textCentred(f.width / 2, 14 * k, "WHO GOES FIRST", Palette::kWords, 2 * k);
+  // A dark backdrop behind the glass (in 3D: the overlay's shapes would
+  // cover the dice), in front of the board
+  f.renderer.draw(f.pictures.pictureSquare,
+                  onScreenAt(f.camera, f.width, f.height, 0, 0, f.width, f.height, 7.5f),
+                  {.shading = Scene::Material::Shading::Unlit, .colour = {10, 15, 26}});
+  // The dice of this round, each in its player's colour
+  if (const Dice::DiceInTurn *dice = show.dice(); dice && f.pictures.die) {
+    const Scene::Transform glass =
+        glassFrame(f.camera, f.width / f.height, static_cast<float>(Dice::DiceTray::kWidth),
+                   static_cast<float>(Dice::DiceTray::kDepth));
+    const auto toFloat = [](cyclone::real r) { return static_cast<float>(static_cast<double>(r)); };
+    for (std::size_t i = 0; i < show.throwers().size(); ++i) {
+      const int die = static_cast<int>(i);
+      if (!dice->thrown(die))
+        continue;
+      const cyclone::Vector3 at = dice->position(die);
+      const cyclone::Quaternion turn = dice->orientation(die);
+      f.renderer.draw(
+          f.pictures.die,
+          dieOnGlass(glass, {toFloat(at.x), toFloat(at.y), toFloat(at.z)},
+                     {toFloat(turn.r), toFloat(turn.i), toFloat(turn.j), toFloat(turn.k)}, 0),
+          {.shading = Scene::Material::Shading::Lit,
+           .colour = Palette::player(show.throwers()[i])});
+    }
+  }
+  overlay.textCentred(f.width / 2, 12 * k, "WHO GOES FIRST", Palette::kWords, 2 * k);
+  // Each player's name, and under it their numbers as their dice land
   const int players = static_cast<int>(roll.rounds.front().size());
   const float gap = 58 * k;
   const float left = f.width / 2 - gap * static_cast<float>(players - 1) / 2;
-  for (int p = 0; p < players; ++p)
-    overlay.textCentred(left + gap * static_cast<float>(p), 32 * k, f.names.shortOf(p),
-                        Palette::player(p), k);
-  const std::size_t rounds = std::min(roll.rounds.size(), FirstRollShow::kRoundsShown);
-  const bool settled = FirstRollShow::settled(roll, since);
-  float y = 54 * k;
-  for (std::size_t r = 0; r < rounds; ++r) {
-    const auto tumble = FirstRollShow::tumble(r, since);
-    if (!tumble)
-      break;
-    const float t = *tumble;
-    const float half = (r == 0 ? 14 : 10) * k;
-    if (r > 0)
-      overlay.textCentred(f.width / 2, y - half - 7 * k, "tied: they throw again",
-                          Palette::kHighlight, k);
-    for (int p = 0; p < players; ++p) {
-      const int face = roll.rounds[r][static_cast<std::size_t>(p)];
-      if (face == 0)
-        continue;
-      const float x = left + gap * static_cast<float>(p);
-      // Dropping in from just under the title and settling (Settle: a
-      // small bounce), turning less and less, its number flickering until
-      // it lands
-      const float landed = Motion::along(Motion::Curve::Settle, t);
-      const float dy = (1 - landed) * -24 * k;
-      const float angle = (1 - t) * (1 - t) * (5.0f + static_cast<float>(p));
-      const bool winner = settled && r + 1 == rounds && p == roll.first;
-      turnedSquare(overlay, x, y + dy, half + 2 * k, angle,
-                   winner ? Palette::kHighlight : Palette::player(p));
-      turnedSquare(overlay, x, y + dy, half, angle, {242, 242, 242, 255});
-      const int shown = t >= 1 ? face : 1 + (p * 7 + static_cast<int>(since * 14)) % 6;
-      overlay.textCentred(x, y + dy, std::to_string(shown), {30, 30, 36}, (r == 0 ? 2 : 1.5f) * k);
-    }
-    y += 2 * half + 22 * k;
+  for (int p = 0; p < players; ++p) {
+    const float x = left + gap * static_cast<float>(p);
+    overlay.textCentred(x, 28 * k, f.names.shortOf(p), Palette::player(p), k);
+    std::string numbers;
+    for (std::size_t r = 0; r <= static_cast<std::size_t>(show.round()) && r < roll.rounds.size();
+         ++r)
+      if (const int n = show.shown(r, p))
+        numbers += (numbers.empty() ? "" : "  ") + std::to_string(n);
+    const bool winner = show.allLanded() && p == roll.first;
+    overlay.textCentred(x, 42 * k, numbers, winner ? Palette::kHighlight : Palette::kWords,
+                        1.5f * k);
   }
-  // Once the last throw has settled: the order, by name
-  if (since < FirstRollShow::kSecondsRound * static_cast<float>(rounds - 1) +
-                  FirstRollShow::kSecondsTumble + 0.3f)
+  if (show.round() > 0 && !show.allLanded())
+    overlay.textCentred(f.width / 2, 56 * k, "tied: they throw again", Palette::kHighlight, k);
+  // Once all have landed: the order, by name
+  if (!show.allLanded())
     return;
   std::string homes = "Homes: ", ships = "Ships: ";
   for (int i = 0; i < players; ++i) {
     homes += (i ? ", " : "") + f.names[(roll.first + i) % players];
     ships += (i ? ", " : "") + f.names[(roll.first + players - 1 - i) % players];
   }
-  const float bottom = f.height - 44 * k;
+  const float bottom = f.height - 40 * k;
   overlay.textCentred(f.width / 2, bottom, f.names[roll.first] + " goes first",
                       Palette::player(roll.first), 1.5f * k);
-  overlay.textCentred(f.width / 2, bottom + 16 * k, homes, Palette::kWords, k);
-  overlay.textCentred(f.width / 2, bottom + 28 * k, ships + " (back again)", Palette::kSoftWords,
+  overlay.textCentred(f.width / 2, bottom + 15 * k, homes, Palette::kWords, k);
+  overlay.textCentred(f.width / 2, bottom + 27 * k, ships + " (back again)", Palette::kSoftWords,
                       k);
 }
 
