@@ -86,7 +86,7 @@ TEST(LabTest, ABakedMotionSavesAsText) {
   const auto baked = bake(solveThrow({.from = {0, 0, 0}, .to = {2, 1, 0}, .seconds = 0.8}), 8, 8);
   const auto read = readText(writeText(baked));
   ASSERT_TRUE(read.has_value());
-  const ScratchPadd::Motion::BakedMotion &again = read.value();
+  const ScratchPadd::Motion::BakedMotion again = read.value_or(ScratchPadd::Motion::BakedMotion{});
   EXPECT_FLOAT_EQ(again.seconds, baked.seconds);
   ASSERT_EQ(again.path.size(), baked.path.size());
   ASSERT_EQ(again.timing.size(), baked.timing.size());
