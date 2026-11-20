@@ -12,6 +12,7 @@
 //   if (room.whyNot().empty()) for (const Action &a : room.moves()) send(a);
 #pragma once
 
+#include <CosmicHex/Handheld/PlayerNames.hpp>
 #include <CosmicHex/Rules.hpp>
 
 #include <optional>
@@ -24,6 +25,10 @@ class TradeRoom {
 public:
   static constexpr int kBank = -1; // (a partner: the bank; else a player)
   enum class Side { Give, Get };
+
+  // Who's who (the tabs and the words say names, not seat numbers)
+  void setNames(PlayerNames names) { names_ = std::move(names); }
+  const PlayerNames &names() const { return names_; }
 
   // A new look at the game (your move: `yourMove`, as player 0)
   void update(const State &state, const std::vector<Action> &legal, bool yourMove);
@@ -64,6 +69,7 @@ public:
   std::optional<Action> decline() const;
 
 private:
+  PlayerNames names_;
   State state_;
   std::vector<Action> legal_;
   bool yourMove_ = false;

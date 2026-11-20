@@ -85,7 +85,7 @@ std::string TradeRoom::whyClosed(int partner) const {
                ? "Offers to players: before trading with the bank, building or moving"
                : "Offers to players: after your roll";
   if (total(state_.player[static_cast<std::size_t>(partner)].resources) == 0)
-    return "P" + std::to_string(partner + 1) + " has no cards";
+    return names_[partner] + " has no cards";
   return "";
 }
 
@@ -134,7 +134,7 @@ std::string TradeRoom::deal() const {
                ? "The bank: " + std::to_string(rate()) + " of one kind for 1 of another"
                : "Offer P" + std::to_string(partner_ + 1) + " some cards for some of theirs";
   return words(give_) + " for " + words(get_) +
-         (partner_ == kBank ? ", from the bank" : ", offered to P" + std::to_string(partner_ + 1));
+         (partner_ == kBank ? ", from the bank" : ", offered to " + names_[partner_]);
 }
 
 std::string TradeRoom::whyNot() const {

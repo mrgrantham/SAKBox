@@ -413,7 +413,8 @@ ScratchPadd::Buttons::Panel othersPanel(int width, const std::vector<PlayerView>
 }
 } // namespace
 
-void drawOthers(Canvas &canvas, const std::vector<PlayerView> &others, int chosen) {
+void drawOthers(Canvas &canvas, const std::vector<PlayerView> &others, int chosen,
+                const PlayerNames &names) {
   const float k = scaleOf(canvas);
   canvas.clear(kBackground);
   canvas.textCentred(static_cast<float>(canvas.width()) / 2, 40 * k,
@@ -425,8 +426,8 @@ void drawOthers(Canvas &canvas, const std::vector<PlayerView> &others, int chose
     const auto &a = tab.area;
     const auto view = std::find_if(others.begin(), others.end(),
                                    [&](const PlayerView &v) { return v.player == tab.id; });
-    canvas.textCentred(a.x + a.width / 2, a.y + 14 * k, "P" + std::to_string(tab.id + 1),
-                       BoardColours::ofPlayer(tab.id), k >= 1.2f ? 2.0f : 1.5f);
+    canvas.textCentred(a.x + a.width / 2, a.y + 14 * k, names.shortOf(tab.id),
+                       BoardColours::ofPlayer(tab.id), k >= 1.2f ? 1.5f : 1.0f);
     canvas.textCentred(a.x + a.width / 2, a.y + 32 * k,
                        std::to_string(view->points) + (view->points == 1 ? " point" : " points"),
                        kWords);
@@ -456,7 +457,7 @@ ScratchPadd::Buttons::Panel tradeTabs(int width, const TradeRoom &room) {
     const int p = partners[i];
     tabs.push_back({.id = p,
                     .area = {4 * k + static_cast<float>(i) * (w + 3 * k), 2 * k, w, 18 * k},
-                    .label = p == TradeRoom::kBank ? "Bank" : "P" + std::to_string(p + 1),
+                    .label = p == TradeRoom::kBank ? "Bank" : room.names().shortOf(p),
                     .usable = room.open(p),
                     // (the chosen tab in the palette's colour for what you've chosen)
                     .edge = p == room.partner() ? std::optional(kChosen) : std::nullopt});
@@ -498,11 +499,11 @@ void drawTrade(Canvas &canvas, const TradeRoom &room, CardSprites &cards) {
         .draw(canvas,
               {.face = kRow, .edge = kEdge, .words = kWords, .labelScale = 1, .dimmed = 0.45f});
   else
-    canvas.textCentred(
-        static_cast<float>(width) / 2, 11 * k,
-        "P" + std::to_string(room.from() + 1) +
-            (room.changed().empty() ? " offers you a trade" : " answers with a counter"),
-        kChosen);
+    canvas.textCentred(static_cast<float>(width) / 2, 11 * k,
+                       room.names()[room.from()] + (room.changed().empty()
+                                                        ? " offers you a trade"
+                                                        : " answers with a counter"),
+                       kChosen);
   const auto row = [&](float y, const Resources &counts, std::string_view label, bool minus,
                        bool showHeld) {
     canvas.text(6 * k, y - 10 * k, label, kDim);

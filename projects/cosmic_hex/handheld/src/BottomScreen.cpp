@@ -674,7 +674,7 @@ void BottomScreen::draw(Canvas &canvas) {
       ChoiceScreens::drawKeep(canvas, *keep_, keepChosen_, bigCards_);
     return;
   case Mode::Others:
-    ChoiceScreens::drawOthers(canvas, others_, othersChosen_);
+    ChoiceScreens::drawOthers(canvas, others_, othersChosen_, trade_.names());
     return;
   case Mode::Trade:
     ChoiceScreens::drawTrade(canvas, trade_, cards_);

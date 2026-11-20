@@ -13,6 +13,7 @@ SOURCES = {
     "//projects/scratchpadd/buttons:sources": "scratchpadd/buttons",
     "//projects/scratchpadd/canvas:sources": "scratchpadd/canvas",
     "//projects/scratchpadd/startup_splash:sources": "scratchpadd/startup_splash",
+    "//projects/scratchpadd/owner_name:sources": "scratchpadd/owner_name",
     "//projects/scratchpadd/console_screens:sources": "scratchpadd/console_screens",
     "//projects/cyclone:sources": "cyclone",
     "//projects/cosmic_hex/art:sources": "cosmic_hex/art",

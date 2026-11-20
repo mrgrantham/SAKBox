@@ -47,6 +47,7 @@
 #include <CosmicHex/Handheld/OtherPlayers.hpp>
 #include <CosmicHex/Handheld/Palette.hpp>
 #include <CosmicHex/Handheld/PlatformProfile.hpp>
+#include <CosmicHex/Handheld/PlayerNames.hpp>
 #include <CosmicHex/Handheld/PointsBars.hpp>
 #include <CosmicHex/Handheld/RecipePixels.hpp>
 #include <CosmicHex/Handheld/ScreenFlow.hpp>
@@ -79,6 +80,7 @@
 #include <spdlog/spdlog.h>
 
 #include <ScratchPadd/ConsoleScreens/ConsoleScreens.hpp>
+#include <ScratchPadd/OwnerName/OwnerName.hpp>
 #include <ScratchPadd/Scene/TextWrap.hpp>
 #include <ScratchPadd/StartupSplash/StartupSplash.hpp>
 
@@ -140,7 +142,10 @@ constexpr float kSecondsPanel = 0.3f;
 // Show resources' cards: each eases in (and out) over kSecondsCard, each
 // a little after the last
 constexpr float kSecondsCard = 0.25f, kSecondsCardStagger = 0.05f;
-constexpr double kSecondsFirstRoll = 4.0;
+// Who goes first: each round of dice thrown, tumbling then settling; then
+// time to read the order
+constexpr float kSecondsARollRound = 1.4f, kSecondsDiceTumble = 0.9f;
+constexpr double kSecondsFirstRollRead = 2.6;
 constexpr double kSecondsTitleFadeIn = 0.6;
 
 constexpr bool kTitleScene = true;
@@ -354,8 +359,7 @@ public:
           snapshot.state.winner < 0) {
         const int turn = snapshot.state.turn;
         const bool yours = mode_ == Mode::Playing && turn == 0;
-        banner_.start(gameClock_.seconds(),
-                      yours ? "YOUR TURN" : "P" + std::to_string(turn + 1) + "'S TURN",
+        banner_.start(gameClock_.seconds(), yours ? "YOUR TURN" : names_.upperOf(turn) + "'S TURN",
                       yours ? "roll the dice" : "thinking...", BoardColours::ofPlayer(turn));
       }
       // Your two cards dealt after buying: thrown onto the top screen
@@ -543,7 +547,8 @@ private:
       }
     }
     profile_.frameStarted();
-    if (firstRollShownAt_ && secondsSince(*firstRollShownAt_) > kSecondsFirstRoll)
+    if (firstRollShownAt_ && latest_ &&
+        secondsSince(*firstRollShownAt_) > firstRollSeconds(latest_->firstRoll))
       endFirstRoll();
     if (bottomDirty_) {
       auto timing = profile_.time(kProfileBottom);
@@ -1984,7 +1989,7 @@ private:
     }
     // Its words, while it faces you
     if (lifted > 0.98f) {
-      overlay.textCentred(screenW / 2, 10 * k, "P" + std::to_string(found.by + 1) + " discovers",
+      overlay.textCentred(screenW / 2, 10 * k, names_[found.by] + " discovers",
                           BoardColours::ofPlayer(found.by), k);
       if (moment->turn >= 1) {
         overlay.textCentred(screenW / 2, screenH / 2 - 66 * k, found.name, Palette::kWords, 2 * k);
@@ -2109,7 +2114,7 @@ private:
     overlay.rectangle(3 * k, top + 3 * k, kTopWidth - 6 * k, 1, colour);
     overlay.rectangle(3 * k, top + kTopHeight - 4 * k, kTopWidth - 6 * k, 1, colour);
     // Name and points
-    overlay.text(10 * k, top + 10 * k, "P" + std::to_string(view.player + 1), colour, 2 * k);
+    overlay.text(10 * k, top + 10 * k, names_.shortOf(view.player), colour, 1.5f * k);
     overlay.text(10 * k, top + 32 * k,
                  std::to_string(view.points) + (view.points == 1 ? " point" : " points"),
                  Palette::kWords, k);
@@ -2202,12 +2207,12 @@ private:
                     BoardColours::ofPlayer(turn));
     else
       banner_.start(gameClock_.seconds(),
-                    "P" + std::to_string(turn + 1) + (ship ? " PLACES A SHIP" : " CHOOSES A HOME"),
+                    names_.upperOf(turn) + (ship ? " PLACES A SHIP" : " CHOOSES A HOME"),
                     "thinking...", BoardColours::ofPlayer(turn));
   }
 
   // Who goes first, over the board at the start (each player's die, those
-  // tied rolling again), for kSecondsFirstRoll or until A; then the game
+  // tied rolling again), for firstRollSeconds or until A; then the game
   // goes on
   void endFirstRoll() {
     firstRollShownAt_.reset();
@@ -2216,50 +2221,92 @@ private:
     if (latest_)
       startPlacingBanner(latest_->state);
   }
+  // How long who goes first shows: each round's dice tumbling then
+  // settling, then time to read the order
+  static double firstRollSeconds(const CosmicHex::Handheld::FirstRoll &roll) {
+    return kSecondsARollRound * static_cast<double>(std::min<std::size_t>(roll.rounds.size(), 3)) +
+           kSecondsFirstRollRead;
+  }
+  // A square turned by `angle` (radians) about its middle: two triangles
+  // (the overlay's rectangles don't turn)
+  static void turnedSquare(Scene::Overlay &overlay, float x, float y, float half, float angle,
+                           Scene::Colour colour) {
+    std::array<std::array<float, 2>, 4> c{};
+    for (int i = 0; i < 4; ++i) {
+      const float a = angle + 0.7853982f + static_cast<float>(i) * 1.5707963f;
+      c[static_cast<std::size_t>(i)] = {x + half * 1.4142136f * std::cos(a),
+                                        y + half * 1.4142136f * std::sin(a)};
+    }
+    overlay.triangle(c[0][0], c[0][1], c[1][0], c[1][1], c[2][0], c[2][1], colour);
+    overlay.triangle(c[0][0], c[0][1], c[2][0], c[2][1], c[3][0], c[3][1], colour);
+  }
+  // Who goes first, the user's way: every player's die thrown at once in
+  // their colour, tumbling (spinning, its number flickering) as it drops
+  // in, then settling; those tied for the highest throw again on the row
+  // below; then the order, by name
   void drawFirstRoll(Scene::Overlay &overlay) {
-    if (!latest_ || latest_->firstRoll.rounds.empty())
+    if (!latest_ || latest_->firstRoll.rounds.empty() || !firstRollShownAt_)
       return;
     const CosmicHex::Handheld::FirstRoll &roll = latest_->firstRoll;
     const float k = static_cast<float>(kTopWidth) / 256;
+    const auto since = static_cast<float>(secondsSince(*firstRollShownAt_));
     overlay.rectangle(0, 0, kTopWidth, kTopHeight, {10, 15, 26, 240});
-    overlay.textCentred(kTopWidth / 2.0f, 16 * k, "WHO GOES FIRST", Palette::kWords, 2 * k);
+    overlay.textCentred(kTopWidth / 2.0f, 14 * k, "WHO GOES FIRST", Palette::kWords, 2 * k);
     const int players = static_cast<int>(roll.rounds.front().size());
     const float gap = 58 * k;
     const float left = kTopWidth / 2.0f - gap * static_cast<float>(players - 1) / 2;
-    // Each player's name, then a row of dice a round: the first round's
-    // big, a later round's (only those tied for the highest) smaller
     for (int p = 0; p < players; ++p)
-      overlay.textCentred(left + gap * static_cast<float>(p), 36 * k, "P" + std::to_string(p + 1),
-                          Palette::player(p), 1.5f * k);
-    float y = 46 * k;
-    for (std::size_t r = 0; r < roll.rounds.size() && r < 3; ++r) {
-      const float size = (r == 0 ? 30 : 22) * k;
+      overlay.textCentred(left + gap * static_cast<float>(p), 32 * k, names_.shortOf(p),
+                          Palette::player(p), k);
+    const std::size_t rounds = std::min<std::size_t>(roll.rounds.size(), 3);
+    float y = 54 * k;
+    for (std::size_t r = 0; r < rounds; ++r) {
+      const float startsAt = kSecondsARollRound * static_cast<float>(r);
+      if (since < startsAt)
+        break;
+      const float t = std::min(1.0f, (since - startsAt) / kSecondsDiceTumble);
+      const float half = (r == 0 ? 14 : 10) * k;
+      if (r > 0)
+        overlay.textCentred(kTopWidth / 2.0f, y - half - 7 * k, "tied: they throw again",
+                            Palette::kHighlight, k);
       for (int p = 0; p < players; ++p) {
         const int face = roll.rounds[r][static_cast<std::size_t>(p)];
         if (face == 0)
           continue;
         const float x = left + gap * static_cast<float>(p);
-        const bool winner = r + 1 == roll.rounds.size() && p == roll.first;
-        overlay.rectangle(x - size / 2 - 2, y - 2, size + 4, size + 4,
-                          winner ? Palette::kHighlight : Palette::player(p));
-        overlay.rectangle(x - size / 2, y, size, size, {242, 242, 242, 255});
-        overlay.textCentred(x, y + size / 2, std::to_string(face), {30, 30, 36},
+        // Dropping in from above and settling (Settle: a small bounce),
+        // turning less and less, its number flickering until it lands
+        const float landed = ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::Settle, t);
+        const float dy = (1 - landed) * -24 * k; // (from just under the title)
+        const float angle = (1 - t) * (1 - t) * (5.0f + static_cast<float>(p));
+        const bool settled = t >= 1;
+        const bool winner =
+            settled && r + 1 == rounds && p == roll.first &&
+            since >= kSecondsARollRound * static_cast<float>(rounds - 1) + kSecondsDiceTumble;
+        turnedSquare(overlay, x, y + dy, half + 2 * k, angle,
+                     winner ? Palette::kHighlight : Palette::player(p));
+        turnedSquare(overlay, x, y + dy, half, angle, {242, 242, 242, 255});
+        const int shown =
+            settled ? face : 1 + (p * 7 + static_cast<int>(since * 14)) % 6; // (flickering)
+        overlay.textCentred(x, y + dy, std::to_string(shown), {30, 30, 36},
                             (r == 0 ? 2 : 1.5f) * k);
       }
-      y += size + 8 * k;
+      y += 2 * half + 22 * k;
     }
-    // Then the order: the homes from the first, the ships back again
+    // Once the last throw has settled: the order, by name
+    if (since < kSecondsARollRound * static_cast<float>(rounds - 1) + kSecondsDiceTumble + 0.3f)
+      return;
     std::string homes = "Homes: ", ships = "Ships: ";
     for (int i = 0; i < players; ++i) {
-      homes += " P" + std::to_string((roll.first + i) % players + 1);
-      ships += " P" + std::to_string((roll.first + players - 1 - i) % players + 1);
+      homes += (i ? ", " : "") + names_[(roll.first + i) % players];
+      ships += (i ? ", " : "") + names_[(roll.first + players - 1 - i) % players];
     }
-    y += 6 * k;
-    overlay.textCentred(kTopWidth / 2.0f, y,
-                        "P" + std::to_string(roll.first + 1) + " rolled highest: goes first",
-                        Palette::kHighlight, k);
-    overlay.textCentred(kTopWidth / 2.0f, y + 14 * k, homes, Palette::kWords, k);
-    overlay.textCentred(kTopWidth / 2.0f, y + 26 * k, ships + " (back again)", Palette::kWords, k);
+    const float bottom = static_cast<float>(kTopHeight) - 44 * k;
+    overlay.textCentred(kTopWidth / 2.0f, bottom, names_[roll.first] + " goes first",
+                        Palette::player(roll.first), 1.5f * k);
+    overlay.textCentred(kTopWidth / 2.0f, bottom + 16 * k, homes, Palette::kWords, k);
+    overlay.textCentred(kTopWidth / 2.0f, bottom + 28 * k, ships + " (back again)",
+                        Palette::kSoftWords, k);
   }
 
   // Whether anything on the top screen moves now
@@ -2364,7 +2411,11 @@ private:
   std::optional<Clock::time_point> discoveryAt_;
   bool heldForDiscovery_ = false;
   bool movedWhenDrawn_ = true; // (the top screen's last frame drawn while something moved)
-  bool youPaused_ = false;     // (watching: paused with A, so the PAUSED band shows)
+  bool youPaused_ = false;
+  // Who's who: your name (the console's owner's), the bots' (PlayerNames),
+  // made as each game starts
+  std::string ownerName_ = ScratchPadd::OwnerName::get();
+  PlayerNames names_;                    // (watching: paused with A, so the PAUSED band shows)
   std::vector<CosmicHex::Hex> shownBig_; // (shown big since the last move: no flip)
   // Close-ups (PlatformProfile::closeUpSize): a discovered tile's face and
   // the two cards dealt, drawn sharp when they're shown, into textures
@@ -2527,6 +2578,11 @@ private:
     dice_ = DiceStage::Idle;
     bottomDirty_ = true;
     youPaused_ = false;
+    names_ =
+        PlayerNames::forGame(menu_.players(), play ? 0 : -1, ownerName_,
+                             static_cast<std::uint64_t>(Clock::now().time_since_epoch().count()));
+    if (bottomScreen_)
+      bottomScreen_->setNames(names_);
     send(StartGame{.withPerson = play,
                    .players = menu_.players(),
                    .board = menu_.boardItself(),

@@ -24,6 +24,7 @@ cc_library(
         "src/MoveSpots.cpp",
         "src/OtherPlayers.cpp",
         "src/Pickers.cpp",
+        "src/PlayerNames.cpp",
         "src/PointsBars.cpp",
         "src/ScreenFlow.cpp",
         "src/ScreenPictures.cpp",
@@ -50,6 +51,7 @@ cc_library(
         "include/CosmicHex/Handheld/MoveSpots.hpp",
         "include/CosmicHex/Handheld/Pickers.hpp",
         "include/CosmicHex/Handheld/OtherPlayers.hpp",
+        "include/CosmicHex/Handheld/PlayerNames.hpp",
         "include/CosmicHex/Handheld/Palette.hpp",
         "include/CosmicHex/Handheld/PointsBars.hpp",
         "include/CosmicHex/Handheld/PlatformProfile.hpp",
@@ -317,6 +319,16 @@ cc_test(
     name = "Discovery_test",
     size = "small",
     srcs = ["tests/Discovery_test.cpp"],
+    deps = [
+        ":handheld",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "PlayerNames_test",
+    size = "small",
+    srcs = ["tests/PlayerNames_test.cpp"],
     deps = [
         ":handheld",
         "@gtest//:gtest_main",

@@ -106,6 +106,8 @@ public:
   // The time now (seconds, the app's clock), each frame: a pressed
   // button glows a moment, and pressing() says to draw again meanwhile
   void setTime(double now) { now_ = now; }
+  // Who's who at the table (the tabs and the trade room say names)
+  void setNames(PlayerNames names) { trade_.setNames(std::move(names)); }
   bool pressing() const { return buttons_.pressing(now_); }
   void clearFeedback();
 
