@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <sstream>
 
 namespace AnimationLab {
 
@@ -250,6 +251,47 @@ double bakeError(const Recording &recording, const ScratchPadd::Motion::BakedMot
         worst, distance(recording.positions[i],
                         baked.at(static_cast<float>(recording.step * static_cast<double>(i)))));
   return worst;
+}
+
+std::string writeText(const ScratchPadd::Motion::BakedMotion &baked) {
+  std::ostringstream out;
+  out.precision(7);
+  out << "seconds " << baked.seconds << "\n";
+  for (const Point &p : baked.path)
+    out << "path " << p[0] << " " << p[1] << " " << p[2] << "\n";
+  out << "timing";
+  for (const float f : baked.timing)
+    out << " " << f;
+  out << "\n";
+  return out.str();
+}
+
+std::optional<ScratchPadd::Motion::BakedMotion> readText(const std::string &text) {
+  ScratchPadd::Motion::BakedMotion baked;
+  std::istringstream in(text);
+  std::string word;
+  bool sawSeconds = false;
+  while (in >> word) {
+    if (word == "seconds") {
+      if (!(in >> baked.seconds))
+        return std::nullopt;
+      sawSeconds = true;
+    } else if (word == "path") {
+      Point p{};
+      if (!(in >> p[0] >> p[1] >> p[2]))
+        return std::nullopt;
+      baked.path.push_back(p);
+    } else if (word == "timing") {
+      float f = 0;
+      while (in >> f)
+        baked.timing.push_back(f);
+    } else {
+      return std::nullopt;
+    }
+  }
+  if (!sawSeconds)
+    return std::nullopt;
+  return baked;
 }
 
 } // namespace AnimationLab

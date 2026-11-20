@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
 # The animation lab (desktop only): motions made with physics (Cyclone) in
 # three ways (a solved throw, a guided spring, a search), flat or in 3D, and
@@ -23,5 +23,28 @@ cc_test(
     deps = [
         ":lab",
         "@gtest//:gtest_main",
+    ],
+)
+
+# The lab's window: each way's settings, the motion seen from the side and
+# above with its timing, the bake, and Save
+#   bazel run -c opt //projects/animation_lab:animation_lab
+cc_binary(
+    name = "animation_lab",
+    srcs = [
+        "app/LabWindowPadd.cpp",
+        "app/LabWindowPadd.hpp",
+        "app/main.cpp",
+    ],
+    deps = [
+        ":lab",
+        "//projects/scratchpadd/basis",
+        "//projects/scratchpadd/debug_log",
+        "//projects/scratchpadd/debug_ui",
+        "//projects/scratchpadd/scene",
+        "//projects/scratchpadd/scene/desktop",
+        "@imgui",
+        "@imgui//:imgui_stdlib",
+        "@implot",
     ],
 )

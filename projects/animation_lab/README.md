@@ -42,6 +42,20 @@ within 3 hundredths of a unit.
 bazel test //projects/animation_lab:Lab_test
 ```
 
-Still to come: the lab's desktop app (sliders for each way's settings, the
-motion drawn as it's made, and the baked one played beside it, saved for the
-games).
+## The window
+
+```bash
+bazel run -c opt //projects/animation_lab:animation_lab
+```
+
+On the left: the way to make the motion (Throw, Guide or Search) and its
+settings (drag a value and it's made again at once), Flat for 2D, the bake's
+path and timing points with how far the baked motion strays and how many
+floats it takes, and Save (to `animation_lab_motions/NAME.txt`, read back
+with `readText`). On the right: the motion from the side and from above, the
+physics as a line and the baked path as dots, a marker on each playing it
+back on a loop; and the timing, how far along against time.
+
+Still to come: loading a saved motion in the games (the consoles reading the
+text, or the build turning it into a header), and dragging the keys and ends
+on the views themselves.

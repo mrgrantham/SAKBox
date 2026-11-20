@@ -80,3 +80,16 @@ TEST(LabTest, BakedMotionsStayCloseToTheirRecordings) {
   const Recording guided = guideAlong(guide);
   EXPECT_LT(bakeError(guided, bake(guided, 32, 32)), 0.05); // (its turns at the keys are sharper)
 }
+
+// Saved and read back the same
+TEST(LabTest, ABakedMotionSavesAsText) {
+  const auto baked = bake(solveThrow({.from = {0, 0, 0}, .to = {2, 1, 0}, .seconds = 0.8}), 8, 8);
+  const auto read = readText(writeText(baked));
+  ASSERT_TRUE(read.has_value());
+  const ScratchPadd::Motion::BakedMotion &again = read.value();
+  EXPECT_FLOAT_EQ(again.seconds, baked.seconds);
+  ASSERT_EQ(again.path.size(), baked.path.size());
+  ASSERT_EQ(again.timing.size(), baked.timing.size());
+  EXPECT_NEAR(again.at(0.4f)[1], baked.at(0.4f)[1], 1e-5);
+  EXPECT_FALSE(readText("nonsense 1 2 3").has_value());
+}

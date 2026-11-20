@@ -24,6 +24,8 @@
 #include <ScratchPadd/Motion/BakedMotion.hpp>
 
 #include <cstdint>
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace AnimationLab {
@@ -89,5 +91,10 @@ ScratchPadd::Motion::BakedMotion bake(const Recording &recording, std::size_t pa
 // The furthest a baked motion strays from its recording, at the recording's
 // steps
 double bakeError(const Recording &recording, const ScratchPadd::Motion::BakedMotion &baked);
+
+// A baked motion as text, and back (the lab's saved motions): "seconds S",
+// then a "path x y z" line a point, then "timing" and its numbers
+std::string writeText(const ScratchPadd::Motion::BakedMotion &baked);
+std::optional<ScratchPadd::Motion::BakedMotion> readText(const std::string &text);
 
 } // namespace AnimationLab
