@@ -60,8 +60,10 @@ PaddedPicture padded(const std::vector<Scene::Colour> &pixels, int width, int he
                     Scene::Colour{0, 0, 0, 0});
   for (int row = 0; row < height; ++row)
     for (int col = 0; col < width; ++col)
-      out.pixels[static_cast<std::size_t>(row * out.width + col)] =
-          pixels[static_cast<std::size_t>(row * width + col)];
+      out.pixels[static_cast<std::size_t>(row) * static_cast<std::size_t>(out.width) +
+                 static_cast<std::size_t>(col)] =
+          pixels[static_cast<std::size_t>(row) * static_cast<std::size_t>(width) +
+                 static_cast<std::size_t>(col)];
   out.uMax = static_cast<float>(width) / static_cast<float>(out.width);
   out.vMax = static_cast<float>(height) / static_cast<float>(out.height);
   return out;
