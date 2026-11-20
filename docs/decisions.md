@@ -49,6 +49,12 @@ Stations on 3 planets of one kind, Occupier, and the Deep-space relay (1 point o
 
 ## Platform: ScratchPadd and the consoles
 
+**DS textures in banks B and A** (2026-11-20)
+The DS renderer maps VRAM banks B and A as texture slots 0 and 1, 256 KB for textures. **Why:** bank A was mapped by nothing, and with B alone the last pictures loaded (the other players' card backs) silently got no texture. **Not:** paletted textures (a bigger change for the same room). Sharper close-ups (128 pixels on the DS) now fit in video memory but not in drawing: a picture is drawn whole in main RAM first (about 125 KB of heap free in play), so they wait for drawing in bands of rows.
+
+**Words fade in once what they're over has settled** (2026-11-20)
+Text over a card or tile waits until it has stopped moving (an overshooting curve's first pass through 1 doesn't count) and fades in over 0.25 s. **Why:** the user's: a number appearing on a still-bouncing token, or text just appearing, looked unfinished. On the DS the text layer can't be see-through, so a fade blends the colour up from what's under it.
+
 **Menu roles and a button library** (2026-11-19)
 `Input::Role` (Confirm, Back, Option1, Option2) mapped by each kind of pad's convention, and `Buttons::Panel` (touch, D-pad focus, feedback, drawn on a Canvas); Cosmic Hex's board buttons, menus and setup built on them. **Why:** positions don't say purpose, and Cosmic Hex had three button systems doing the same things. **Not:** leaving roles to each game's own actions; only the shared logic (each game drawing its own).
 
