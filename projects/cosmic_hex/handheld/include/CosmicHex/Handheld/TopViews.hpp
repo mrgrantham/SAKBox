@@ -72,6 +72,10 @@ void drawOtherPlayer(const TopFrame &frame, const PlayerView &view, float down);
 // Who goes first: the dice of each round, tumbling and settling, then the
 // order by name
 void drawFirstRoll(const TopFrame &frame, const FirstRoll &roll, float seconds);
+// What a roll pays: each card out of its planet and off along an arc to
+// its owner (`you`, playing: down to the bottom screen; a bot's, or
+// everyone's when watching: up to their row of the points bars)
+void drawRollPay(const TopFrame &frame, const RollPayShow &show, const State &state, int you);
 // A home's pay: its die out of the home on `state`'s board, its face, the
 // card big (`closeUp` when it holds the resource's card: PictureSlot id,
 // the card), then off to the hand (yours: `yours`, down to the bottom

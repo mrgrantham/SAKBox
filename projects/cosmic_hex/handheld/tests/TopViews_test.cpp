@@ -104,3 +104,22 @@ TEST_F(TopViewsTest, DealtCardsOtherPlayersAndTheFirstRoll) {
   frames(every(0, FirstRollShow::duration(roll)),
          [&](const TopFrame &f) { drawFirstRoll(f, roll, static_cast<float>(f.now)); });
 }
+
+TEST_F(TopViewsTest, ARollsPayFromStartToEnd) {
+  for (Planet &planet : state.planets)
+    if (!planet.flipped && planet.homeOf < 0) {
+      planet.flipped = true;
+      planet.kind = PlanetKind::LushPlanet;
+      planet.number = 8;
+      state.stations.push_back({.at = {planet.hex, 0}, .owner = 0, .colony = true});
+      state.stations.push_back({.at = {planet.hex, 3}, .owner = 2});
+      break;
+    }
+  RollPayShow show;
+  show.saw({{1, Action{Action::Kind::Roll, 4, 4}}}, state, 0);
+  ASSERT_EQ(show.cards().size(), 3u); // (a colony's two, a station's one)
+  frames(every(-0.2, show.seconds() + 0.3), [&](const TopFrame &f) {
+    show.update(f.now);
+    drawRollPay(f, show, state, 0);
+  });
+}

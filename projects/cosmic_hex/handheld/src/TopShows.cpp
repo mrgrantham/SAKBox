@@ -242,14 +242,20 @@ HomePayShow::Step HomePayShow::update(double now) {
   const auto s = seconds(now);
   if (!s)
     return step;
+  // The star waiting for its choice: the clock stops at the die settled,
+  // and the game goes on meanwhile (the player has to choose: a game held
+  // couldn't)
+  if (!current()->resource && *s > kDieSeconds) {
+    startedAt_ = now - kDieSeconds;
+    if (held_) {
+      held_ = false;
+      step.letGo = true;
+    }
+    return step;
+  }
   if (!held_) {
     held_ = true;
     step.hold = true;
-  }
-  // The star waiting for its choice: the clock stops at the die settled
-  if (!current()->resource && *s > kDieSeconds) {
-    startedAt_ = now - kDieSeconds;
-    return step;
   }
   if (*s < kSeconds)
     return step;
@@ -259,6 +265,61 @@ HomePayShow::Step HomePayShow::update(double now) {
     return step;
   }
   startedAt_.reset();
+  held_ = false;
+  step.letGo = true;
+  return step;
+}
+
+// --------------------------------------------------------------- Roll pay
+
+void RollPayShow::saw(const std::vector<TableGame::Played> &moves, const State &before,
+                      double startAt) {
+  for (const TableGame::Played &move : moves) {
+    if (move.action.kind != Action::Kind::Roll)
+      continue;
+    const int roll = move.action.a + move.action.b;
+    if (roll == 7)
+      continue; // (the blockade's, not a pay)
+    if (cards_.empty())
+      startAt_ = startAt;
+    for (const Payout &pay : payouts(before, roll))
+      for (int n = 0; n < pay.count; ++n)
+        cards_.push_back({pay.planet, pay.player, pay.resource});
+  }
+}
+
+float RollPayShow::seconds() const {
+  if (cards_.empty())
+    return 0;
+  return kStagger * static_cast<float>(cards_.size() - 1) + kSecondsPop + kSecondsFly;
+}
+
+std::optional<RollPayShow::Moment> RollPayShow::at(std::size_t i, double now) const {
+  if (i >= cards_.size())
+    return std::nullopt;
+  const auto t = static_cast<float>(now - startAt_) - kStagger * static_cast<float>(i);
+  if (t < 0 || t >= kSecondsPop + kSecondsFly)
+    return std::nullopt;
+  return Moment{Motion::along(Motion::Curve::Settle, std::min(1.0f, t / kSecondsPop)),
+                Motion::along(Motion::Curve::Gentle,
+                              std::clamp((t - kSecondsPop) / kSecondsFly, 0.0f, 1.0f))};
+}
+
+bool RollPayShow::moving(double now) const {
+  return !cards_.empty() && now >= startAt_ && now < startAt_ + seconds();
+}
+
+RollPayShow::Step RollPayShow::update(double now) {
+  Step step;
+  if (cards_.empty() || now < startAt_)
+    return step;
+  if (!held_) {
+    held_ = true;
+    step.hold = true;
+  }
+  if (now < startAt_ + seconds())
+    return step;
+  cards_.clear();
   held_ = false;
   step.letGo = true;
   return step;

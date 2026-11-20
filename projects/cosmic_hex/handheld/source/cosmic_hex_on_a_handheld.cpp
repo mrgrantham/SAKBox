@@ -140,6 +140,8 @@ constexpr std::array<ScriptedTap, 0> kScriptedTaps{};
 // question on the roadmap page; the scene for now
 // How long the title takes to fade in from black, once the start's work
 // is done
+// A roll's pay starts as the dice are pulled away
+constexpr double kSecondsDicePulled = 0.3;
 // The points bars' outline moving to the next player's row
 constexpr float kSecondsOutline = 0.35f;
 // How long the other players' view takes to slide down (or up)
@@ -375,6 +377,9 @@ public:
       }
       // A home's pay on its die: after the turn's banner (HomePayShow)
       homePay_.saw(snapshot.played, now() + banner_.remaining(gameClock_.seconds()));
+      // A roll's pay: once the dice are pulled away (RollPayShow)
+      if (latest_)
+        rollPay_.saw(snapshot.played, latest_->state, now() + kSecondsDicePulled);
       // Your two cards dealt after buying: thrown onto the top screen
       {
         const bool keeping = mode_ == Mode::Playing && snapshot.yourMove &&
@@ -534,15 +539,8 @@ private:
       else if (shownInfo_ == BottomScreen::Info::Player)
         others_.close(now());
       shownInfo_ = bottomScreen_->info();
-      if (flow_.screen() == ScreenFlow::Screen::Game && latest_) {
-        if (shownInfo_ != BottomScreen::Info::None && !latest_->paused) {
-          send(SetHold{true});
-          heldForInfo_ = true;
-        } else if (shownInfo_ == BottomScreen::Info::None && heldForInfo_) {
-          send(SetHold{false});
-          heldForInfo_ = false;
-        }
-      }
+      if (flow_.screen() == ScreenFlow::Screen::Game)
+        holdFor(Hold::Info, shownInfo_ != BottomScreen::Info::None);
     }
     // A pressed button's glow (drawn again while it fades), and a tapped
     // button's message, for a second and a half
@@ -580,6 +578,7 @@ private:
     measureMemory();
     updateDiscovery();
     updateHomePay();
+    updateRollPay();
     // The two cards dealt, drawn sharp before they're thrown in (on a DS
     // about a quarter of a second, while the screen is still)
     if (dealt_.needsCloseUp()) {
@@ -878,6 +877,10 @@ private:
                          pictures_,
                          names_,
                          now()};
+    // (a roll's pay, over the board, the HUD's words still showing: the
+    // bots' cards fly to their rows of the points bars)
+    if (latest_ && rollPay_.moving(now()))
+      drawRollPay(frame, rollPay_, latest_->state, mode_ == Mode::Playing ? 0 : -1);
     // (Show resources, over the board, under the views below)
     if (latest_ && cards_.showing(now()))
       drawResources(frame,
@@ -1271,8 +1274,8 @@ private:
     }
     if (mode_ == Mode::Watching) {
       if (pressed.pressed(confirm)) {
-        send(TogglePause{});
         youPaused_ = !youPaused_;
+        sendHold();
       }
       return;
     }
@@ -1738,6 +1741,12 @@ private:
         return square;
       });
   }
+  // Each frame: the game held while a roll's pay flies
+  void updateRollPay() {
+    const RollPayShow::Step step = rollPay_.update(now());
+    if (step.hold || step.letGo)
+      holdFor(Hold::RollPay, step.hold);
+  }
   // Each frame: the home's pay held over the game; its card drawn sharp
   // (into the first dealt card's slot: the two never show together, and
   // the DS has no texture memory for another)
@@ -1748,15 +1757,8 @@ private:
         closeUpCards({card});
     }
     const HomePayShow::Step step = homePay_.update(now());
-    if (step.hold && latest_ && !latest_->paused) {
-      send(SetHold{true});
-      heldForHomePay_ = true;
-    }
-    if (step.letGo && heldForHomePay_) {
-      heldForHomePay_ = false;
-      if (!heldForInfo_ && !heldForDiscovery_)
-        send(SetHold{false});
-    }
+    if (step.hold || step.letGo)
+      holdFor(Hold::HomePay, step.hold);
   }
   // Each frame: a discovery's close-up drawn before it starts, the game
   // held while one shows and let go after the last (unless a view holds
@@ -1764,15 +1766,8 @@ private:
   void updateDiscovery() {
     const DiscoveryShow::Step step =
         discovery_.update(now(), [this](CosmicHex::Art::Face face) { closeUpTile(face); });
-    if (step.hold && latest_ && !latest_->paused) {
-      send(SetHold{true});
-      heldForDiscovery_ = true;
-    }
-    if (step.letGo && heldForDiscovery_) {
-      heldForDiscovery_ = false;
-      if (!heldForInfo_ && !heldForHomePay_)
-        send(SetHold{false});
-    }
+    if (step.hold || step.letGo)
+      holdFor(Hold::Discovery, step.hold);
     if (step.redrawMap)
       bottomDirty_ = true;
   }
@@ -1798,7 +1793,7 @@ private:
   void endFirstRoll() {
     firstRoll_.stop();
     if (flow_.screen() == ScreenFlow::Screen::Game)
-      send(SetHold{false});
+      holdFor(Hold::Start, false);
     if (latest_)
       startPlacingBanner(latest_->state);
   }
@@ -1815,7 +1810,7 @@ private:
       return true; // (an info view coming in or going, the points' outline)
     // (the views over the board: each says)
     if (dealt_.moving() || others_.moving(now()) || discovery_.moving(now()) ||
-        homePay_.moving(now()))
+        homePay_.moving(now()) || rollPay_.moving(now()))
       return true;
     return false;
   }
@@ -1899,18 +1894,36 @@ private:
   CardsShow cards_;                                 // (Show resources' cards in and off)
   std::optional<Clock::time_point> outlineMovedAt_; // (the turn's outline moving: since)
   int outlineFrom_ = 0;                             // (from this player's row)
-  bool heldForInfo_ = false;
   // What shows over the board for a while (TopShows; drawn by TopViews),
   // each on the app's real clock (now()): they run while the game's held
   DiscoveryShow discovery_;         // (tiles turned over)
-  bool heldForDiscovery_ = false;   // (and the game held for them)
   DealtShow dealt_;                 // (the two cards dealt)
   PanelShow others_{kSecondsPanel}; // (another player's panel)
   FirstRollShow firstRoll_;         // (who goes first)
   HomePayShow homePay_;             // (a home's pay on its die)
-  bool heldForHomePay_ = false;     // (and the game held for it)
+  RollPayShow rollPay_;             // (a roll's pay, card by card)
   ScratchPadd::StillFrames still_;  // (when the top screen can hold its last frame)
   bool youPaused_ = false;          // (watching: paused with A, so the PAUSED band shows)
+  // Why the game is held, if it is: one bit each. The table is told to hold
+  // while any is set or you've paused, and to go on once none is
+  enum class Hold : std::uint8_t {
+    Start = 1,     // (the board coming down, who goes first)
+    Menu = 2,      // (the pause menu)
+    Info = 4,      // (Show resources, another player's panel)
+    Discovery = 8, // (a tile shown big)
+    HomePay = 16,  // (a home's pay)
+    RollPay = 32   // (a roll's pay)
+  };
+  std::uint8_t holds_ = 0;
+  void holdFor(Hold why, bool on) {
+    const auto bit = static_cast<std::uint8_t>(why);
+    const std::uint8_t before = holds_;
+    holds_ =
+        on ? static_cast<std::uint8_t>(holds_ | bit) : static_cast<std::uint8_t>(holds_ & ~bit);
+    if ((before == 0) != (holds_ == 0))
+      sendHold();
+  }
+  void sendHold() { send(SetHold{youPaused_ || holds_ != 0}); }
   // Who's who: your name (the console's owner's), the bots' (PlayerNames),
   // made as each game starts
   // (yours: as you set it in the settings, kept on the card, or else the
@@ -2079,7 +2092,7 @@ private:
     if (step.startGame)
       startGame();
     if (step.holdChanged)
-      send(SetHold{step.holdGame});
+      holdFor(Hold::Menu, step.holdGame);
     if (step.changed)
       pauseMenu_.setFocus(0);
   }
@@ -2098,6 +2111,7 @@ private:
     dice_ = DiceStage::Idle;
     bottomDirty_ = true;
     youPaused_ = false;
+    holds_ = descentStarted_ ? static_cast<std::uint8_t>(Hold::Start) : 0;
     names_ =
         PlayerNames::forGame(menu_.players(), play ? 0 : -1, yourName_,
                              static_cast<std::uint64_t>(Clock::now().time_since_epoch().count()));

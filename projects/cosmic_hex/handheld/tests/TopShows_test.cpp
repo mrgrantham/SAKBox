@@ -146,14 +146,15 @@ TEST(TopShowsTest, TheStarWaitsForTheChoice) {
   HomePayShow show;
   show.saw({{0, Action{Action::Kind::RollHomeDie, kResources}}}, 0);
   EXPECT_FALSE(show.current()->resource.has_value());
-  show.update(0);
-  show.update(5); // (long after the die settled: still waiting)
+  EXPECT_TRUE(show.update(0).hold);
+  EXPECT_TRUE(show.update(5).letGo); // (waiting for the choice: the game goes on, to make it)
   const auto waiting = show.at(*show.seconds(5));
   EXPECT_TRUE(waiting.waitingForChoice);
   EXPECT_FLOAT_EQ(waiting.card, 0);
   show.saw({{0, Action{Action::Kind::ChooseHome, 1}}}, 6);
   EXPECT_EQ(show.current()->resource, Resource::Food);
   EXPECT_FALSE(show.at(*show.seconds(6)).waitingForChoice);
+  EXPECT_TRUE(show.update(6).hold); // (held again for its card)
   EXPECT_TRUE(show.update(6 + HomePayShow::kSeconds).letGo);
 }
 
@@ -170,4 +171,36 @@ TEST(TopShowsTest, ShowResourcesCardsInAndOut) {
   EXPECT_FLOAT_EQ(cards.arrived(0, 5 + CardsShow::kSecondsCard), 0);
   EXPECT_FALSE(cards.showing(5 + CardsShow::kSecondsCard +
                              CardsShow::kStagger * CardsShow::kMostCards + 0.01));
+}
+
+// What a roll pays: a card for each resource, from its planet, one after
+// another; the game held while they fly
+TEST(TopShowsTest, ARollsPayFliesCardByCard) {
+  State state = newGame(4, agreedRules(boardR3()));
+  // (a planet turned over with a 6, a station of player 1 on its corner)
+  Planet *paying = nullptr;
+  for (Planet &planet : state.planets)
+    if (!planet.flipped && planet.homeOf < 0) {
+      planet.flipped = true;
+      planet.kind = PlanetKind::GasGiant;
+      planet.number = 6;
+      paying = &planet;
+      break;
+    }
+  ASSERT_NE(paying, nullptr);
+  state.stations.push_back({.at = {paying->hex, 0}, .owner = 1});
+  RollPayShow show;
+  show.saw({{0, Action{Action::Kind::Roll, 2, 4}}}, state, 10);
+  ASSERT_FALSE(show.cards().empty());
+  EXPECT_EQ(show.cards().front().player, 1);
+  EXPECT_EQ(show.cards().front().resource, Resource::Fuel);
+  EXPECT_FALSE(show.at(0, 9.9).has_value());
+  EXPECT_TRUE(show.update(10).hold);
+  EXPECT_FLOAT_EQ(show.at(0, 10 + RollPayShow::kSecondsPop)->pop, 1);
+  EXPECT_TRUE(show.moving(10.1));
+  EXPECT_TRUE(show.update(10 + show.seconds()).letGo);
+  EXPECT_TRUE(show.cards().empty());
+  RollPayShow seven;
+  seven.saw({{0, Action{Action::Kind::Roll, 3, 4}}}, state, 0); // (a 7 pays nothing)
+  EXPECT_TRUE(seven.cards().empty());
 }

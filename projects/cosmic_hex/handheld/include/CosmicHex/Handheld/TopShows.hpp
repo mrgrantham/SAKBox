@@ -13,6 +13,8 @@
 //   FirstRollShow  who goes first: every player's die thrown, ties again
 //   HomePayShow    a home's pay on the home die: the die out of the home,
 //                  its face, the card big, then off to the player's hand
+//   RollPayShow    what a roll pays: a card from each paying planet to its
+//                  owner, one a little after another
 //
 // Times are seconds on one clock the app keeps (real time: these run while
 // the game is held). Each answers moving(now); the app's frame asks them all.
@@ -233,6 +235,45 @@ public:
 private:
   std::vector<Pay> queue_;
   std::optional<double> startedAt_;
+  bool held_ = false;
+};
+
+// ---------------------------------------------------------------------------
+// What a roll pays (payouts): a card for each resource, popping out of its
+// planet (a settle), then flying along an arc to its owner (your hand at
+// the bottom; a bot's row of the points bars), each a little after the
+// last (overlap: docs/research/animation-whimsy.md)
+
+class RollPayShow {
+public:
+  static constexpr float kSecondsPop = 0.2f, kSecondsFly = 0.6f, kStagger = 0.12f;
+  struct Card {
+    int planet; // (its index in State::planets)
+    int player;
+    Resource resource;
+  };
+  // The moves made since the last look: a roll's pay queued (from `before`,
+  // the game as it was when the dice were thrown), starting at `startAt`
+  void saw(const std::vector<TableGame::Played> &moves, const State &before, double startAt);
+  const std::vector<Card> &cards() const { return cards_; }
+
+  // Card i's moment: how far it's popped out (0 to 1, Settle) and how far
+  // it's flown (0 to 1, Gentle); nothing before it starts or after it lands
+  struct Moment {
+    float pop, fly;
+  };
+  std::optional<Moment> at(std::size_t i, double now) const;
+  bool moving(double now) const;
+  float seconds() const; // (all told)
+
+  struct Step {
+    bool hold = false, letGo = false;
+  };
+  Step update(double now);
+
+private:
+  std::vector<Card> cards_;
+  double startAt_ = 0;
   bool held_ = false;
 };
 

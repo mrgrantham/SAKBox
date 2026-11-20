@@ -572,39 +572,10 @@ std::unordered_map<Hex, int> movesFor(const State &state, const Ship &ship) {
 }
 
 void produce(State &state, int roll) {
-  if (state.settings.corners) {
-    // Each planet showing the roll pays every station touching it (from
-    // the planets' side: two or three of them, rather than every station's
-    // hexes looked up among every planet)
-    for (std::size_t i = 0; i < state.planets.size(); ++i) {
-      const Planet &planet = state.planets[i];
-      if (!planet.flipped || !givesResources(planet.kind) || planet.number != roll ||
-          static_cast<int>(i) == state.blockade)
-        continue;
-      for (const Station &station : state.stations) {
-        if (!touches(station.at, planet.hex))
-          continue;
-        state.player[static_cast<std::size_t>(station.owner)]
-            .resources[static_cast<std::size_t>(planet.kind)] +=
-            station.colony ? state.settings.colonyPays : state.settings.stationPays;
-      }
-    }
-    return;
-  }
-  for (std::size_t i = 0; i < state.planets.size(); ++i) {
-    const Planet &planet = state.planets[i];
-    if (!planet.flipped || !givesResources(planet.kind) || planet.number != roll ||
-        static_cast<int>(i) == state.blockade)
-      continue;
-    for (int d = 0; d < kDocks; ++d) {
-      const int owner = planet.docks[static_cast<std::size_t>(d)];
-      if (owner >= 0)
-        state.player[static_cast<std::size_t>(owner)]
-            .resources[static_cast<std::size_t>(planet.kind)] +=
-            planet.colony[static_cast<std::size_t>(d)] ? state.settings.colonyPays
-                                                       : state.settings.stationPays;
-    }
-  }
+  // (what payouts() says, paid)
+  for (const Payout &pay : payouts(state, roll))
+    state.player[static_cast<std::size_t>(pay.player)]
+        .resources[static_cast<std::size_t>(pay.resource)] += pay.count;
 }
 
 void updateCoreControl(State &state, int player) {
@@ -1266,6 +1237,31 @@ std::optional<Settings> readSettings(std::string_view line) {
 }
 
 } // namespace
+
+std::vector<Payout> payouts(const State &state, int roll) {
+  std::vector<Payout> out;
+  for (std::size_t i = 0; i < state.planets.size(); ++i) {
+    const Planet &planet = state.planets[i];
+    if (!planet.flipped || !givesResources(planet.kind) || planet.number != roll ||
+        static_cast<int>(i) == state.blockade)
+      continue;
+    const auto resource = static_cast<Resource>(planet.kind);
+    if (state.settings.corners) {
+      // Each planet showing the roll pays every station touching it
+      for (const Station &station : state.stations)
+        if (touches(station.at, planet.hex))
+          out.push_back({static_cast<int>(i), station.owner, resource,
+                         station.colony ? state.settings.colonyPays : state.settings.stationPays});
+      continue;
+    }
+    for (int d = 0; d < kDocks; ++d)
+      if (const int owner = planet.docks[static_cast<std::size_t>(d)]; owner >= 0)
+        out.push_back({static_cast<int>(i), owner, resource,
+                       planet.colony[static_cast<std::size_t>(d)] ? state.settings.colonyPays
+                                                                  : state.settings.stationPays});
+  }
+  return out;
+}
 
 int tradeRateOf(const State &state, int player) { return tradeRate(state, player); }
 

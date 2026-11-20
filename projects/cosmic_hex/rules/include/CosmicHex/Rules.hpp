@@ -555,6 +555,18 @@ int points(const State &state, int player);
 // How many of one resource `player` gives the bank for 1 of another now:
 // the bank's rate, or an outpost's when they've a ship or station by one
 int tradeRateOf(const State &state, int player);
+
+// What a roll of `roll` pays (before it's paid): each planet showing it
+// (not the blockade's) to each station or colony on it, one entry each,
+// in the planets' order. The rules pay exactly this (produce); the screens
+// show it (a card flying from the planet to its owner)
+struct Payout {
+  int planet; // (its index in State::planets)
+  int player; // who's paid
+  Resource resource;
+  int count; // (a station's pay, or a colony's)
+};
+std::vector<Payout> payouts(const State &state, int roll);
 int stationsOf(const State &state, int player); // the home included
 
 // ---------------------------------------------------------------------------

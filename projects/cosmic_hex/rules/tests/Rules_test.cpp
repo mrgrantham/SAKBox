@@ -1040,3 +1040,39 @@ TEST(RulesTest, FinishTheRound) {
   EXPECT_EQ(stations.winners, (std::vector<int>{2}));
   EXPECT_EQ(stations.winner, 2);
 }
+
+// What a roll pays, as the screens show it: the same as the rules pay
+// when the dice say it
+TEST(RulesTest, PayoutsAreWhatARollPays) {
+  using namespace CosmicHex;
+  State state = newGame(4, agreedRules(boardR3()));
+  SeededRandom::Generator random(3);
+  int checked = 0;
+  for (int i = 0; i < 3000 && checked < 6; ++i) {
+    if (state.phase == Phase::RollDraw && state.round > 2) {
+      for (const auto [a, b] :
+           {std::pair{1, 1}, std::pair{2, 3}, std::pair{4, 4}, std::pair{5, 6}}) {
+        std::array<Resources, kMaxPlayers> expected{};
+        for (int p = 0; p < state.players; ++p)
+          expected[static_cast<std::size_t>(p)] =
+              state.player[static_cast<std::size_t>(p)].resources;
+        for (const Payout &pay : payouts(state, a + b))
+          expected[static_cast<std::size_t>(pay.player)][static_cast<std::size_t>(pay.resource)] +=
+              pay.count;
+        State after = state;
+        ASSERT_TRUE(Game::apply(after, Action{Action::Kind::Roll, a, b}));
+        for (int p = 0; p < state.players; ++p)
+          EXPECT_EQ(after.player[static_cast<std::size_t>(p)].resources,
+                    expected[static_cast<std::size_t>(p)])
+              << a + b;
+      }
+      ++checked;
+    }
+    if (Game::isOver(state))
+      break;
+    Game::apply(state, Game::currentPlayer(state) == GameBots::kDealer
+                           ? Game::dealerAction(state, random)
+                           : Game::legalActions(state).front());
+  }
+  EXPECT_GT(checked, 0);
+}
