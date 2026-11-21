@@ -59,9 +59,30 @@ void backdrop(const TopFrame &f, float top, Scene::Colour colour, float alpha) {
 // ---------------------------------------------------------------- Discovery
 
 namespace {
+// A number token's dots (one for each way two dice make it) over its chip,
+// sharp: the chip's own are too small to read close up (the user's).
+// make_number_chips.py's row: dots at 72 of the chip's 100, 14 apart
+void tokenDots(const TopFrame &f, const Scene::Transform &pose, int number, float shown,
+               float across) {
+  const float dotsDown = kChipDown + 0.44f * kChipRadius; // (the row's middle)
+  float x = 0, y = 0;
+  if (!f.renderer.toScreen(pose.apply({0, kChipLift, dotsDown}), x, y))
+    return;
+  const int ways = 6 - std::abs(7 - number);
+  const float spacing = 0.14f * across, size = std::max(2.0f, std::round(0.08f * across));
+  constexpr Scene::Colour kChip{242, 234, 216}, kInk{30, 30, 36}; // (make_number_chips.py's)
+  // (a band of the chip's colour over the blurred ones, then the dots)
+  const float bandWide = (static_cast<float>(ways) - 1) * spacing + 2 * size;
+  f.overlay.rectangle(x - bandWide / 2, y - size, bandWide, 2 * size, kChip);
+  const float first = x - (static_cast<float>(ways) - 1) * spacing / 2;
+  for (int i = 0; i < ways; ++i)
+    f.overlay.rectangle(std::round(first + static_cast<float>(i) * spacing - size / 2),
+                        std::round(y - size / 2), size, size, fadedIn(kInk, shown, kChip));
+}
+
 // A number token's number over its chip, on a tile at `pose` facing you
 void tokenNumber(const TopFrame &f, const Scene::Transform &pose, int number, float shown) {
-  const float digitsDown = kChipDown - 0.24f * kChipRadius; // (the digits' middle)
+  const float digitsDown = kChipDown - 0.33f * kChipRadius; // (the digits' middle)
   float x = 0, y = 0, edgeX = 0, edgeY = 0;
   if (!f.renderer.toScreen(pose.apply({0, kChipLift, digitsDown}), x, y) ||
       !f.renderer.toScreen(pose.apply({kChipRadius, kChipLift, digitsDown}), edgeX, edgeY))
@@ -76,6 +97,7 @@ void tokenNumber(const TopFrame &f, const Scene::Transform &pose, int number, fl
   const float w = std::max(ink.width + 4, 0.62f * across), h = ink.height + 4;
   f.overlay.rectangle(x - w / 2, y - h / 2, w, h, kChip);
   f.overlay.textCentred(x, y, words, fadedIn(kInk, shown, kChip), scale);
+  tokenDots(f, pose, number, shown, across);
 }
 } // namespace
 

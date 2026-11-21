@@ -14,6 +14,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 CHIP = "#f2ead8"   # the chip
 EDGE = "#3a3a3a"   # its rim
 INK = "#1e1e24"    # digits and dots
+DOT_RADIUS, DOT_SPACING, DOT_ROW = 5, 14, 72  # (TopViews' close-up draws them here too)
 
 # Each digit's segments: a, b, c, d, e, f, g (top, top right, bottom right,
 # bottom, bottom left, top left, middle), as in a seven-segment display
@@ -44,18 +45,19 @@ def chip(number):
     ways = 6 - abs(7 - number)
     parts = [f'<circle cx="50" cy="50" r="46" fill="{CHIP}" stroke="{EDGE}" stroke-width="4"/>']
     digits = [int(c) for c in str(number)]
-    w, h, t, gap = 20, 36, 6, 6
+    w, h, t, gap = 20, 34, 6, 6
     # (a 1 is one bar, as narrow as a segment is thick, so 10 to 12 stay compact)
     widths = [t if d == 1 else w for d in digits]
     x = 50 - (sum(widths) + (len(digits) - 1) * gap) / 2
     for d, width in zip(digits, widths):
-        parts.append(digit(x - (w - t), 20, w, h, t, d) if d == 1 else digit(x, 20, w, h, t, d))
+        parts.append(digit(x - (w - t), 18, w, h, t, d) if d == 1 else digit(x, 18, w, h, t, d))
         x += width + gap
-    # The dots, a row under the number
-    spacing = 9
+    # The dots, a row under the number: big enough to stay apart on a DS's
+    # small chip (a 3.4 radius ran together there)
+    spacing, radius = DOT_SPACING, DOT_RADIUS
     first = 50 - (ways - 1) * spacing / 2
     for i in range(ways):
-        parts.append(f'<circle cx="{first + i * spacing:.1f}" cy="70" r="3.4" fill="{INK}"/>')
+        parts.append(f'<circle cx="{first + i * spacing:.1f}" cy="{DOT_ROW}" r="{radius}" fill="{INK}"/>')
     return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
             + "".join(parts) + "</svg>\n")
 

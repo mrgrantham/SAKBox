@@ -112,14 +112,15 @@ TEST(BoardPictureTest, TurnedOverPlanetsShowTheirNumberChips) {
   // A hex's size (centre to corner) from two neighbours' centres
   const auto a = whole.where(Hex{0, 0}), b = whole.where(Hex{1, 0});
   const float size = std::hypot(b.x - a.x, b.y - a.y) / std::sqrt(3.0f);
-  // Every turned-over planet: just inside its chip's top, cream
+  // Every turned-over planet: its chip's left side, halfway down (clear of
+  // its digits and dots), cream
   int checked = 0;
   for (const Planet &planet : state.planets) {
     if (chipOf(planet) == 0)
       continue;
     const auto at = whole.where(planet.hex);
-    const int x = static_cast<int>(std::lround(at.x));
-    const int y = static_cast<int>(std::lround(at.y + (kChipDown - 0.75f * kChipRadius) * size));
+    const int x = static_cast<int>(std::lround(at.x - (0.6f * kChipRadius * size)));
+    const int y = static_cast<int>(std::lround(at.y + (kChipDown * size)));
     const auto colour =
         whole.pixels()[(static_cast<std::size_t>(y) * 320) + static_cast<std::size_t>(x)];
     EXPECT_GT(colour.r, 200) << "planet at " << planet.hex.q << "," << planet.hex.r;
