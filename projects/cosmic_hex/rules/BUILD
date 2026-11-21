@@ -5,8 +5,19 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 cc_library(
     name = "rules",
     srcs = [
+        "src/Board.cpp",
+        "src/BuildingAndMoving.cpp",
+        "src/Contracts.cpp",
         "src/Describe.cpp",
+        "src/Exploring.cpp",
+        "src/Production.cpp",
         "src/Rules.cpp",
+        "src/RulesInternal.hpp",
+        "src/Scoring.cpp",
+        "src/Setup.cpp",
+        "src/SettingsText.cpp",
+        "src/Text.cpp",
+        "src/Trading.cpp",
         "src/TradingRule.cpp",
     ],
     hdrs = [

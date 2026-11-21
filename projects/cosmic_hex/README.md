@@ -32,6 +32,21 @@ How the code is laid out (`rules/include/CosmicHex/Rules.hpp`):
 - **`newGame(players, settings)`**, **`points`**, and the **contracts** (`contracts()`: each a goal checked against the board and the player's tokens, and its points).
 - **`agreedRules()`:** the rules as agreed, which the app plays and the simulator's defaults are tested to match.
 
+### The rules' source files
+
+The rules are split by part of the turn (`rules/src`), sharing a private header, `RulesInternal.hpp`:
+
+- **`Rules.cpp`:** `Game`: `apply` as a table of phases, each calling the file for its part of the turn; `legalActions`; the dealer's draws.
+- **`Setup.cpp`:** the boards, `agreedRules`, `newGame`, the starting hands, and the start's placements.
+- **`Production.cpp`:** the home's income, the roll and its payouts, the blockade and stealing.
+- **`Trading.cpp`:** the bank, alien outposts, and offers between players.
+- **`BuildingAndMoving.cpp`:** ships built and moved, stations and colonies (on corners, or on docks).
+- **`Exploring.cpp`:** tiles turned over, the zone's finds, badges.
+- **`Contracts.cpp`:** the contract deck: Charters and action cards.
+- **`Scoring.cpp`:** points, the titles, and the game's end.
+- **`Board.cpp`:** the lookups they share: the hex index, corners and their reach, whose pieces are where.
+- **`Text.cpp`**, **`SettingsText.cpp`:** the state, actions and settings as the action log writes them.
+
 Two choices make the rules simple to reason about:
 
 - **Face-down tiles aren't laid out at the start.** A tile is drawn from what's left of its pile when a ship turns it over, by the dealer. That's the same as a shuffled face-down tile, but nothing hidden sits on the board, so the state never holds a secret a bot could peek at.
