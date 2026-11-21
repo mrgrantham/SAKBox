@@ -154,9 +154,9 @@ BoardPieces::BoardPieces() {
                           {}, {uv(centre), uv(b), uv(a)});
     }
   }
-  station.box({0, 0.2f, 0}, {0.2f, 0.2f, 0.2f});
+  station.box({0, kStationTop / 2, 0}, {0.2f, kStationTop / 2, 0.2f});
   colony.box({0, 0.3f, 0}, {0.24f, 0.3f, 0.24f});
-  colony.box({0, 0.68f, 0}, {0.12f, 0.08f, 0.12f});
+  colony.box({0, kColonyTop - 0.08f, 0}, {0.12f, 0.08f, 0.12f});
   // The chevron: a V of two broad bars meeting at its point, twice, in
   // the x-y and z-y planes, so it reads as it turns, even edge on
   // (counter-clockwise from +x and +z; drawn double-sided)
@@ -312,6 +312,17 @@ Scene::MeshBuilder BoardPieces::gapsBetween(const std::vector<Hex> &tiles) {
     }
   }
   return gaps;
+}
+
+float BoardPieces::topAt(const State &state, Corner corner) {
+  float top = 0;
+  for (const Station &station : state.stations)
+    if (station.at == corner)
+      top = std::max(top, station.colony ? kColonyTop : kStationTop);
+  for (const Ship &ship : state.ships)
+    if (ship.corner == corner)
+      top = std::max(top, kShipTop);
+  return top;
 }
 
 Scene::Transform BoardPieces::onCorner(Corner corner) {

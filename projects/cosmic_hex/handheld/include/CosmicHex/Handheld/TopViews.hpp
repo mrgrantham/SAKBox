@@ -72,7 +72,8 @@ void drawDealtCards(const TopFrame &frame, const DealtShow &show, int chosen,
 // the top, each card coming in as `show` has it
 void drawResources(const TopFrame &frame, const Player &player, const CardsShow &show);
 // What everyone can see of a player, on a panel sliding down from the top
-void drawOtherPlayer(const TopFrame &frame, const PlayerView &view, float down);
+// (`across`: how far it's slid sideways, in screen widths: the carousel)
+void drawOtherPlayer(const TopFrame &frame, const PlayerView &view, float down, float across = 0);
 // An action card played or a Charter revealed (CardPlayShow): rising from
 // its player, turning over, held big to be read, then away
 void drawCardPlay(const TopFrame &f, const CardPlayShow &show, const State &state, int you);

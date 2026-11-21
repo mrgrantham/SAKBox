@@ -121,7 +121,9 @@ void ScreenPadd::drawBoard(const State *shown) {
     if (flow_.screen() == ScreenFlow::Screen::Game)
       lookingSince_ = Clock::now();
   }
-  const Scene::Camera camera = cameraBetween(topDownCamera(), gameCamera(turn_), down);
+  // (the game's camera, following the corner you've chosen: CameraFollow)
+  const Scene::Camera camera =
+      cameraBetween(topDownCamera(), follow_.camera(turn_, showsNow()), down);
   renderer_->beginFrame(camera, boardEnvironment(1 - down));
   if (!shown && descentStarted_)
     shown = &menus_.preview(); // (the game's first state on its way: the same board)
@@ -139,15 +141,11 @@ void ScreenPadd::drawBoard(const State *shown) {
   drawShowsOverBoard(TopFrame{*renderer_, renderer_->overlay(), camera,
                               static_cast<float>(kStageWidth), static_cast<float>(kStageHeight),
                               pictures_, names_, showsNow()});
-  // The touched corner (or the blockade's hex), ringed on the 3D board too
-  if (selected_) {
-    const Scene::Material marked{.shading = Scene::Material::Shading::Unlit,
-                                 .colour = Palette::kHighlight};
-    if (choosingAHex())
-      renderer_->draw(hexRing_, BoardPieces::onHex(selected_->hex), marked);
-    else
-      renderer_->draw(cornerRing_, BoardPieces::onCorner(selected_->corner), marked);
-  }
+  // The blockade's chosen hex, ringed on the 3D board too (a touched
+  // corner has the pointer over it instead of a ring: the user's)
+  if (selected_ && choosingAHex())
+    renderer_->draw(hexRing_, BoardPieces::onHex(selected_->hex),
+                    {.shading = Scene::Material::Shading::Unlit, .colour = Palette::kHighlight});
   drawSelectedShip();
   showProfile();
   {
@@ -406,8 +404,25 @@ void ScreenPadd::drawSelectedShip() {
            (to.m[static_cast<std::size_t>(axis)][3] - from.m[static_cast<std::size_t>(axis)][3]) *
                look->along;
   };
+  // A tap (CornerPointer::tap): down from where it hovers to the top of
+  // what's at the corner (a ship, a station, the board), and the dust a
+  // new building raises where it touches
+  constexpr float kHover = 0.8f;
+  const float surface = BoardPieces::topAt(latest_->state, look->to);
+  const float hover = between(1) + kHover + bob * (1 - std::clamp(look->dip, 0.0f, 1.0f));
+  const float height = hover + (between(1) + surface - hover) * look->dip;
+  if (look->dust) {
+    const float spread =
+        1 + 2 * ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::EaseOut, *look->dust);
+    renderer_->draw(cornerRing_,
+                    Scene::Transform::translation({between(0), between(1) + surface, between(2)}) *
+                        Scene::Transform::scaling({spread, 1, spread}),
+                    {.shading = Scene::Material::Shading::Unlit,
+                     .colour = {236, 226, 204},
+                     .alpha = static_cast<std::uint8_t>(26 * (1 - *look->dust))});
+  }
   renderer_->draw(chevron_,
-                  Scene::Transform::translation({between(0), between(1) + 0.8f + bob, between(2)}) *
+                  Scene::Transform::translation({between(0), height, between(2)}) *
                       Scene::Transform::rotation({0, 1, 0}, t * 2.2f),
                   {.shading = Scene::Material::Shading::Unlit,
                    .colour = {255, 255, 255},

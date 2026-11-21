@@ -84,3 +84,19 @@ TEST(BoardPiecesTest, KeptPlacesMatchTheLayout) {
       }
     }
 }
+
+// The top of what stands on a corner, for the pointer's tap to land on: a
+// colony over a station over a ship, else the board
+TEST(BoardPiecesTest, TheTopOfWhatsOnACorner) {
+  State state = newGame(4, agreedRules(boardR3()));
+  const Corner empty = boardCorners()[5], shipAt = boardCorners()[6], stationAt = boardCorners()[7];
+  state.stations.clear();
+  state.ships.clear();
+  state.ships.push_back(Ship{.owner = 0, .corner = shipAt});
+  state.stations.push_back(Station{.at = stationAt, .owner = 0, .colony = false});
+  EXPECT_FLOAT_EQ(BoardPieces::topAt(state, empty), 0);
+  EXPECT_FLOAT_EQ(BoardPieces::topAt(state, shipAt), BoardPieces::kShipTop);
+  EXPECT_FLOAT_EQ(BoardPieces::topAt(state, stationAt), BoardPieces::kStationTop);
+  state.stations.back().colony = true;
+  EXPECT_FLOAT_EQ(BoardPieces::topAt(state, stationAt), BoardPieces::kColonyTop);
+}

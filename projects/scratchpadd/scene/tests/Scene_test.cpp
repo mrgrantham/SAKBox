@@ -405,3 +405,18 @@ TEST(SceneTest, TextureMemoryHandsOutAsTheDsDoes) {
     EXPECT_TRUE(memory.takeImage(128, 128).has_value());
   EXPECT_FALSE(memory.takeImage(8, 8).has_value()); // (full)
 }
+
+// A group of overlay shapes and text slid as one (moveSince): only what was
+// drawn after the mark moves
+TEST(OverlayTest, AGroupSlidesTogether) {
+  ScratchPadd::Scene::Overlay overlay;
+  overlay.rectangle(0, 0, 10, 10, {255, 255, 255});
+  const auto from = overlay.mark();
+  overlay.rectangle(0, 0, 10, 10, {255, 255, 255});
+  overlay.text(5, 5, "hi", {255, 255, 255});
+  overlay.moveSince(from, 100, 0);
+  // (the first rectangle as it was; the second, its six vertices, 100 across)
+  EXPECT_FLOAT_EQ(overlay.triangles()[0].x, 0);
+  EXPECT_FLOAT_EQ(overlay.triangles()[6].x, overlay.triangles()[0].x + 100);
+  EXPECT_FLOAT_EQ(overlay.texts().back().x, 105);
+}

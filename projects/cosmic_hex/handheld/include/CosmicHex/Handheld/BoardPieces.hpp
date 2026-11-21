@@ -86,6 +86,13 @@ struct BoardPieces {
   // squares scattered wide, drawn unlit, the same every game
   Scene::MeshBuilder stars;
 
+  // How tall the pieces stand (their meshes' tops, in board units): the
+  // pointer's tap lands on top of what's at a corner
+  static constexpr float kStationTop = 0.4f, kColonyTop = 0.76f, kShipTop = 0.36f;
+  // The top of whatever stands on `corner` (a colony, a station, a ship),
+  // or 0: the board itself
+  static float topAt(const State &state, Corner corner);
+
   // Where things are, on the table
   static Scene::Vector3 centre(Hex hex);
   static Scene::Vector3 at(Corner corner);

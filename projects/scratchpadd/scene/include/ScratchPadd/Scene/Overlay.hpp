@@ -95,6 +95,23 @@ public:
     clip_ = {};
   }
 
+  // A group drawn as one, then slid together (a panel sliding sideways):
+  // mark() where it starts, draw it, then moveSince(mark, dx, dy)
+  struct Mark {
+    std::size_t triangles = 0, texts = 0;
+  };
+  Mark mark() const { return {triangles_.size(), texts_.size()}; }
+  void moveSince(Mark from, float dx, float dy) {
+    for (std::size_t i = from.triangles; i < triangles_.size(); ++i) {
+      triangles_[i].x += dx;
+      triangles_[i].y += dy;
+    }
+    for (std::size_t i = from.texts; i < texts_.size(); ++i) {
+      texts_[i].x += dx;
+      texts_[i].y += dy;
+    }
+  }
+
 private:
   std::vector<Vertex> triangles_;
   std::vector<Text> texts_;

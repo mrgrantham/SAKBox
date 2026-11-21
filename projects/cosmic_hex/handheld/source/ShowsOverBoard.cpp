@@ -5,6 +5,7 @@
 
 #include <CosmicHex/Handheld/BoardPieces.hpp>
 #include <CosmicHex/Handheld/Hud.hpp>
+#include <CosmicHex/Handheld/MoveSpots.hpp>
 #include <CosmicHex/Handheld/OtherPlayers.hpp>
 #include <CosmicHex/Handheld/Palette.hpp>
 #include <CosmicHex/Handheld/RecipePixels.hpp>
@@ -39,8 +40,8 @@ void ScreenPadd::drawShowsOverBoard(const TopFrame &frame) {
   if (firstRoll_.on() && latest_)
     drawFirstRoll(frame, latest_->firstRoll, firstRoll_);
   else if (others_.showing(showsNow()) && latest_ && others_.which() >= 0) {
-    const PanelShow::Drawn drawn = others_.drawn(showsNow());
-    drawOtherPlayer(frame, viewOf(latest_->state, drawn.which), drawn.down);
+    for (const PanelShow::Drawn &drawn : others_.drawn(showsNow()))
+      drawOtherPlayer(frame, viewOf(latest_->state, drawn.which), drawn.down, drawn.across);
   } else if (discovery_.moving(showsNow()))
     drawDiscovery(frame, discovery_, closeUps_.face, closeUps_.back);
   else if (pick_.at(showsNow()) && latest_ && bottomScreen_ && bottomScreen_->resourceChoice()) {
@@ -132,19 +133,37 @@ void ScreenPadd::drawWatchReadouts(Scene::Overlay &overlay) {
 }
 
 // While a view you opened holds the game (Show resources, another
-// player's panel), a grey tag at the top says so (the user's: a turn
-// ended under it did nothing, with no sign why)
-void ScreenPadd::drawHeldTag(Scene::Overlay &overlay) const {
-  if ((holds_ & static_cast<std::uint8_t>(Hold::Info)) == 0 ||
-      flow_.screen() != ScreenFlow::Screen::Game)
+// player's panel), the banner says so: PAUSED on a still grey band, as the
+// pause itself shows (the user's: the Banner, like everything else). It
+// comes in quickly as the view opens and goes as it closes, at the same
+// time as the view's own way off (a second press of Show resources)
+void ScreenPadd::drawHeldTag(Scene::Overlay &overlay) {
+  const bool held = (holds_ & static_cast<std::uint8_t>(Hold::Info)) != 0 &&
+                    flow_.screen() == ScreenFlow::Screen::Game;
+  if (held != heldShown_) {
+    heldShown_ = held;
+    heldChangedAt_ = showsNow();
+  }
+  constexpr double kSecondsIn = 0.2, kSecondsOut = 0.35;
+  const double since = showsNow() - heldChangedAt_;
+  float shown = 0; // (0 gone, 1 there)
+  if (held)
+    shown = ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::EaseOut,
+                                       static_cast<float>(std::min(since / kSecondsIn, 1.0)));
+  else if (since < kSecondsOut)
+    shown = 1 - ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::EaseIn,
+                                           static_cast<float>(since / kSecondsOut));
+  if (shown <= 0)
     return;
-  const float k = kStageScale;
-  static constexpr std::string_view kTag = "PAUSED - close to go on";
-  const float w = Scene::Overlay::textWidth(kTag, k) + 12 * k, h = 13 * k;
-  const float x = (static_cast<float>(kStageWidth) - w) / 2, y = 3 * k;
-  overlay.rectangle(x, y, w, h, {40, 44, 54});
-  overlay.rectangle(x, y + h - 1, w, 1, {140, 146, 158});
-  overlay.textCentred(static_cast<float>(kStageWidth) / 2, y + h / 2, kTag, {200, 204, 212}, k);
+  // (going: the words slide off to the right as the band fades)
+  const float middle = static_cast<float>(kStageWidth) / 2;
+  static const std::string kTitle = "PAUSED";
+  static const std::string kNote = "close to go on";
+  drawBand(overlay, {.bandAlpha = shown,
+                     .wordsX = held ? middle : middle + (1 - shown) * middle,
+                     .title = kTitle,
+                     .note = kNote,
+                     .colour = {140, 146, 158}});
 }
 
 // Whose cards an info view shows: yours when playing, the turn's when
@@ -369,7 +388,33 @@ void ScreenPadd::updateDiscovery() {
 // a banner, a show, a view over the board): the ship touched, else what's
 // been touched, else the place nearest the middle; otherwise nothing, and
 // it fades away (the user's)
-void ScreenPadd::updatePointer() { pointer_.aim(pointerCorner(), showsNow()); }
+void ScreenPadd::updatePointer() {
+  pointer_.aim(pointerCorner(), showsNow());
+  if (tapPointer_ && pointerCorner())
+    pointer_.tap(showsNow());
+  tapPointer_ = false;
+  // (the camera follows what you chose, and comes back when nothing is)
+  const auto followed = followedCorner();
+  follow_.aim(followed ? std::optional(BoardPieces::at(*followed)) : std::nullopt, showsNow());
+}
+
+// What the camera follows: the corner you chose (a move, a placement),
+// else the ship you touched, else the corner you touched; not the pointer's
+// own resting place near the middle
+std::optional<CosmicHex::Corner> ScreenPadd::followedCorner() const {
+  if (!pointerCorner() || !bottomScreen_ || !latest_)
+    return std::nullopt;
+  if (const auto chosen = bottomScreen_->chosenPlacement())
+    if (const MoveSpot spot = spotOf(latest_->state, *chosen); !spot.corners.empty())
+      return spot.corners.back();
+  const auto &ships = latest_->state.ships;
+  if (const auto ship = bottomScreen_->selectedShip();
+      ship && *ship >= 0 && *ship < static_cast<int>(ships.size()))
+    return ships[static_cast<std::size_t>(*ship)].corner;
+  if (selected_)
+    return selected_->corner;
+  return std::nullopt;
+}
 
 std::optional<CosmicHex::Corner> ScreenPadd::pointerCorner() const {
   if (mode_ != Mode::Playing || !latest_ || !latest_->yourMove || !bottomScreen_ ||
@@ -377,8 +422,8 @@ std::optional<CosmicHex::Corner> ScreenPadd::pointerCorner() const {
     return std::nullopt;
   const std::vector<CosmicHex::Corner> places = bottomScreen_->placingCorners();
   const std::optional<int> ship = bottomScreen_->selectedShip();
-  if (places.empty() && !ship)
-    return std::nullopt; // (nothing to choose on the board)
+  if (places.empty() && !ship && !selected_)
+    return std::nullopt; // (nothing to choose on the board, nothing touched)
   const double t = showsNow();
   const bool busy = gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving ||
                     banner_.showing(gameClock_.seconds()) || !roll_.idle() ||
@@ -387,12 +432,15 @@ std::optional<CosmicHex::Corner> ScreenPadd::pointerCorner() const {
                     cardPlay_.moving(t) || hand_.moving(t) || dealt_.on() || pick_.at(t);
   if (busy)
     return std::nullopt;
+  // (what you've chosen to place, or where a ship's to go: there, ahead
+  // of the ship itself)
+  if (const std::optional<CosmicHex::Action> chosen = bottomScreen_->chosenPlacement())
+    if (const MoveSpot spot = spotOf(latest_->state, *chosen); !spot.corners.empty())
+      return spot.corners.back();
   const auto &ships = latest_->state.ships;
   if (ship && *ship >= 0 && *ship < static_cast<int>(ships.size()))
     return ships[static_cast<std::size_t>(*ship)].corner;
-  if (const std::optional<CosmicHex::Action> chosen = bottomScreen_->startPlacement())
-    return CosmicHex::boardCorners()[static_cast<std::size_t>(chosen->a)];
-  if (selected_ && std::ranges::find(places, selected_->corner) != places.end())
+  if (selected_) // (touched: there, marked or not)
     return selected_->corner;
   // (nothing touched yet: the place nearest the board's middle, in view)
   const auto fromMiddle = [](const CosmicHex::Corner &corner) {
@@ -409,8 +457,8 @@ bool ScreenPadd::topMoving() const {
     return true;
   if (gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving)
     return true; // (pieces still moving, or a number chip dropping)
-  if (pointer_.at(showsNow()))
-    return true; // (the board's pointer turning, fading or gliding)
+  if (pointer_.at(showsNow()) || follow_.moving(showsNow()))
+    return true; // (the board's pointer turning, fading or gliding; the camera following)
   if (banner_.showing(gameClock_.seconds()))
     return true; // (the turn's banner moving)
   if (shownInfo_ != BottomScreen::Info::None || cards_.moving(showsNow()) || outlineMovedAt_)

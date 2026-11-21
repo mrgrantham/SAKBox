@@ -179,9 +179,10 @@ void ScreenPadd::followInfoView() {
   else if (shownInfo_ == BottomScreen::Info::Resources)
     cards_.close(showsNow());
   // (another player's panel: down as it opens, up as it closes)
-  if (bottomScreen_->info() == BottomScreen::Info::Player)
+  if (bottomScreen_->info() == BottomScreen::Info::Player) {
     others_.open(bottomScreen_->infoPlayer(), showsNow());
-  else if (shownInfo_ == BottomScreen::Info::Player)
+    othersShown_ = bottomScreen_->infoPlayer();
+  } else if (shownInfo_ == BottomScreen::Info::Player)
     others_.close(showsNow());
   shownInfo_ = bottomScreen_->info();
   if (flow_.screen() == ScreenFlow::Screen::Game)
@@ -201,8 +202,14 @@ void ScreenPadd::followTouchPanel() {
     pressDrawn_ = bottomScreen_->pressing(); // (and once more, to clear it)
   }
   // (another player chosen while the panel's open: their view)
-  if (bottomScreen_ && shownInfo_ == BottomScreen::Info::Player)
-    others_.choose(bottomScreen_->infoPlayer(), showsNow());
+  // (the next player round the table comes in from the right, the one
+  // before from the left)
+  if (bottomScreen_ && shownInfo_ == BottomScreen::Info::Player && latest_) {
+    const int which = bottomScreen_->infoPlayer(), players = latest_->state.players;
+    const int ahead = othersShown_ < 0 ? 1 : (which - othersShown_ + players) % players;
+    others_.choose(which, showsNow(), ahead <= players / 2 ? 1 : -1);
+    othersShown_ = which;
+  }
   if (bottomScreen_ && bottomScreen_->showingFeedback()) {
     if (!feedbackSince_) {
       feedbackSince_ = Clock::now();

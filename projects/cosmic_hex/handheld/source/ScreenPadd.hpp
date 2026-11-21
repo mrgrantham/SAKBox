@@ -35,6 +35,7 @@
 #include <CosmicHex/Art.hpp>
 #include <CosmicHex/Handheld/BoardMotion.hpp>
 #include <CosmicHex/Handheld/BoardPicture.hpp>
+#include <CosmicHex/Handheld/BoardView.hpp>
 #include <CosmicHex/Handheld/BottomScreen.hpp>
 #include <CosmicHex/Handheld/GamePictures.hpp>
 #include <CosmicHex/Handheld/Pickers.hpp>
@@ -186,7 +187,7 @@ private:
   void drawShowsOverBoard(const TopFrame &frame);
   void drawText(const TopFrame &frame);
   void drawWatchReadouts(Scene::Overlay &overlay);
-  void drawHeldTag(Scene::Overlay &overlay) const;
+  void drawHeldTag(Scene::Overlay &overlay);
   int infoPlayer(const State &state) const;
   void drawBanner(Scene::Overlay &overlay);
   void drawBand(Scene::Overlay &overlay, const ScratchPadd::Banner::Look &look);
@@ -276,6 +277,14 @@ private:
   std::array<int, 2> touchStart_{}, touchLast_{};
   // What's selected on the board (touched), and the list of moves' cursor
   std::optional<BoardPicture::Spot> selected_;
+  bool tapPointer_ = false; // (a touch chose a corner: the pointer taps it)
+  CameraFollow follow_;     // (the game's camera, following the corner chosen)
+  std::optional<CosmicHex::Corner> followedCorner() const;
+  // The PAUSED banner's coming and going (an info view holding the game):
+  // since when it's been held, or let go
+  double heldChangedAt_ = -1e9;
+  bool heldShown_ = false;
+  int othersShown_ = -1; // (the other player last shown: which way the carousel turns)
   std::size_t cursor_ = 0;
   // What the buttons cover on the map, as last drawn; and whether the
   // touch panel shows the map as last drawn (so only what changes needs

@@ -481,12 +481,16 @@ void drawGained(const TopFrame &f, const Resources &held, const HandShow &show) 
 
 // ------------------------------------------------------------ Other player
 
-void drawOtherPlayer(const TopFrame &f, const PlayerView &view, float down) {
+void drawOtherPlayer(const TopFrame &f, const PlayerView &view, float down, float across) {
   const float k = f.k();
   Scene::Overlay &overlay = f.overlay;
   const float top = -f.height * (1 - down);
   const Scene::Colour colour = BoardColours::ofPlayer(view.player);
-  backdrop(f, top, {12, 18, 32}, 29);
+  // (the backdrop once, behind both panels while they slide past)
+  if (across <= 0)
+    backdrop(f, top, {12, 18, 32}, 29);
+  // (everything on it slid sideways together, for the carousel)
+  const Scene::Overlay::Mark start = overlay.mark();
   overlay.rectangle(3 * k, top + 3 * k, f.width - 6 * k, 1, colour);
   overlay.rectangle(3 * k, top + f.height - 4 * k, f.width - 6 * k, 1, colour);
   // Name and points
@@ -566,6 +570,7 @@ void drawOtherPlayer(const TopFrame &f, const PlayerView &view, float down) {
     overlay.text(10 * k, std::min(top + 156 * k + extra, top + f.height - 14 * k), charters,
                  Palette::kWords, k);
   }
+  overlay.moveSince(start, across * f.width, 0);
 }
 
 // -------------------------------------------------------------- First roll

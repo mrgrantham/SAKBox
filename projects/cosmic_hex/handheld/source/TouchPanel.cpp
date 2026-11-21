@@ -234,7 +234,13 @@ void ScreenPadd::tapBoard() {
     latest_->yourMove = false; // (until the game says it's yours again)
     selected_.reset();
   } else if (!outcome.used) {
-    selected_ = spot;
+    // (the same place again: the pointer put away; elsewhere: it goes
+    // there and taps it)
+    const bool same = selected_ && spot && selected_->corner == spot->corner;
+    selected_ = same ? std::nullopt : spot;
+    tapPointer_ = selected_.has_value();
+  } else if (bottomScreen_ && bottomScreen_->chosenPlacement()) {
+    tapPointer_ = true; // (a marked place chosen: the pointer taps it)
   }
   cursor_ = 0;
   touchDirty_ = true;
@@ -305,10 +311,11 @@ void ScreenPadd::drawMapWithButtons() {
   BoardPicture::Marks marks;
   if (selected_ && choosingAHex())
     marks.hex = selected_->hex;
-  else if (selected_)
-    marks.corners.push_back(selected_->corner);
+  // (the pointer, flat and still, where the top screen's chevron is)
+  if (const auto look = pointer_.at(showsNow()))
+    marks.pointer = look->to;
   // (and at the start, what's been touched, shown as the piece)
-  const std::optional<CosmicHex::Action> chosen = bottomScreen_->startPlacement();
+  const std::optional<CosmicHex::Action> chosen = bottomScreen_->chosenPlacement();
   std::optional<CosmicHex::Corner> chosenAt;
   if (chosen)
     chosenAt = CosmicHex::boardCorners()[static_cast<std::size_t>(chosen->a)];
