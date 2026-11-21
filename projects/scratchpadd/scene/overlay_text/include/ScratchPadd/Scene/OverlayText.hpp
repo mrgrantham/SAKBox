@@ -1,38 +1,37 @@
-// OverlayText.hpp - the overlay's text on every platform: stb_easy_font's
-// letters, built from small rectangles, so a backend draws them as it draws
-// the overlay's shapes (desktops, the 3DS), or fills them into a bitmap (the
-// DS's text layer: one font on every console), with no font
-// texture. For backends.
+// OverlayText.hpp - the overlay as backends draw it, in the platform's font
+// (Font.hpp: Silkscreen on the DS, Orbitron elsewhere). For backends.
+//
+// - The DS fills its text layer from the font's pixels itself
+//   (Font::pixelRectangles, in whole numbers).
+// - The GPU backends (desktops, the 3DS) draw the shapes and the letters in
+//   one pass of textured triangles: the letters from the font's atlas, the
+//   shapes from its solid corner, each vertex's colour times the atlas's
+//   alpha.
 #pragma once
 
+#include <ScratchPadd/Scene/Font.hpp>
 #include <ScratchPadd/Scene/Overlay.hpp>
 
-#include <cstdint>
-#include <string_view>
 #include <vector>
 
 namespace ScratchPadd::Scene {
 
-// One of a text's rectangles, in points, placed and scaled
-struct TextRectangle {
-  float x, y, width, height;
+// A corner of the overlay's triangles as the GPU backends draw them:
+// points, colour and texture coordinates in the platform font's atlas (0 to
+// 1, v from the top)
+struct TexturedVertex {
+  float x, y;
+  Colour colour;
+  float u, v;
 };
-// `text`'s letters as rectangles ('\n' starting a new line)
-std::vector<TextRectangle> textRectangles(const Overlay::Text &text);
 
-// A letter's stroke in the font's own units, before it's scaled and placed:
-// whole numbers, the text starting at (0, 0). For a backend without floating
-// point hardware (the DS: its text took up to 40 ms a frame in
-// soft floats), which places them in whole numbers itself
-struct FontRectangle {
-  std::int16_t x, y, width, height;
-};
-// `text`'s strokes into `out` (cleared first; kept by the caller, so no
-// allocation once it's grown). Characters the font hasn't (outside ' ' to
-// '~') are left out, taking no room
-void fontRectangles(std::string_view text, std::vector<FontRectangle> &out);
+// The overlay's shapes, then its text over them, as triangles into `out`
+// (cleared first; kept by the backend, so no allocation once it's grown)
+void overlayVertices(const Overlay &overlay, std::vector<TexturedVertex> &out);
 
-// Adds `text`'s triangles to `triangles`
-void appendTextTriangles(const Overlay::Text &text, std::vector<Overlay::Vertex> &triangles);
+// The platform font's atlas, which overlayVertices' texture coordinates
+// are in, as white pixels with its alpha (for a backend whose textures are
+// RGBA)
+std::vector<Colour> atlasPixels(const FontAtlas &atlas);
 
 } // namespace ScratchPadd::Scene

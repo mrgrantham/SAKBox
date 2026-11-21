@@ -468,7 +468,7 @@ It throws them many times and checks each face comes up a sixth of the time and 
 | `art/cards/back_rings.svg`, `back_planets.svg` | The cards' backs: rings of hexagons for action cards, the six kinds of planet on a starfield for resource cards |
 | `art/cards/cards.txt` | The cards' words: a line a card, its title, short title and what it does (the build embeds it and `Art::wordsOf` reads it) |
 
-A card's drawing has no words: the game writes the title (centred, up to two lines) and what it does over it, in the areas `Art.hpp` gives (`kCardTitle`, `kCardArt`, `kCardWords`, in the drawing's 63 x 88 units), so a new drawing keeps to them. `Art_test` checks every card's words fit, in the consoles' font.
+A card's drawing has no words: the game writes the title (centred, up to two lines) and what it does over it, in the areas `Art.hpp` gives (`kCardTitle`, `kCardArt`, `kCardWords`, in the drawing's 63 x 88 units), so a new drawing keeps to them. `Art_test` checks every card's words fit, in each console's font (the DS's Silkscreen, the 3DS's Orbitron).
 
 ## Models
 

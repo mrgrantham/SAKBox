@@ -182,21 +182,29 @@ fragment float4 edgeFragment(EdgeOut in [[stage_in]], texture2d<float> colour [[
 struct OverlayIn {
   float2 point [[attribute(0)]];
   float4 colour [[attribute(1)]];
+  float2 atlas [[attribute(2)]];
 };
 
 struct OverlayOut {
   float4 position [[position]];
   float4 colour;
+  float2 atlas;
 };
 
 vertex OverlayOut overlayVertex(OverlayIn in [[stage_in]], constant float2 &screen [[buffer(1)]]) {
   OverlayOut out;
   out.position = float4(in.point.x / screen.x * 2.0 - 1.0, 1.0 - in.point.y / screen.y * 2.0, 0.0, 1.0);
   out.colour = in.colour;
+  out.atlas = in.atlas;
   return out;
 }
 
-fragment float4 overlayFragment(OverlayOut in [[stage_in]]) { return in.colour; }
+// The colour times the font atlas's alpha (its top level: the letters were
+// baked near the size they're drawn)
+fragment float4 overlayFragment(OverlayOut in [[stage_in]], texture2d<float> atlas [[texture(0)]]) {
+  constexpr sampler smooth(filter::linear, address::clamp_to_edge);
+  return in.colour * atlas.sample(smooth, in.atlas, level(0));
+}
 )";
 
 // Buffers' indices in the scene shaders: the vertices, then Frame and Draw
@@ -357,6 +365,10 @@ Renderer::Backend::Backend(Display &display)
   if (Metal::device()) {
     const Colour white;
     blank = textureOf(TextureImage{1, 1, std::span<const Colour>(&white, 1)});
+    // The overlay font's letters (white, their alpha)
+    const FontAtlas atlas = Font::platform().atlas();
+    const std::vector<Colour> pixels = atlasPixels(atlas);
+    fontAtlas = textureOf(TextureImage{atlas.width, atlas.height, pixels});
   }
   std::string error;
   MTL::Library *library = Metal::compileLibrary(kShaders, error);
@@ -374,13 +386,17 @@ Renderer::Backend::Backend(Display &display)
     MTL::VertexDescriptor *overlayLayout = MTL::VertexDescriptor::vertexDescriptor();
     MTL::VertexAttributeDescriptor *point = overlayLayout->attributes()->object(0);
     point->setFormat(MTL::VertexFormatFloat2);
-    point->setOffset(offsetof(Overlay::Vertex, x));
+    point->setOffset(offsetof(TexturedVertex, x));
     point->setBufferIndex(kVerticesBuffer);
     MTL::VertexAttributeDescriptor *colour = overlayLayout->attributes()->object(1);
     colour->setFormat(MTL::VertexFormatUChar4Normalized);
-    colour->setOffset(offsetof(Overlay::Vertex, colour));
+    colour->setOffset(offsetof(TexturedVertex, colour));
     colour->setBufferIndex(kVerticesBuffer);
-    overlayLayout->layouts()->object(kVerticesBuffer)->setStride(sizeof(Overlay::Vertex));
+    MTL::VertexAttributeDescriptor *atlas = overlayLayout->attributes()->object(2);
+    atlas->setFormat(MTL::VertexFormatFloat2);
+    atlas->setOffset(offsetof(TexturedVertex, u));
+    atlas->setBufferIndex(kVerticesBuffer);
+    overlayLayout->layouts()->object(kVerticesBuffer)->setStride(sizeof(TexturedVertex));
     overlayPipeline =
         makePipeline(library, "overlayVertex", "overlayFragment", overlayLayout, true);
     library->release();
@@ -403,6 +419,8 @@ Renderer::Backend::~Backend() {
       texture->release();
   if (blank)
     blank->release();
+  if (fontAtlas)
+    fontAtlas->release();
   for (const LoadedMesh &mesh : meshes) {
     if (mesh.vertices) {
       mesh.vertices->release();
@@ -570,18 +588,17 @@ void Renderer::Backend::drawEdges() {
 
 void Renderer::Backend::drawOverlay(const Overlay &overlay) {
   // The shapes, then the text over them
-  overlayTriangles.assign(overlay.triangles().begin(), overlay.triangles().end());
-  for (const Overlay::Text &text : overlay.texts())
-    appendTextTriangles(text, overlayTriangles);
-  if (overlayTriangles.empty() || !overlayPipeline)
+  overlayVertices(overlay, overlayTriangles);
+  if (overlayTriangles.empty() || !overlayPipeline || !fontAtlas)
     return;
   encoder->setRenderPipelineState(overlayPipeline);
   encoder->setDepthStencilState(noDepth);
+  encoder->setFragmentTexture(fontAtlas, 0);
   const float screen[2] = {static_cast<float>(display.width()),
                            static_cast<float>(display.height())};
   encoder->setVertexBytes(screen, sizeof(screen), kFrameBuffer);
   encoder->setVertexBuffer(
-      frameBuffer(overlayTriangles.data(), overlayTriangles.size() * sizeof(Overlay::Vertex)), 0,
+      frameBuffer(overlayTriangles.data(), overlayTriangles.size() * sizeof(TexturedVertex)), 0,
       kVerticesBuffer);
   encoder->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), overlayTriangles.size());
 }

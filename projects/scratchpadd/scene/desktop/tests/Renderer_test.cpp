@@ -193,6 +193,16 @@ TEST_F(RendererTest, OverlayDrawsOverTheScene) {
   expectNear(pixels[1], {0, 128, 20}, 4); // half green over the background
 }
 
+// The overlay's text is drawn from its font's atlas: a bar's middle in the
+// text's colour, the background beside it
+TEST_F(RendererTest, TextIsDrawnFromTheFontsAtlas) {
+  const auto pixels =
+      frame([&] { renderer->overlay().textCentred(centreX(), centreY(), "|", {255, 255, 255}, 6); },
+            {{centreX(), centreY()}, {centreX() + 20, centreY()}});
+  expectNear(pixels[0], {255, 255, 255}, 40);
+  expectNear(pixels[1], {0, 0, 40});
+}
+
 // Vertex snapping (Desktop.hpp) moves vertices to the grid: a box 0.4 wide
 // snapped to a 1-unit world grid collapses to nothing.
 TEST_F(RendererTest, VertexSnappingMovesVerticesToTheGrid) {

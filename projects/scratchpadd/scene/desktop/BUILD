@@ -70,8 +70,8 @@ selects.config_setting_group(
 # What every desktop backend shares, for the backends: the window (GLFW),
 # its keyboard and mouse, and the backend hooks it calls
 # (WindowBackend.hpp); the extras' API (Desktop.hpp), which each backend
-# defines; and the overlay's text (//projects/scratchpadd/scene/overlay_text,
-# shared with the 3DS)
+# defines; and the overlay's text and its font
+# (//projects/scratchpadd/scene/overlay_text, shared with the 3DS)
 cc_library(
     name = "window",
     srcs = ["src/Display.cpp"],

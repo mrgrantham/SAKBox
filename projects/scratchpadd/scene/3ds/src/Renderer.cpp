@@ -35,7 +35,8 @@ static_assert(sizeof(Vertex) == 36,
               "the GPU reads Scene::Vertex as 3 + 3 floats, 4 bytes and 2 floats");
 static_assert(sizeof(Renderer::Backend::LineVertex) == 32,
               "line.v.pica reads a LineVertex as 3 + 3 floats, 4 bytes and a float");
-static_assert(sizeof(Overlay::Vertex) == 12, "the GPU reads Overlay::Vertex as 2 floats, 4 bytes");
+static_assert(sizeof(TexturedVertex) == 20,
+              "the GPU reads TexturedVertex as 2 floats, 4 bytes and 2 floats");
 
 // A frame's lines and overlay at most, in linear memory
 constexpr std::size_t kArenaBytes = 1 << 20;
@@ -50,24 +51,48 @@ void describeSceneVertices(C3D_AttrInfo &attributes) {
   AttrInfo_AddLoader(&attributes, 3, GPU_FLOAT, 2);
 }
 
-// An image's pixels in the GPU's order for a GPU_RGBA8 texture: 8 x 8
-// tiles, rows of tiles from the image's first row (so texture coordinate v
-// 0 is its top, as Scene's), each tile's pixels in Morton order, each pixel
+// Where an image's pixel (x, y) goes in the GPU's order: 8 x 8 tiles, rows
+// of tiles from the image's first row (so texture coordinate v 0 is its
+// top, as Scene's), each tile's pixels in Morton order
+std::size_t tiledIndex(int x, int y, int width) {
+  const int tile = (y / 8) * (width / 8) + x / 8;
+  const int tx = x % 8, ty = y % 8;
+  const int inTile = (tx & 1) | ((ty & 1) << 1) | ((tx & 2) << 1) | ((ty & 2) << 2) |
+                     ((tx & 4) << 2) | ((ty & 4) << 3);
+  return static_cast<std::size_t>(tile) * 64 + static_cast<std::size_t>(inTile);
+}
+
+// An image's pixels in the GPU's order for a GPU_RGBA8 texture, each pixel
 // as bytes A, B, G, R
 void tilePixels(const Colour *pixels, int width, int height, std::uint8_t *out) {
   for (int y = 0; y < height; ++y)
     for (int x = 0; x < width; ++x) {
-      const int tile = (y / 8) * (width / 8) + x / 8;
-      const int tx = x % 8, ty = y % 8;
-      const int inTile = (tx & 1) | ((ty & 1) << 1) | ((tx & 2) << 1) | ((ty & 2) << 2) |
-                         ((tx & 4) << 2) | ((ty & 4) << 3);
-      std::uint8_t *at = out + (static_cast<std::size_t>(tile) * 64 + inTile) * 4;
+      std::uint8_t *at = out + tiledIndex(x, y, width) * 4;
       const Colour &c = pixels[static_cast<std::size_t>(y) * width + x];
       at[0] = c.a;
       at[1] = c.b;
       at[2] = c.g;
       at[3] = c.r;
     }
+}
+
+// The overlay font's atlas as a GPU_A8 texture (its alpha alone: 1 byte a
+// pixel), read smoothly
+std::optional<C3D_Tex> makeFontAtlas() {
+  const FontAtlas atlas = Font::platform().atlas();
+  C3D_Tex texture;
+  if (!C3D_TexInit(&texture, static_cast<u16>(atlas.width), static_cast<u16>(atlas.height), GPU_A8))
+    return std::nullopt;
+  std::vector<std::uint8_t> tiled(atlas.alpha.size());
+  for (int y = 0; y < atlas.height; ++y)
+    for (int x = 0; x < atlas.width; ++x)
+      tiled[tiledIndex(x, y, atlas.width)] =
+          atlas.alpha[static_cast<std::size_t>(y) * static_cast<std::size_t>(atlas.width) +
+                      static_cast<std::size_t>(x)];
+  C3D_TexLoadImage(&texture, tiled.data(), GPU_TEXFACE_2D, 0);
+  C3D_TexSetFilter(&texture, GPU_LINEAR, GPU_LINEAR);
+  C3D_TexSetWrap(&texture, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+  return texture;
 }
 
 // The next mipmap level of an image: each pixel the average of four
@@ -241,8 +266,10 @@ Renderer::Backend::Backend(Display &display) : display(display) {
   AttrInfo_AddLoader(&lineAttributes, 2, GPU_UNSIGNED_BYTE, 4); // colour
   AttrInfo_AddLoader(&lineAttributes, 3, GPU_FLOAT, 1);         // side
   AttrInfo_Init(&overlayAttributes);
-  AttrInfo_AddLoader(&overlayAttributes, 0, GPU_FLOAT, 2);
-  AttrInfo_AddLoader(&overlayAttributes, 1, GPU_UNSIGNED_BYTE, 4);
+  AttrInfo_AddLoader(&overlayAttributes, 0, GPU_FLOAT, 2);         // point
+  AttrInfo_AddLoader(&overlayAttributes, 1, GPU_UNSIGNED_BYTE, 4); // colour
+  AttrInfo_AddLoader(&overlayAttributes, 2, GPU_FLOAT, 2);         // in the font's atlas
+  fontAtlas = makeFontAtlas();
 
   arena.memory = static_cast<std::uint8_t *>(linearAlloc(kArenaBytes));
   arena.size = arena.memory ? kArenaBytes : 0;
@@ -252,6 +279,8 @@ Renderer::Backend::~Backend() {
   for (std::optional<C3D_Tex> &texture : textures)
     if (texture)
       C3D_TexDelete(&*texture);
+  if (fontAtlas)
+    C3D_TexDelete(&*fontAtlas);
   for (LoadedMesh &mesh : meshes) {
     linearFree(mesh.vertices);
     linearFree(mesh.indices);
@@ -615,17 +644,32 @@ void Renderer::Backend::drawLineBatches(const C3D_Mtx &viewProjection, std::uint
   }
 }
 
+// The combiner for the overlay: each vertex's colour, its alpha times the
+// font atlas's (the letters' edges; 255 in its solid corner, the shapes')
+void Renderer::Backend::overlayColours() {
+  C3D_TexBind(0, &*fontAtlas);
+  C3D_TexEnv *stage = C3D_GetTexEnv(0);
+  C3D_TexEnvInit(stage);
+  C3D_TexEnvSrc(stage, C3D_RGB, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+  C3D_TexEnvFunc(stage, C3D_RGB, GPU_REPLACE);
+  C3D_TexEnvSrc(stage, C3D_Alpha, GPU_PRIMARY_COLOR, GPU_TEXTURE0, GPU_PRIMARY_COLOR);
+  C3D_TexEnvFunc(stage, C3D_Alpha, GPU_MODULATE);
+  C3D_TexEnvInit(C3D_GetTexEnv(1)); // (passed on)
+  C3D_TexEnvInit(C3D_GetTexEnv(2));
+}
+
 void Renderer::Backend::drawOverlay() {
-  if (!overlayVertices || !mayDraw())
+  if (!overlayVertices || !fontAtlas || !mayDraw())
     return;
   C3D_BindProgram(&overlayProgram);
   bound = &overlayProgram;
   C3D_SetAttrInfo(&overlayAttributes);
-  plainColours();
+  plainColours(); // (no fragment lighting)
+  overlayColours();
   C3D_CullFace(GPU_CULL_NONE);
   C3D_BufInfo buffers;
   BufInfo_Init(&buffers);
-  BufInfo_Add(&buffers, overlayVertices, sizeof(Overlay::Vertex), 2, 0x10);
+  BufInfo_Add(&buffers, overlayVertices, sizeof(TexturedVertex), 3, 0x210);
   C3D_SetBufInfo(&buffers);
   // Points, from the top-left, across the turned screen
   C3D_Mtx projection;
@@ -656,8 +700,8 @@ void Renderer::Backend::copyFrameVertices() {
     }
   }
   if (!overlayTriangles.empty()) {
-    const std::size_t bytes = overlayTriangles.size() * sizeof(Overlay::Vertex);
-    overlayVertices = static_cast<Overlay::Vertex *>(arena.take(bytes));
+    const std::size_t bytes = overlayTriangles.size() * sizeof(TexturedVertex);
+    overlayVertices = static_cast<TexturedVertex *>(arena.take(bytes));
     if (overlayVertices) {
       std::memcpy(overlayVertices, overlayTriangles.data(), bytes);
       GSPGPU_FlushDataCache(overlayVertices, bytes);
@@ -992,9 +1036,7 @@ void Renderer::endFrame() {
     overlay_.rectangle(x, y + 3, 1, 4, {255, 0, 255});
   }
   // The overlay's shapes, then its text over them, as triangles
-  b.overlayTriangles.assign(overlay_.triangles().begin(), overlay_.triangles().end());
-  for (const Overlay::Text &text : overlay_.texts())
-    appendTextTriangles(text, b.overlayTriangles);
+  overlayVertices(overlay_, b.overlayTriangles);
 
   // Each eye apart by the slider (a third of it, as devkitPro's examples
   // have it), or one with it down

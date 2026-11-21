@@ -4,8 +4,8 @@
 // lit by its four directional lights, and fogged by the hardware's fog;
 // translucent meshes kept to the end of the frame and drawn farthest first;
 // the overlay's shapes as 3D triangles in front of everything and its text
-// on the screen's 2D bitmap layer (stb_easy_font's letters). A debug build stops with a message if
-// a frame overflows the DS's polygon or vertex RAM.
+// on the screen's 2D bitmap layer (Silkscreen's letters). A debug build
+// stops with a message if a frame overflows the DS's polygon or vertex RAM.
 #include "Backend.hpp"
 #include "ToonTable.hpp"
 
@@ -374,20 +374,17 @@ void Renderer::Backend::drawOverlayText(const Overlay &overlay) {
       found = colours.end() - 1;
     }
     const auto entry = static_cast<std::uint8_t>(found - colours.begin() + 1);
-    // stb_easy_font's letters (OverlayText.hpp, as the 3DS and desktops
-    // draw them), each rectangle filled to whole pixels, at least
-    // one each way. Placed in 16.16 fixed point, three floats a text rather
-    // than a dozen a stroke (no floating point hardware here:
-    // the text took up to 40 ms a frame)
-    fontRectangles(text.text, textStrokes);
-    constexpr int kOne = 1 << 16;
-    const auto fixed = [](float value) { return static_cast<int>(std::lround(value * kOne)); };
-    const int left = fixed(text.x), top = fixed(text.y), scale = fixed(text.scale);
-    const auto pixel = [](int at) { return (at + kOne / 2) >> 16; }; // (rounded)
+    // Silkscreen's pixels (Font.hpp), each a square of whole pixels, placed
+    // in whole numbers: three floats a text rather than a dozen a stroke
+    // (no floating point hardware here: the text took up to 40 ms a frame)
+    const Font &font = Font::platform();
+    font.pixelRectangles(text.text, textStrokes);
+    const int size = font.pixelSize(text.scale);
+    const auto left = static_cast<int>(std::lround(text.x)),
+               top = static_cast<int>(std::lround(text.y));
     for (const FontRectangle &r : textStrokes) {
-      const int x0 = pixel(left + r.x * scale), y0 = pixel(top + r.y * scale);
-      const int x1 = std::max(x0 + 1, pixel(left + (r.x + r.width) * scale));
-      const int y1 = std::max(y0 + 1, pixel(top + (r.y + r.height) * scale));
+      const int x0 = left + r.x * size, y0 = top + r.y * size;
+      const int x1 = x0 + r.width * size, y1 = y0 + r.height * size;
       // (cut to the text's clip, and the layer)
       const int fromY = std::max({0, y0, static_cast<int>(std::ceil(text.clip.top))});
       const int toY = std::min({y1, kTextHeight, static_cast<int>(std::floor(text.clip.bottom))});
@@ -780,6 +777,6 @@ FrameCounts Renderer::lastFrame() const { return backend_->last; }
 
 FrameTimes Renderer::lastFrameTimes() const { return backend_->times; }
 
-// (Overlay::textWidth and lineHeight: stb_easy_font's, in OverlayText.cpp)
+// (Overlay::textWidth and lineHeight: Silkscreen's, in OverlayText.cpp)
 
 } // namespace ScratchPadd::Scene

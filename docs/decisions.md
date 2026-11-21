@@ -61,6 +61,9 @@ Every `Buttons` panel draws its buttons raised by default (`Style::bevel`): the 
 **Cosmic Hex's choosing screens' buttons are a Buttons panel** (2026-11-21)
 Back, Decline and the green go button keep their places and words, and their touches are still found from their boxes; the screens stay drawn from what they're given, the press passed in (`ChoiceScreens::Press`) and kept by `BottomScreen`. The go button has the D-pad's focus once it's ready, as A presses it. **Why:** they were drawn by hand, without the press glow and focus the other buttons have. **Not:** making the rows, cards and players buttons: they're things to choose from, chosen with an outline, and a press glow on them would mean nothing more.
 
+**A font for each kind of screen: Silkscreen on the DS, Orbitron elsewhere** (2026-11-21)
+The overlay and the Canvas write in `Font::platform()`: Silkscreen, a pixel font at its own 8 pixels drawn at whole multiples, on the DS; Orbitron (SemiBold), a smooth font baked at the 3DS's overlay scales into one alpha atlas, on the 3DS and desktops. One interface (`Font`: measure, lay out into pieces), each font's data its own kind: a pixel font's runs along its rows, filled as rectangles; a smooth font's atlas, drawn as textured quads (the shapes from its solid corner, so the overlay stays one draw). Their data is C++ written by `make_fonts.py` from the TTFs in `third_party/fonts`, committed. **Why:** the owner's choice of nicer letters at little cost. On the DS the text layer is filled by the CPU and its texture memory has about 16 KB spare, so its font needs no texture (2.2 KB of runs in main memory); the 3DS has the texture memory for a 128 KB atlas and smooth letters suit its screens. Orbitron at 9 pixels to the em keeps stb_easy_font's widths and 12-point lines, so layouts carried over. Silkscreen's letters are as wide as stb's at the same scale (its capitals 5 pixels where stb's were 7), and a scale between whole numbers draws the size below it, so no layout comes out wider (rounding 1.5 up put a card's name past its edges); the DS's banners and round number ask for 2. **Not:** one font everywhere (a smooth font on the DS would need texture memory it hasn't, or blending on the CPU in floating point it hasn't); baking the fonts at build time (a Python and Pillow dependency for every build); FreeType in the apps (a new dependency, and rasterising on a DS); Orbitron's regular weight (its strokes thin out at 9 pixels); a 4-bit atlas on the 3DS (half the memory, but more code for 64 KB it doesn't need). The title screen's 3D letters stay stb_easy_font's strokes, as boxes.
+
 **Views in the renderer, on every backend** (2026-11-20)
 `Renderer::beginView(camera, viewport)`: a camera drawn into part of the screen, on Metal, OpenGL, Vulkan, the DS and the 3DS, rather than desktop-only or a second renderer. **Why:** the user's pick, for the lab's side-by-side comparison, and one interface that fits every platform (split screen and picture-in-picture later). Views drawn over another share its depth for now.
 
@@ -106,7 +109,7 @@ flexmath's Q16.16 on the DS, with CORDIC and tables later for identical maths ev
 **The consoles' Makefiles take their sources from Bazel**
 The Makefiles stay (devkitPro's build), but their source lists are generated from the BUILD files. **Why:** one place lists a target's sources.
 
-**One font on every console**
+**One font on every console** (**superseded** by "A font for each kind of screen", 2026-11-21)
 stb_easy_font's letters as rectangles, drawn as triangles on desktops and the 3DS, and into the DS's text layer.
 
 **No textures, a Tron look**

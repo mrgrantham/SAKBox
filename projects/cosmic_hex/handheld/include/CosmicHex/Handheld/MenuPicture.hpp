@@ -1,7 +1,7 @@
 // MenuPicture.hpp - the start menu (StartMenu) drawn into pixels, for a
 // console's touch screen, as BoardPicture draws the board: each row's label,
 // its value between two arrow buttons, Play and Watch, the chosen row
-// outlined. Text is stb_easy_font's (OverlayText), filled in as pixels.
+// outlined. Text is the overlay's font (Font.hpp), drawn by its Canvas.
 //
 //   MenuPicture picture(320, 240);
 //   picture.draw(menu);

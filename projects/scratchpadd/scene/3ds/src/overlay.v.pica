@@ -1,6 +1,8 @@
 ; The overlay on the 3DS: its triangles' corners in screen points (x
 ; right, y down from the top-left) placed by an orthographic projection,
-; with their colours (bytes, 0-255)
+; with their colours (bytes, 0-255) and where they are in the font's atlas
+; (the letters, or its solid corner for shapes): its v from the top, the
+; GPU's t from the bottom (1 - v)
 
 .fvec projection[4]
 
@@ -9,9 +11,11 @@
 
 .out outpos position
 .out outclr color
+.out outtc0 texcoord0
 
 .in inpos v0
 .in inclr v1
+.in inatlas v2
 
 .proc main
 	mov r0, consts.xxwy
@@ -21,5 +25,8 @@
 	dp4 outpos.z, projection[2], r0
 	dp4 outpos.w, projection[3], r0
 	mul outclr, fromBytes, inclr
+	mov r1, inatlas
+	add r1.y, consts.y, -inatlas.y
+	mov outtc0, r1
 	end
 .end

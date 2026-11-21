@@ -31,6 +31,7 @@ cc_test(
     srcs = ["tests/Canvas_test.cpp"],
     deps = [
         ":canvas",
+        "//projects/scratchpadd/scene/overlay_text",
         "@gtest//:gtest_main",
     ],
 )

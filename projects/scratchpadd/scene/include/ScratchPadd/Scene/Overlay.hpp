@@ -1,9 +1,9 @@
 // Overlay.hpp - text, rectangles and lines drawn over a frame's 3D, in
 // screen points (top-left is 0, 0). It collects them during a frame, and
 // the renderer draws them at the end of it: the shapes as coloured
-// triangles, then the text over them in the backend's own font
-// (stb_easy_font's, built from small rectangles, on desktops; the DS's 2D
-// bitmap layer, in libnds' 8 x 8 font, on the DS).
+// triangles, then the text over them in the platform's font (Font.hpp, in
+// overlay_text: Silkscreen's pixels in the DS's 2D bitmap layer, Orbitron's
+// smooth letters on the 3DS and desktops).
 #pragma once
 
 #include <ScratchPadd/Scene/TextWrap.hpp>
@@ -42,12 +42,13 @@ public:
   void clipText(Clip clip) { clip_ = clip; }
 
   // `text` with its top-left at (x, y), `scale` times its usual size (on
-  // the DS, each glyph scaled to whole pixels). '\n' starts a new line.
+  // the DS, Silkscreen's pixels at the nearest whole multiple). '\n' starts
+  // a new line.
   void text(float x, float y, std::string_view text, Colour colour, float scale = 1) {
     texts_.push_back({x, y, std::string(text), colour, scale, clip_});
   }
   // How wide `text`'s widest line is drawn, in points, at `scale`, and how
-  // tall a line is: the backend's font (each backend defines them)
+  // tall a line is: the platform's font (overlay_text defines them)
   static float textWidth(std::string_view text, float scale = 1);
   static float lineHeight(float scale = 1);
   // Where a text's letters' own pixels are, from its top left, at `scale`:

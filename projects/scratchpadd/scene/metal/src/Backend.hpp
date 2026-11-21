@@ -7,6 +7,7 @@
 #include <ScratchPadd/Scene/Culling.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
 #include <ScratchPadd/Scene/OutlineHull.hpp>
+#include <ScratchPadd/Scene/OverlayText.hpp>
 #include <ScratchPadd/Scene/Primitives.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
@@ -76,10 +77,11 @@ struct Renderer::Backend {
   std::vector<LoadedMesh> meshes;       // by Mesh::id - 1; unloaded ones have no vertices
   std::vector<MTL::Texture *> textures; // by Texture::id - 1; unloaded ones are null
   MTL::Texture *blank = nullptr;        // 1 x 1 white, for materials without one
+  MTL::Texture *fontAtlas = nullptr;    // the overlay font's letters (Font::atlas)
   std::vector<Later> later;
-  FrameCounts counting, last;                    // this frame's so far; the last one's
-  std::optional<TextureMemory> textureBudget;    // (Renderer::setTextureBudget)
-  std::vector<Overlay::Vertex> overlayTriangles; // reused each frame
+  FrameCounts counting, last;                   // this frame's so far; the last one's
+  std::optional<TextureMemory> textureBudget;   // (Renderer::setTextureBudget)
+  std::vector<TexturedVertex> overlayTriangles; // reused each frame
 
   // This frame's
   MTL::CommandBuffer *commands = nullptr; // the last one's, until this one begins

@@ -203,7 +203,7 @@ void ScreenPadd::drawBand(Scene::Overlay &overlay, const ScratchPadd::Banner::Lo
                              .screenHeight = static_cast<float>(kStageHeight),
                              .scale = kStageScale,
                              .accent = Palette::kAccent,
-                             .titleScale = kStageWidth >= 400 ? 2.0f : 1.5f});
+                             .titleScale = 2.0f});
 }
 
 // Your moves, under the scores: a window of the list round the cursor,

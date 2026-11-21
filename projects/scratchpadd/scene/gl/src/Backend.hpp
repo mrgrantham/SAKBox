@@ -7,6 +7,7 @@
 #include <ScratchPadd/Scene/Culling.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
 #include <ScratchPadd/Scene/OutlineHull.hpp>
+#include <ScratchPadd/Scene/OverlayText.hpp>
 #include <ScratchPadd/Scene/Primitives.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
@@ -73,9 +74,9 @@ struct Renderer::Backend {
   std::vector<LoadedMesh> meshes; // by Mesh::id - 1; unloaded ones have vao 0
   std::vector<GLuint> textures;   // by Texture::id - 1; unloaded ones are 0
   std::vector<Later> later;
-  FrameCounts counting, last;                    // this frame's so far; the last one's
-  std::optional<TextureMemory> textureBudget;    // (Renderer::setTextureBudget)
-  std::vector<Overlay::Vertex> overlayTriangles; // reused each frame
+  FrameCounts counting, last;                   // this frame's so far; the last one's
+  std::optional<TextureMemory> textureBudget;   // (Renderer::setTextureBudget)
+  std::vector<TexturedVertex> overlayTriangles; // reused each frame
 
   GLuint program = 0;
   struct {
@@ -85,7 +86,10 @@ struct Renderer::Backend {
   } uniform{};
   GLuint lineVao = 0, lineVbo = 0;
   GLuint overlayProgram = 0, overlayVao = 0, overlayVbo = 0;
-  GLint overlayScreen = -1;
+  GLint overlayScreen = -1, overlayAtlas = -1;
+  // The overlay font's letters (Font::atlas), made once
+  GLuint fontAtlas = 0;
+  void makeFontAtlas();
 
   Environment environment; // this frame's (toon bands, outlines)
   Camera camera;           // this frame's (the edge pass's distances)

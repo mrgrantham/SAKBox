@@ -6,6 +6,7 @@
 #include <ScratchPadd/Scene/3DS/Display.hpp>
 #include <ScratchPadd/Scene/Culling.hpp>
 #include <ScratchPadd/Scene/OutlineHull.hpp>
+#include <ScratchPadd/Scene/OverlayText.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
 #include <citro3d.h>
@@ -105,6 +106,7 @@ struct Renderer::Backend {
   // The combiner passing each vertex's colour through, without fragment
   // lighting (every draw but useToon's)
   void plainColours();
+  void overlayColours();
   void drawWireframe(LoadedMesh &mesh, const C3D_Mtx &mvp, const Material &material);
   void drawLineBatches(const C3D_Mtx &viewProjection, std::uint8_t view);
   void drawLineVertices(const LineVertex *vertices, int count, const C3D_Mtx &mvp,
@@ -163,10 +165,12 @@ struct Renderer::Backend {
   std::vector<Draw> solid, later;
   std::vector<Vector3> lineEnds;
   std::vector<Lines> lines;
-  std::vector<Overlay::Vertex> overlayTriangles;
+  std::vector<TexturedVertex> overlayTriangles;
   Arena arena;
-  LineVertex *lineVertices = nullptr;         // in the arena: lineEnds, as lines
-  Overlay::Vertex *overlayVertices = nullptr; // in the arena
+  LineVertex *lineVertices = nullptr;        // in the arena: lineEnds, as lines
+  TexturedVertex *overlayVertices = nullptr; // in the arena
+  // The overlay font's letters (Font::atlas: 128 KB of alpha for Orbitron)
+  std::optional<C3D_Tex> fontAtlas;
   C3D_FogLut fog;
   FrameCounts counting, last;
   FrameTimes times;

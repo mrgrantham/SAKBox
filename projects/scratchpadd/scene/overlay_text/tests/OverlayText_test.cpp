@@ -1,141 +1,129 @@
-// The overlay's text on desktops (stb_easy_font), without a window
+// The overlay as the GPU backends draw it, in the platform's font (on
+// desktops, Orbitron), without a window
 #include <ScratchPadd/Scene/OverlayText.hpp>
-#include <stb/stb_easy_font.h>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <cmath>
-#include <string>
+#include <limits>
 #include <vector>
 
 using namespace ScratchPadd::Scene;
 
-// Text becomes coloured triangles where it was put, scaled, within the
-// width and line height the backend gives
-TEST(OverlayTextTest, TextBecomesTrianglesWhereItWasPut) {
-  std::vector<Overlay::Vertex> triangles;
-  appendTextTriangles({100, 50, "Hi", Colour{255, 0, 0}, 2}, triangles);
-  ASSERT_FALSE(triangles.empty());
-  EXPECT_EQ(triangles.size() % 3, 0u);
-  float right = 0, bottom = 0;
-  for (const Overlay::Vertex &v : triangles) {
-    EXPECT_GE(v.x, 100);
-    EXPECT_GE(v.y, 50);
-    right = std::max(right, v.x);
-    bottom = std::max(bottom, v.y);
+namespace {
+// The atlas's alpha at texture coordinates (u, v)
+int alphaAt(const FontAtlas &atlas, float u, float v) {
+  const int x = std::min(atlas.width - 1, static_cast<int>(u * static_cast<float>(atlas.width)));
+  const int y = std::min(atlas.height - 1, static_cast<int>(v * static_cast<float>(atlas.height)));
+  return atlas.alpha[static_cast<std::size_t>(y) * static_cast<std::size_t>(atlas.width) +
+                     static_cast<std::size_t>(x)];
+}
+
+struct Bounds {
+  float left = std::numeric_limits<float>::max(), top = left;
+  float right = std::numeric_limits<float>::lowest(), bottom = right;
+};
+Bounds boundsOf(const std::vector<TexturedVertex> &vertices) {
+  Bounds b;
+  for (const TexturedVertex &v : vertices) {
+    b.left = std::min(b.left, v.x);
+    b.top = std::min(b.top, v.y);
+    b.right = std::max(b.right, v.x);
+    b.bottom = std::max(b.bottom, v.y);
+  }
+  return b;
+}
+} // namespace
+
+// The overlay measures in the platform's font: Orbitron, off the DS
+TEST(OverlayTextTest, MeasuresInThePlatformsFont) {
+  EXPECT_EQ(&Font::platform(), &Font::orbitron());
+  EXPECT_FLOAT_EQ(Overlay::textWidth("Build", 2), Font::orbitron().width("Build", 2));
+  EXPECT_FLOAT_EQ(Overlay::lineHeight(1.5f), Font::orbitron().lineHeight(1.5f));
+  EXPECT_FLOAT_EQ(Overlay::inkOf("7", 3).height, Font::orbitron().ink("7", 3).height);
+}
+
+// Shapes come first, drawn from the atlas's solid corner; then the text's
+// letters, coloured, from their pictures
+TEST(OverlayTextTest, ShapesThenLetters) {
+  Overlay overlay;
+  overlay.rectangle(0, 0, 10, 10, {0, 0, 255});
+  overlay.text(100, 50, "Hi", Colour{255, 0, 0}, 2);
+  std::vector<TexturedVertex> vertices;
+  overlayVertices(overlay, vertices);
+  ASSERT_GT(vertices.size(), 6u);
+  EXPECT_EQ(vertices.size() % 3, 0u);
+  const FontAtlas atlas = Font::platform().atlas();
+  for (std::size_t i = 0; i < 6; ++i) {
+    EXPECT_EQ(vertices[i].colour, (Colour{0, 0, 255}));
+    EXPECT_EQ(alphaAt(atlas, vertices[i].u, vertices[i].v), 255);
+  }
+  const std::vector<TexturedVertex> letters(vertices.begin() + 6, vertices.end());
+  for (const TexturedVertex &v : letters)
     EXPECT_EQ(v.colour, (Colour{255, 0, 0}));
+  // ...where the text was put, within its width and line height
+  const Bounds b = boundsOf(letters);
+  EXPECT_GE(b.left, 100);
+  EXPECT_GE(b.top, 50);
+  EXPECT_LE(b.right, 100 + Overlay::textWidth("Hi", 2) + 1);
+  EXPECT_LE(b.bottom, 50 + Overlay::lineHeight(2) + 1);
+}
+
+// A text's letters on whole points, wherever it was put (a picture between
+// pixels is blurred)
+TEST(OverlayTextTest, LettersOnWholePoints) {
+  Overlay overlay;
+  overlay.text(10.4f, 20.6f, "Fuel", Colour{255, 255, 255});
+  std::vector<TexturedVertex> vertices;
+  overlayVertices(overlay, vertices);
+  ASSERT_FALSE(vertices.empty());
+  for (std::size_t i = 0; i < vertices.size(); i += 6) {
+    EXPECT_FLOAT_EQ(vertices[i].x, std::round(vertices[i].x));
+    EXPECT_FLOAT_EQ(vertices[i].y, std::round(vertices[i].y));
   }
-  EXPECT_LE(right, 100 + Overlay::textWidth("Hi", 2));
-  EXPECT_LE(bottom, 50 + Overlay::lineHeight(2));
-  EXPECT_FLOAT_EQ(Overlay::textWidth("Hi", 2), 2 * Overlay::textWidth("Hi"));
-  EXPECT_GT(Overlay::textWidth("Hello"), Overlay::textWidth("Hi"));
-  EXPECT_FLOAT_EQ(Overlay::lineHeight(2), 2 * Overlay::lineHeight());
 }
 
-// A short text of the busiest letters keeps every stroke: each letter's
-// quads (two triangles each) are as many alone as in a longer text. (The
-// buffer was once sized by stb_easy_font's average, and "Rock" lost its k's
-// upright.)
-TEST(OverlayTextTest, BusyLettersKeepEveryStroke) {
-  const auto triangleCount = [](const std::string &text) {
-    std::vector<Overlay::Vertex> triangles;
-    appendTextTriangles({0, 0, text, Colour{}, 1}, triangles);
-    return triangles.size() / 3;
-  };
-  for (const char *letter : {"X", "k", "W", "M", "#", "@"})
-    EXPECT_EQ(triangleCount(std::string(4, letter[0])), 4 * triangleCount(letter)) << letter;
-  EXPECT_EQ(triangleCount("Rock"), 19u * 2);
-}
-
-// The letters as rectangles (what the DS fills into its text layer): on
-// whole points at scale 1, placed where the text was put, within its width
-// and line height, and the same rectangles the triangles are made of
-TEST(OverlayTextTest, LettersAreRectanglesOnWholePoints) {
-  const Overlay::Text text{10, 20, "Fuel", Colour{255, 255, 255}, 1};
-  const std::vector<TextRectangle> rectangles = textRectangles(text);
-  ASSERT_FALSE(rectangles.empty());
-  for (const TextRectangle &r : rectangles) {
-    EXPECT_EQ(r.x, std::floor(r.x));
-    EXPECT_EQ(r.y, std::floor(r.y));
-    EXPECT_GT(r.width, 0);
-    EXPECT_GT(r.height, 0);
-    EXPECT_GE(r.x, 10);
-    EXPECT_GE(r.y, 20);
-    EXPECT_LE(r.x + r.width, 10 + Overlay::textWidth("Fuel"));
-    EXPECT_LE(r.y + r.height, 20 + Overlay::lineHeight());
-  }
-  std::vector<Overlay::Vertex> triangles;
-  appendTextTriangles(text, triangles);
-  EXPECT_EQ(triangles.size(), rectangles.size() * 6);
-  // A new line starts a line height lower
-  const auto two = textRectangles({0, 0, "a\na", Colour{}, 1});
-  const auto lowest = std::ranges::max(two, {}, &TextRectangle::y);
-  EXPECT_GE(lowest.y, Overlay::lineHeight());
-}
-
-// A text's ink (its letters' own pixels) sits inside its width and line
-// height; centring by it puts the letters' middle where it was asked
+// Centring by the ink puts the letters' middle where it was asked
 // (centring by the width left numbers off centre)
 TEST(OverlayTextTest, CentredByItsInk) {
-  const Overlay::Ink ink = Overlay::inkOf("7", 3);
-  EXPECT_GT(ink.width, 0);
-  EXPECT_GT(ink.height, 0);
-  EXPECT_LE(ink.left + ink.width, Overlay::textWidth("7", 3));
-  EXPECT_LE(ink.top + ink.height, Overlay::lineHeight(3));
   Overlay overlay;
   overlay.textCentred(100, 50, "7", Colour{255, 255, 255}, 3);
-  float left = 1e9f, right = -1e9f, top = 1e9f, bottom = -1e9f;
-  for (const TextRectangle &r : textRectangles(overlay.texts().at(0))) {
-    left = std::min(left, r.x);
-    right = std::max(right, r.x + r.width);
-    top = std::min(top, r.y);
-    bottom = std::max(bottom, r.y + r.height);
-  }
-  EXPECT_FLOAT_EQ((left + right) / 2, 100);
-  EXPECT_FLOAT_EQ((top + bottom) / 2, 50);
-  EXPECT_EQ(Overlay::inkOf("").width, 0);
+  std::vector<TexturedVertex> vertices;
+  overlayVertices(overlay, vertices);
+  const Bounds b = boundsOf(vertices);
+  EXPECT_NEAR((b.left + b.right) / 2, 100, 0.5f);
+  EXPECT_NEAR((b.top + b.bottom) / 2, 50, 0.5f);
 }
 
-// The whole-number walk (fontRectangles) makes exactly what
-// stb_easy_font_print does, for every character it has, over two lines
-TEST(OverlayTextTest, FontRectanglesMatchStbEasyFont) {
-  std::string all;
-  for (char c = ' '; c <= '~'; ++c)
-    all += c;
-  all += "\nRock 12 + 7";
-  std::vector<ScratchPadd::Scene::FontRectangle> ours;
-  ScratchPadd::Scene::fontRectangles(all, ours);
-  struct Vertex {
-    float x, y, z;
-    unsigned char colour[4];
-  };
-  std::vector<Vertex> quads(all.size() * 11 * 4);
-  std::string copy = all;
-  const int count = stb_easy_font_print(0, 0, copy.data(), nullptr, quads.data(),
-                                        static_cast<int>(quads.size() * sizeof(Vertex)));
-  ASSERT_EQ(static_cast<int>(ours.size()), count);
-  for (int q = 0; q < count; ++q) {
-    const Vertex *corner = &quads[static_cast<std::size_t>(q) * 4];
-    const auto &r = ours[static_cast<std::size_t>(q)];
-    EXPECT_EQ(r.x, corner[0].x) << q;
-    EXPECT_EQ(r.y, corner[0].y) << q;
-    EXPECT_EQ(r.width, corner[2].x - corner[0].x) << q;
-    EXPECT_EQ(r.height, corner[2].y - corner[0].y) << q;
-  }
-}
-
-// Clipped text: strokes cut to the clip, those outside it gone
+// Clipped text: letters cut to the clip, their pictures cut with them,
+// those outside it gone
 TEST(OverlayTextTest, ClippedTextIsCut) {
   Overlay overlay;
   overlay.clipText({.left = 0, .top = 0, .right = 100, .bottom = 4});
   overlay.text(10, 0, "8", {255, 255, 255}, 1);
+  overlay.clipText({.left = 0, .top = 100, .right = 100, .bottom = 200});
+  overlay.text(10, 0, "8", {255, 255, 255}, 1);
   overlay.clipText({});
   overlay.text(10, 0, "8", {255, 255, 255}, 1);
-  std::vector<Overlay::Vertex> clipped, whole;
-  appendTextTriangles(overlay.texts().at(0), clipped);
-  appendTextTriangles(overlay.texts().at(1), whole);
-  EXPECT_LT(clipped.size(), whole.size());
-  for (const Overlay::Vertex &v : clipped)
-    EXPECT_LE(v.y, 4);
+  std::vector<TexturedVertex> vertices;
+  overlayVertices(overlay, vertices);
+  ASSERT_EQ(vertices.size(), 12u); // (the clipped 8, the whole one; not the hidden one)
+  const TexturedVertex &cutTop = vertices[0], &cutBottom = vertices[2];
+  const TexturedVertex &top = vertices[6], &bottom = vertices[8];
+  EXPECT_LE(cutBottom.y, 4);
+  EXPECT_FLOAT_EQ(cutTop.v, top.v);
+  EXPECT_LT(cutBottom.v, bottom.v);
+  EXPECT_FLOAT_EQ((cutBottom.v - top.v) / (bottom.v - top.v),
+                  (cutBottom.y - top.y) / (bottom.y - top.y));
+}
+
+// The atlas as RGBA: white, its alpha
+TEST(OverlayTextTest, AtlasPixelsAreWhite) {
+  const FontAtlas atlas = Font::platform().atlas();
+  const std::vector<Colour> pixels = atlasPixels(atlas);
+  ASSERT_EQ(pixels.size(), atlas.alpha.size());
+  EXPECT_EQ(pixels[0], (Colour{255, 255, 255, 255}));
+  for (std::size_t i = 0; i < pixels.size(); i += 997)
+    EXPECT_EQ(pixels[i].a, atlas.alpha[i]);
 }

@@ -7,6 +7,7 @@
 #include <ScratchPadd/Scene/Culling.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
 #include <ScratchPadd/Scene/OutlineHull.hpp>
+#include <ScratchPadd/Scene/OverlayText.hpp>
 #include <ScratchPadd/Scene/Primitives.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
@@ -127,12 +128,13 @@ struct Renderer::Backend {
   };
   std::vector<KeptPixels> kept;
   LoadedTexture blank;
+  LoadedTexture fontAtlas;           // the overlay font's letters (Font::atlas)
   Vulkan::Buffer frameUniformBuffer; // each view's FrameUniforms, written each frame
   std::vector<LoadedMesh> meshes;    // by Mesh::id - 1; unloaded ones have no vertices
   std::vector<Later> later;
-  FrameCounts counting, last;                    // this frame's so far; the last one's
-  std::optional<TextureMemory> textureBudget;    // (Renderer::setTextureBudget)
-  std::vector<Overlay::Vertex> overlayTriangles; // reused each frame
+  FrameCounts counting, last;                   // this frame's so far; the last one's
+  std::optional<TextureMemory> textureBudget;   // (Renderer::setTextureBudget)
+  std::vector<TexturedVertex> overlayTriangles; // reused each frame
   // frameBytes' buffers, reused each frame (the last ones filled so far)
   std::vector<Vulkan::Buffer> frameBuffers;
   std::size_t frameBufferAt = 0;

@@ -19,6 +19,12 @@
 
 namespace ScratchPadd {
 
+namespace Scene {
+class Font;
+struct FontAtlas;
+struct TextPiece;
+} // namespace Scene
+
 class Canvas {
 public:
   using Colour = ScratchPadd::Scene::Colour;
@@ -49,18 +55,27 @@ public:
   void blendRect(float x, float y, float w, float h, Colour colour, float opacity);
   void outline(float x, float y, float w, float h, Colour colour, float thickness = 1);
   // Words from their top left, or with their letters' pixels centred on
-  // (x, y); `scale` as the overlay's
+  // (x, y), in the overlay's font (Font::platform: Silkscreen's pixels on
+  // the DS, Orbitron's smooth letters elsewhere); `scale` as the overlay's
   void text(float x, float y, std::string_view words, Colour colour, float scale = 1);
   void textCentred(float x, float y, std::string_view words, Colour colour, float scale = 1);
+  // Words in another font from now on (a test on a desktop drawing what a
+  // DS shows, in Silkscreen)
+  void useFont(const Scene::Font &font) { font_ = &font; }
   // `sprite` (RGBA, `w` x `h`, rows from the top) over the picture, its
   // top left at (x, y), by its alpha; `opacity` dims it (0 to 1)
   void blend(const std::vector<Colour> &sprite, int w, int h, int x, int y, float opacity = 1);
 
 private:
   Canvas() = default;
+  // A smooth font's letter blended in by its alpha, the text's top left at
+  // (x, y)
+  void blendLetter(const Scene::FontAtlas &atlas, const Scene::TextPiece &piece, float x, float y,
+                   Colour colour);
   int width_ = 0, height_ = 0;
-  std::vector<Colour> owned_; // (empty when drawing over another's)
-  std::span<Colour> pixels_;  // what's drawn on: owned_'s, or another's
+  std::vector<Colour> owned_;         // (empty when drawing over another's)
+  std::span<Colour> pixels_;          // what's drawn on: owned_'s, or another's
+  const Scene::Font *font_ = nullptr; // (Font::platform, unless useFont)
 };
 
 } // namespace ScratchPadd

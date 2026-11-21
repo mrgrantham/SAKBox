@@ -1,7 +1,9 @@
 #include <ScratchPadd/Canvas/Canvas.hpp>
+#include <ScratchPadd/Scene/Font.hpp>
 
 #include <gtest/gtest.h>
 
+#include <string>
 #include <vector>
 
 using ScratchPadd::Canvas;
@@ -29,20 +31,63 @@ TEST(CanvasTest, RectanglesFillTheirPixels) {
   EXPECT_EQ(count(canvas, kRed), 24);
 }
 
-// Words draw some pixels, centred words about their middle
+// Words draw some pixels (in Orbitron, many part of the way), centred words
+// about their middle
 TEST(CanvasTest, WordsAreDrawnAndCentred) {
   Canvas canvas(64, 32);
   canvas.clear(kBlack);
   canvas.textCentred(32, 16, "HEX", kRed);
-  EXPECT_GT(count(canvas, kRed), 10);
+  EXPECT_GT(64 * 32 - count(canvas, kBlack), 10);
   int left = 64, right = 0;
   for (int y = 0; y < 32; ++y)
     for (int x = 0; x < 64; ++x)
-      if (canvas.at(x, y) == kRed) {
+      if (canvas.at(x, y) != kBlack) {
         left = std::min(left, x);
         right = std::max(right, x);
       }
   EXPECT_NEAR((left + right) / 2.0, 32, 1.5);
+}
+
+// In Silkscreen (the DS's), words are its own pixels: an H at scale 1 is
+// its two uprights and its bar; at scale 2 each pixel is 2 x 2
+TEST(CanvasTest, SilkscreenWordsAreItsPixels) {
+  Canvas canvas(16, 16);
+  canvas.useFont(ScratchPadd::Scene::Font::silkscreen());
+  canvas.clear(kBlack);
+  canvas.text(0, 0, "H", kRed);
+  std::string drawn;
+  for (int y = 0; y < 7; ++y) {
+    for (int x = 0; x < 6; ++x)
+      drawn += canvas.at(x, y) == kRed ? '#' : '.';
+    drawn += '\n';
+  }
+  EXPECT_EQ(drawn, "......\n"
+                   ".#..#.\n"
+                   ".#..#.\n"
+                   ".####.\n"
+                   ".#..#.\n"
+                   ".#..#.\n"
+                   "......\n");
+  canvas.clear(kBlack);
+  canvas.text(0, 0, "H", kRed, 2);
+  EXPECT_EQ(count(canvas, kRed), 4 * 12);
+  EXPECT_EQ(canvas.at(2, 2), kRed);
+  EXPECT_EQ(canvas.at(3, 3), kRed);
+}
+
+// In Orbitron (elsewhere), words are smooth: their letters' edges blended
+// part of the way, their middles the words' colour
+TEST(CanvasTest, OrbitronWordsAreSmooth) {
+  Canvas canvas(64, 32);
+  canvas.clear(kBlack);
+  canvas.text(4, 4, "HEX", kRed, 1.25f);
+  int whole = 0, part = 0;
+  for (const Canvas::Colour &c : canvas.pixels()) {
+    whole += c == kRed;
+    part += c != kRed && c != kBlack;
+  }
+  EXPECT_GT(whole, 20);
+  EXPECT_GT(part, 0);
 }
 
 // Drawing over another picture's pixels changes them, not a copy

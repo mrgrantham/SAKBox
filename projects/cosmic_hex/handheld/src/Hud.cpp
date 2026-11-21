@@ -63,8 +63,7 @@ void corners(const TopFrame &f, const State &state, const HudLook &look) {
   };
   const float rx = 22 * k, ry = 19 * k;
   hexagonEdge(rx, ry, 13 * k, Palette::kAccent);
-  overlay.textCentred(rx, ry, std::to_string(state.round), Palette::kWords,
-                      f.width >= 400 ? 2.0f : 1.5f);
+  overlay.textCentred(rx, ry, std::to_string(state.round), Palette::kWords, 2.0f);
   overlay.textCentred(rx, ry + 20 * k, "ROUND", Palette::kDimWords);
   const int whose = look.badgesOf;
   const int badges = whose >= 0 && whose < state.players

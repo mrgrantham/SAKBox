@@ -188,18 +188,25 @@ const char *kOverlayVertex = R"(#version 450
 layout(push_constant) uniform Screen { vec2 size; } screen; // in points
 layout(location = 0) in vec2 point;
 layout(location = 1) in vec4 colour;
+layout(location = 2) in vec2 atlas;
 layout(location = 0) out vec4 vColour;
+layout(location = 1) out vec2 vAtlas;
 void main() {
   gl_Position = vec4(point.x / screen.size.x * 2.0 - 1.0, 1.0 - point.y / screen.size.y * 2.0,
                      0.0, 1.0);
   vColour = colour;
+  vAtlas = atlas;
 }
 )";
 
+// The colour times the font atlas's alpha (its top level: the letters were
+// baked near the size they're drawn)
 const char *kOverlayFragment = R"(#version 450
+layout(set = 0, binding = 0) uniform sampler2D fontAtlas;
 layout(location = 0) in vec4 vColour;
+layout(location = 1) in vec2 vAtlas;
 layout(location = 0) out vec4 outColour;
-void main() { outColour = vColour; }
+void main() { outColour = vColour * textureLod(fontAtlas, vAtlas, 0.0); }
 )";
 
 // The shaders' Draw
@@ -370,8 +377,11 @@ Renderer::Backend::Backend(Display &display)
                                          .pushConstantRangeCount = 1,
                                          .pPushConstantRanges = &drawRange};
   vkCreatePipelineLayout(device(), &scene, nullptr, &sceneLayout);
+  // The overlay's: the screen's size pushed, the font's atlas as set 0
   const VkPushConstantRange screenRange{VK_SHADER_STAGE_VERTEX_BIT, 0, 2 * sizeof(float)};
   const VkPipelineLayoutCreateInfo overlay{.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+                                           .setLayoutCount = 1,
+                                           .pSetLayouts = &textureLayout,
                                            .pushConstantRangeCount = 1,
                                            .pPushConstantRanges = &screenRange};
   vkCreatePipelineLayout(device(), &overlay, nullptr, &overlayLayout);
@@ -403,14 +413,14 @@ Renderer::Backend::Backend(Display &display)
                                      .pBufferInfo = &bufferInfo};
     vkUpdateDescriptorSets(device(), 1, &write, 0, nullptr);
   }
-  // Textures' sets (one each, kMostTextures at most), their sampler, and
-  // the blank one for materials without a texture
+  // Textures' sets (one each, kMostTextures at most), their sampler, the
+  // blank one for materials without a texture, and the overlay font's
   const VkDescriptorPoolSize texturePoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                             kMostTextures + 1};
+                                             kMostTextures + 2};
   const VkDescriptorPoolCreateInfo texturePoolInfo{
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
       .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-      .maxSets = kMostTextures + 1,
+      .maxSets = kMostTextures + 2,
       .poolSizeCount = 1,
       .pPoolSizes = &texturePoolSize};
   vkCreateDescriptorPool(device(), &texturePoolInfo, nullptr, &texturePool);
@@ -426,6 +436,8 @@ Renderer::Backend::Backend(Display &display)
   if (Vulkan::context()) {
     const Colour white;
     blank = makeLoadedTexture(1, 1, &white);
+    const FontAtlas atlas = Font::platform().atlas();
+    fontAtlas = makeLoadedTexture(atlas.width, atlas.height, atlasPixels(atlas).data());
   }
 
   if (!sceneVertex || !sceneFragment || !overlayVertex || !overlayFragment)
@@ -443,14 +455,15 @@ Renderer::Backend::Backend(Display &display)
   makeEdgePipeline();
 
   static const VkVertexInputAttributeDescription kOverlayAttributes[] = {
-      {0, 0, VK_FORMAT_R32G32_SFLOAT, static_cast<std::uint32_t>(offsetof(Overlay::Vertex, x))},
+      {0, 0, VK_FORMAT_R32G32_SFLOAT, static_cast<std::uint32_t>(offsetof(TexturedVertex, x))},
       {1, 0, VK_FORMAT_R8G8B8A8_UNORM,
-       static_cast<std::uint32_t>(offsetof(Overlay::Vertex, colour))}};
+       static_cast<std::uint32_t>(offsetof(TexturedVertex, colour))},
+      {2, 0, VK_FORMAT_R32G32_SFLOAT, static_cast<std::uint32_t>(offsetof(TexturedVertex, u))}};
   overlayPipeline = Vulkan::makePipeline({.layout = overlayLayout,
                                           .vertex = overlayVertex,
                                           .fragment = overlayFragment,
                                           .attributes = kOverlayAttributes,
-                                          .stride = sizeof(Overlay::Vertex),
+                                          .stride = sizeof(TexturedVertex),
                                           .blend = true,
                                           .depthTest = false,
                                           .depthWrite = false,
@@ -493,6 +506,7 @@ Renderer::Backend::~Backend() {
   for (LoadedTexture &texture : textures)
     Vulkan::destroy(texture.image);
   Vulkan::destroy(blank.image);
+  Vulkan::destroy(fontAtlas.image);
   if (texturePool)
     vkDestroyDescriptorPool(device(), texturePool, nullptr);
   if (textureSampler)
@@ -734,19 +748,19 @@ void Renderer::Backend::drawEdges() {
 
 void Renderer::Backend::drawOverlay(const Overlay &overlay) {
   // The shapes, then the text over them
-  overlayTriangles.assign(overlay.triangles().begin(), overlay.triangles().end());
-  for (const Overlay::Text &text : overlay.texts())
-    appendTextTriangles(text, overlayTriangles);
-  if (overlayTriangles.empty() || !overlayPipeline)
+  overlayVertices(overlay, overlayTriangles);
+  if (overlayTriangles.empty() || !overlayPipeline || !fontAtlas.set)
     return;
   VkCommandBuffer commands = surface.commands;
   vkCmdBindPipeline(commands, VK_PIPELINE_BIND_POINT_GRAPHICS, overlayPipeline);
+  vkCmdBindDescriptorSets(commands, VK_PIPELINE_BIND_POINT_GRAPHICS, overlayLayout, 0, 1,
+                          &fontAtlas.set, 0, nullptr);
   const float screen[2] = {static_cast<float>(display.width()),
                            static_cast<float>(display.height())};
   vkCmdPushConstants(commands, overlayLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(screen),
                      screen);
   const Slice slice =
-      frameBytes(overlayTriangles.data(), overlayTriangles.size() * sizeof(Overlay::Vertex));
+      frameBytes(overlayTriangles.data(), overlayTriangles.size() * sizeof(TexturedVertex));
   vkCmdBindVertexBuffers(commands, 0, 1, &slice.buffer, &slice.offset);
   vkCmdDraw(commands, static_cast<std::uint32_t>(overlayTriangles.size()), 1, 0, 0);
 }

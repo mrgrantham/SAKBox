@@ -160,18 +160,25 @@ void main() {
 const char *kOverlayVertexShader = R"(#version 330 core
 layout(location = 0) in vec2 aPoint;
 layout(location = 1) in vec4 aColour;
+layout(location = 2) in vec2 aAtlas;
 uniform vec2 uScreen; // points
 out vec4 vColour;
+out vec2 vAtlas;
 void main() {
   gl_Position = vec4(aPoint.x / uScreen.x * 2.0 - 1.0, 1.0 - aPoint.y / uScreen.y * 2.0, 0.0, 1.0);
   vColour = aColour;
+  vAtlas = aAtlas;
 }
 )";
 
+// The colour times the font atlas's alpha (its top level: the letters were
+// baked near the size they're drawn)
 const char *kOverlayFragmentShader = R"(#version 330 core
 in vec4 vColour;
+in vec2 vAtlas;
+uniform sampler2D uAtlas;
 out vec4 fragmentColour;
-void main() { fragmentColour = vColour; }
+void main() { fragmentColour = vColour * textureLod(uAtlas, vAtlas, 0.0); }
 )";
 
 GLuint compileShader(GLenum type, const char *source, std::string &log) {
@@ -262,18 +269,39 @@ Renderer::Backend::Backend(Display &display) : display(display) {
 
   overlayProgram = linkProgram(kOverlayVertexShader, kOverlayFragmentShader);
   overlayScreen = glGetUniformLocation(overlayProgram, "uScreen");
+  overlayAtlas = glGetUniformLocation(overlayProgram, "uAtlas");
   glGenVertexArrays(1, &overlayVao);
   glGenBuffers(1, &overlayVbo);
   glBindVertexArray(overlayVao);
   glBindBuffer(GL_ARRAY_BUFFER, overlayVbo);
-  const auto stride = static_cast<GLsizei>(sizeof(Overlay::Vertex));
+  const auto stride = static_cast<GLsizei>(sizeof(TexturedVertex));
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride,
-                        reinterpret_cast<void *>(offsetof(Overlay::Vertex, x)));
+                        reinterpret_cast<void *>(offsetof(TexturedVertex, x)));
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, stride,
-                        reinterpret_cast<void *>(offsetof(Overlay::Vertex, colour)));
+                        reinterpret_cast<void *>(offsetof(TexturedVertex, colour)));
   glEnableVertexAttribArray(1);
+  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride,
+                        reinterpret_cast<void *>(offsetof(TexturedVertex, u)));
+  glEnableVertexAttribArray(2);
   glBindVertexArray(0);
+  makeFontAtlas();
+}
+
+// The overlay font's atlas as a texture (white, its alpha), read smoothly
+void Renderer::Backend::makeFontAtlas() {
+  const FontAtlas atlas = Font::platform().atlas();
+  const std::vector<Colour> pixels = atlasPixels(atlas);
+  glGenTextures(1, &fontAtlas);
+  glBindTexture(GL_TEXTURE_2D, fontAtlas);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, atlas.width, atlas.height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+               pixels.data());
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 Renderer::Backend::~Backend() {
@@ -293,6 +321,7 @@ Renderer::Backend::~Backend() {
   glDeleteBuffers(1, &lineVbo);
   glDeleteVertexArrays(1, &overlayVao);
   glDeleteBuffers(1, &overlayVbo);
+  glDeleteTextures(1, &fontAtlas);
   glDeleteProgram(program);
   glDeleteProgram(overlayProgram);
   glDeleteProgram(edgeProgram);
@@ -431,9 +460,7 @@ void Renderer::Backend::drawEdges() {
 
 void Renderer::Backend::drawOverlay(const Overlay &overlay) {
   // The shapes, then the text over them
-  overlayTriangles.assign(overlay.triangles().begin(), overlay.triangles().end());
-  for (const Overlay::Text &text : overlay.texts())
-    appendTextTriangles(text, overlayTriangles);
+  overlayVertices(overlay, overlayTriangles);
   if (overlayTriangles.empty())
     return;
   glDisable(GL_DEPTH_TEST);
@@ -442,10 +469,13 @@ void Renderer::Backend::drawOverlay(const Overlay &overlay) {
   glUseProgram(overlayProgram);
   glUniform2f(overlayScreen, static_cast<float>(display.width()),
               static_cast<float>(display.height()));
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, fontAtlas);
+  glUniform1i(overlayAtlas, 0);
   glBindVertexArray(overlayVao);
   glBindBuffer(GL_ARRAY_BUFFER, overlayVbo);
   glBufferData(GL_ARRAY_BUFFER,
-               static_cast<GLsizeiptr>(overlayTriangles.size() * sizeof(Overlay::Vertex)),
+               static_cast<GLsizeiptr>(overlayTriangles.size() * sizeof(TexturedVertex)),
                overlayTriangles.data(), GL_STREAM_DRAW);
   glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(overlayTriangles.size()));
   glDisable(GL_BLEND);
