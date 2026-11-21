@@ -331,8 +331,7 @@ void ScreenPadd::updatePick() {
     banner_.start(gameClock_.seconds(), "CHOOSE A RESOURCE", std::string(choice.title),
                   Palette::kHighlight);
   }
-  pick_.show(banner_.showing(gameClock_.seconds()) ? std::nullopt
-                                                   : bottomScreen_->resourceInFocus(),
+  pick_.show(banner_.moving(gameClock_.seconds()) ? std::nullopt : bottomScreen_->resourceInFocus(),
              showsNow());
 }
 
@@ -435,7 +434,7 @@ std::optional<CosmicHex::Corner> ScreenPadd::pointerCorner() const {
     return std::nullopt; // (nothing to choose on the board, nothing touched)
   const double t = showsNow();
   const bool busy = gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving ||
-                    banner_.showing(gameClock_.seconds()) || !roll_.idle() ||
+                    banner_.moving(gameClock_.seconds()) || !roll_.idle() ||
                     shownInfo_ != BottomScreen::Info::None || cards_.showing(t) ||
                     discovery_.moving(t) || homePay_.moving(t) || rollPay_.moving(t) ||
                     cardPlay_.moving(t) || hand_.moving(t) || dealt_.on() || pick_.at(t);
@@ -477,7 +476,7 @@ bool ScreenPadd::topMoving() const {
     return true; // (pieces still moving, or a number chip dropping)
   if (pointer_.at(showsNow()) || follow_.moving(showsNow()))
     return true; // (the board's pointer turning, fading or gliding; the camera following)
-  if (banner_.showing(gameClock_.seconds()))
+  if (banner_.moving(gameClock_.seconds()))
     return true; // (the turn's banner moving)
   if (shownInfo_ != BottomScreen::Info::None || cards_.moving(showsNow()) || outlineMovedAt_)
     return true; // (an info view coming in or going, the points' outline)

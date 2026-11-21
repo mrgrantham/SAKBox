@@ -64,8 +64,10 @@ void ScreenPadd::startBanners(const TableSnapshot &snapshot) {
       snapshot.state.winner < 0) {
     const int turn = snapshot.state.turn;
     const bool yours = mode_ == Mode::Playing && turn == 0;
+    // (yours: the roll's prompt follows on the same band when the roll
+    // waits for you: promptForYourRoll)
     banner_.start(gameClock_.seconds(), yours ? "YOUR TURN" : names_.upperOf(turn) + "'S TURN",
-                  yours ? "roll the dice" : "thinking...", BoardColours::ofPlayer(turn));
+                  yours ? "" : "thinking...", BoardColours::ofPlayer(turn));
   }
 }
 
@@ -230,7 +232,23 @@ bool ScreenPadd::yourRollWaits(const TableSnapshot &snapshot) const {
 // the glass container (DiceTray), stepped once a frame until they settle,
 // shown for a moment, their faces sent to the table, and the container
 // pulled off the stage
+// Your roll waiting: the banner says ROLL THE DICE, on the turn's band if
+// it's still up, and holds until you roll (the user's: with nothing on the
+// screen the game looked stuck); then it goes the usual way
+void ScreenPadd::promptForYourRoll() {
+  const bool waits = latest_ && yourRollWaits(*latest_) && !rollAsked_;
+  if (waits && !rollPrompted_ && !homePay_.moving(showsNow())) {
+    banner_.then(gameClock_.seconds(), {"ROLL THE DICE", "touch Roll, or press A", true},
+                 BoardColours::ofPlayer(0));
+    rollPrompted_ = true;
+  } else if (!waits && rollPrompted_) {
+    banner_.release(gameClock_.seconds());
+    rollPrompted_ = false;
+  }
+}
+
 void ScreenPadd::throwDice() {
+  promptForYourRoll();
   // Yours when you say (Roll, or A); a bot's once its turn's banner has
   // gone (the user's)
   const bool ready =

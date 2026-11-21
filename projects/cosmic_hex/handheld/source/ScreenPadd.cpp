@@ -300,7 +300,7 @@ bool ScreenPadd::skippable() const {
     return true;
   if (gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving)
     return true;
-  if (banner_.showing(gameClock_.seconds()))
+  if (banner_.moving(gameClock_.seconds())) // (not a prompt waiting for you)
     return true;
   const double t = showsNow();
   const bool dealing =
@@ -324,7 +324,7 @@ void ScreenPadd::skipAnimations() {
     endFirstRoll();
   // The board's pieces where they were going, the turn's banner gone
   motionStarted_ = std::min(motionStarted_, gameClock_.seconds() - kSecondsBoardMoving);
-  banner_.stop();
+  banner_.hurry(gameClock_.seconds()); // (a prompt waiting for you stays)
   roll_.skip(gameClock_.seconds());
 }
 

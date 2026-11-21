@@ -159,6 +159,7 @@ private:
   void startFirstRoll();
   void endFirstRoll();
   bool yourRollWaits(const TableSnapshot &snapshot) const;
+  void promptForYourRoll();
   void throwDice();
   void celebrate(const State &state);
   void updateCelebration();
@@ -257,7 +258,8 @@ private:
   RollDice roll_{kThisPlatform.diceStep, kThisPlatform.mostDiceSteps};
   Scene::Mesh die_;
   std::uint64_t thrownSeed_ = 0;
-  bool rollAsked_ = false; // (you've said to throw the dice: Roll or A)
+  bool rollAsked_ = false;    // (you've said to throw the dice: Roll or A)
+  bool rollPrompted_ = false; // (the banner says ROLL THE DICE, until you do)
 
   // The pad and the clocks
   Input::Gamepad lastPad_;
