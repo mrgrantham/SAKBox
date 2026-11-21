@@ -69,6 +69,7 @@ void TablePadd::repeat() {
   TableGame &game = *game_;
   for (;;) {
     const bool dealer = CosmicHex::Game::currentPlayer(game.state()) == GameBots::kDealer;
+    const bool dealingHands = game.state().phase == CosmicHex::Phase::StartCardsDraw;
     const auto started = Clock::now();
     if (!game.step())
       break; // (over, a person's move, or a bug: the game waits)
@@ -76,6 +77,10 @@ void TablePadd::repeat() {
       lastThinkSeconds_ = secondsSince(started);
       break;
     }
+    // (the starting hands sent on their own: their show holds the game
+    // before the first player places, rather than playing over it)
+    if (dealingHands && game.state().phase != CosmicHex::Phase::StartCardsDraw)
+      break;
   }
   sendSnapshot(game);
 }

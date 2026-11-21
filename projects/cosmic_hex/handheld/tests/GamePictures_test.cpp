@@ -33,6 +33,11 @@ TEST(GamePicturesTest, TheDsPicturesFitItsTextureMemory) {
     EXPECT_TRUE(face);
   for (const Scene::Texture card : pictures.resources)
     EXPECT_TRUE(card);
+  // (every resource card's title dark on its pale band: the user's, white
+  // was hard to read)
+  for (int r = 0; r < kResources; ++r)
+    EXPECT_EQ(pictures.titleInkOf(static_cast<Art::Card>(r)), Palette::kInkOnLightBand)
+        << "resource " << r;
   for (int c = kResources; c < Art::kCards; ++c) {
     EXPECT_TRUE(pictures.cards[static_cast<std::size_t>(c)]) << "card " << c;
   }

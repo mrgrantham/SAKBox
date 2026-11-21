@@ -300,6 +300,8 @@ private:
   // The turn banner (ScratchPadd::Banner)
   ScratchPadd::Banner banner_{static_cast<float>(kStageWidth)};
   std::optional<Pickers::ResourceChoice> bannerFor_; // (the choice its banner was for)
+  // (the start's placing: its banner waits for the starting hands' deal)
+  bool placingBannerAfterDeal_ = false;
   // The info views (Show resources): which is shown, since when, and
   // whether it holds the game; the cards' pictures for them
   BottomScreen::Info shownInfo_ = BottomScreen::Info::None;

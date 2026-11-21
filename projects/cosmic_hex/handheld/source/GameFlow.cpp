@@ -51,14 +51,27 @@ bool ScreenPadd::startMotion(const TableSnapshot &snapshot) {
   return moved;
 }
 
+namespace {
+// Whether these moves deal the starting hands (Settings::startCards)
+bool dealsStartingHands(const TableSnapshot &snapshot) {
+  return std::ranges::any_of(snapshot.played, [](const TableGame::Played &move) {
+    return move.action.kind == CosmicHex::Action::Kind::DealStartCard;
+  });
+}
+} // namespace
+
 // The start's placing (whose it is and what, once who goes first is
-// shown), or a new turn: its banner
+// shown, and the starting hands once they're dealt), or a new turn: its
+// banner
 void ScreenPadd::startBanners(const TableSnapshot &snapshot) {
   const CosmicHex::Phase phase = snapshot.state.phase;
   const bool placing =
       phase == CosmicHex::Phase::PlaceColony || phase == CosmicHex::Phase::PlaceShip;
-  if (placing && !firstRoll_.on() && !descentStarted_ && !lookingSince_ &&
-      (!latest_ || snapshot.state.turn != latest_->state.turn || phase != latest_->state.phase))
+  const bool newPlacer =
+      !latest_ || snapshot.state.turn != latest_->state.turn || phase != latest_->state.phase;
+  if (placing && newPlacer && dealsStartingHands(snapshot))
+    placingBannerAfterDeal_ = true; // (updateRollPay starts it as the deal ends)
+  else if (placing && newPlacer && !firstRoll_.on() && !descentStarted_ && !lookingSince_)
     startPlacingBanner(snapshot.state);
   if (latest_ && snapshot.state.turn != latest_->state.turn && !placing &&
       snapshot.state.winner < 0) {
@@ -173,6 +186,7 @@ void ScreenPadd::startGame() {
   roll_.stop();
   touchDirty_ = true;
   youPaused_ = false;
+  placingBannerAfterDeal_ = false;
   holds_ = descentStarted_ ? static_cast<std::uint8_t>(Hold::Start) : 0;
   names_ =
       PlayerNames::forGame(setup.players(), play ? 0 : -1, menus_.yourName(),
@@ -217,7 +231,8 @@ void ScreenPadd::endFirstRoll() {
   firstRoll_.stop();
   if (flow_.screen() == ScreenFlow::Screen::Game)
     holdFor(Hold::Start, false);
-  if (latest_)
+  // (with starting hands to deal, the placing's banner waits for the deal)
+  if (latest_ && latest_->state.phase != CosmicHex::Phase::StartCardsDraw)
     startPlacingBanner(latest_->state);
 }
 

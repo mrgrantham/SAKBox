@@ -254,6 +254,62 @@ TEST(TopShowsTest, ARollsPayFliesCardByCard) {
   EXPECT_TRUE(seven.cards().empty());
 }
 
+// The starting hand: each card from the bank (the ROUND hexagon), round the
+// table from the first player, one a little after another; seen only by
+// whoever it's dealt to; the game held while they fly, let go after the last
+TEST(TopShowsTest, TheStartingHandIsDealtFromTheBank) {
+  Settings settings = agreedRules(boardR3());
+  settings.startCards = 3;
+  const State before = newGame(4, settings, 2);
+  ASSERT_EQ(before.phase, Phase::StartCardsDraw);
+  constexpr int kCards = 4 * 3;
+  std::vector<TableGame::Played> deal;
+  deal.reserve(kCards);
+  for (int i = 0; i < kCards; ++i)
+    deal.push_back({-1, Action{Action::Kind::DealStartCard, i % kResources}});
+  RollPayShow show;
+  show.saw(deal, before);
+  ASSERT_EQ(show.cards().size(), 12u);
+  for (std::size_t i = 0; i < show.cards().size(); ++i) {
+    const RollPayShow::Card &card = show.cards()[i];
+    EXPECT_EQ(card.player, static_cast<int>((2 + i) % 4)) << "card " << i; // (the first is 2)
+    EXPECT_EQ(card.from, RollPayShow::kBank);
+    EXPECT_EQ(card.planet, -1);
+    EXPECT_EQ(card.resource, static_cast<Resource>(i % kResources));
+    EXPECT_TRUE(card.secret);
+  }
+  // (each starts a stagger after the last, popping out, then flying)
+  show.start(10);
+  EXPECT_TRUE(show.update(10).hold);
+  EXPECT_FALSE(show.at(1, 10 + RollPayShow::kStagger - 0.01).has_value());
+  ASSERT_TRUE(show.at(1, 10 + RollPayShow::kStagger + RollPayShow::kSecondsPop).has_value());
+  EXPECT_FLOAT_EQ(show.at(1, 10 + RollPayShow::kStagger + RollPayShow::kSecondsPop)->pop, 1);
+  EXPECT_FLOAT_EQ(show.at(1, 10 + RollPayShow::kStagger + RollPayShow::kSecondsPop)->fly, 0);
+  EXPECT_FLOAT_EQ(show.seconds(),
+                  11 * RollPayShow::kStagger + RollPayShow::kSecondsPop + RollPayShow::kSecondsFly);
+  EXPECT_LT(show.seconds(), 2.5f); // (twelve cards dealt briskly)
+  EXPECT_TRUE(show.moving(10 + show.seconds() - 0.01));
+  EXPECT_FALSE(show.update(10 + show.seconds() - 0.01).letGo);
+  EXPECT_TRUE(show.update(10 + show.seconds()).letGo);
+  EXPECT_FALSE(show.moving(10 + show.seconds()));
+}
+
+// ...dealt in more than one look, the next card still goes to the next
+// player round the table
+TEST(TopShowsTest, AStartingHandSeenInPartsKeepsItsOrder) {
+  Settings settings = agreedRules(boardR3());
+  settings.startCards = 3;
+  State before = newGame(3, settings, 1);
+  before.startCardsLeft -= 4; // (four dealt already: the next is the first's second)
+  RollPayShow show;
+  show.saw(
+      {{-1, Action{Action::Kind::DealStartCard, 0}}, {-1, Action{Action::Kind::DealStartCard, 1}}},
+      before);
+  ASSERT_EQ(show.cards().size(), 2u);
+  EXPECT_EQ(show.cards()[0].player, 2);
+  EXPECT_EQ(show.cards()[1].player, 0);
+}
+
 // A steal: after the blockade names who it's from, the card flies from
 // them to the player whose turn it is; the pirate hideout's, from each in
 // the order the game has them

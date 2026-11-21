@@ -15,6 +15,7 @@
 #include <CosmicHex/Art.hpp>
 #include <CosmicHex/Handheld/CardChoices.hpp>
 #include <CosmicHex/Handheld/OtherPlayers.hpp>
+#include <CosmicHex/Handheld/Palette.hpp>
 #include <CosmicHex/Handheld/PlayerNames.hpp>
 #include <CosmicHex/Handheld/RollDice.hpp>
 #include <CosmicHex/Handheld/TopShows.hpp>
@@ -41,9 +42,14 @@ struct TopPictures {
   ScratchPadd::Scene::Mesh resourceSquare;                                // (and their square)
   std::array<ScratchPadd::Scene::Texture, 2> backs{};                     // (by Art::CardBack)
   // The cards' pictures' widths (resource cards bigger: their titles), and
-  // each resource card's band colour (for its title's ink)
+  // each card's label band colour (by Art::Card: resources first)
   int resourceWidth = 44, cardWidth = 32;
-  std::array<ScratchPadd::Scene::Colour, kResources> resourceBands{};
+  std::array<ScratchPadd::Scene::Colour, Art::kCards> cardBands{};
+  // A card's title letters on its band (Palette::inkOnBand), for every
+  // view that writes a title over a card's picture
+  ScratchPadd::Scene::Colour titleInkOf(Art::Card card) const {
+    return Palette::inkOnBand(cardBands[static_cast<std::size_t>(card)]);
+  }
 };
 
 // One frame's drawing

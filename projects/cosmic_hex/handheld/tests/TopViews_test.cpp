@@ -130,6 +130,26 @@ TEST_F(TopViewsTest, ARollsPayFromStartToEnd) {
   });
 }
 
+TEST_F(TopViewsTest, TheStartingHandDealtFromStartToEnd) {
+  Settings settings = agreedRules(boardR3());
+  settings.startCards = 3;
+  const State dealing = newGame(4, settings, 1);
+  constexpr int kCards = 4 * 3;
+  std::vector<TableGame::Played> deal;
+  deal.reserve(kCards);
+  for (int i = 0; i < kCards; ++i)
+    deal.push_back({-1, Action{Action::Kind::DealStartCard, (i * 2) % kResources}});
+  for (const int you : {0, -1}) { // (playing, and watching)
+    RollPayShow show;
+    show.saw(deal, dealing);
+    show.start(0);
+    frames(every(-0.2, show.seconds() + 0.3), [&](const TopFrame &f) {
+      show.update(f.now);
+      drawRollPay(f, show, dealing, you);
+    });
+  }
+}
+
 TEST_F(TopViewsTest, ACardPlayedFromStartToEnd) {
   for (const int player : {0, 2}) {
     CardPlayShow show;

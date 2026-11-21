@@ -310,6 +310,11 @@ void ScreenPadd::updateRollPay() {
   const RollPayShow::Step step = rollPay_.update(showsNow());
   if (step.hold || step.letGo)
     holdFor(Hold::RollPay, step.hold);
+  // (the starting hands dealt: now whose placing it is)
+  if (step.letGo && placingBannerAfterDeal_ && latest_) {
+    placingBannerAfterDeal_ = false;
+    startPlacingBanner(latest_->state);
+  }
 }
 
 // Each frame: while you choose a resource on the picker, the banner as

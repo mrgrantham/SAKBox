@@ -447,8 +447,22 @@ void RollPayShow::saw(const std::vector<TableGame::Played> &moves, const State &
     victims_ = before.victims;
     offer_ = before.offer;
   }
+  // (the starting hand's cards dealt before these moves: the next goes to
+  // the next player round the table, as the rules deal them)
+  int startCardsDealt = before.settings.startCards * before.players - before.startCardsLeft;
   for (const TableGame::Played &move : moves) {
     switch (move.action.kind) {
+    // The starting hand: from the bank (the ROUND hexagon, the user's),
+    // face down to everyone but its player, as at a table
+    case Action::Kind::DealStartCard: {
+      const int to = (before.first + startCardsDealt++) % std::max(1, before.players);
+      cards_.push_back({.planet = -1,
+                        .player = to,
+                        .resource = static_cast<Resource>(move.action.a),
+                        .from = kBank,
+                        .secret = true});
+      break;
+    }
     case Action::Kind::OfferTrade:
       offer_ = {.give = move.action.a, .get = move.action.b, .to = move.action.c};
       counterer_ = -1;

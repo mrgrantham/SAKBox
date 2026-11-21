@@ -11,6 +11,9 @@ What was chosen. **Why:** the reasons. **Not:** the alternatives turned down, an
 
 ## Cosmic Hex: the game
 
+**Card titles take their band's ink; the starting hand dealt as a card show** (2026-11-21)
+Every card view writes a title over a card's label band in one colour rule (`Palette::inkOnBand`: dark letters on a light band, light on a dark one), used by the top screen's views (`TopPictures::titleInkOf`) and the bottom screen's card sprites. The starting hand (3 random resources each) is shown by the cards-changing-hands show (`RollPayShow`): each card from the bank (the ROUND hexagon) to its player, face down to the others, the game held; the table sends the deal on its own so the first placing waits for it. **Why:** the owner's: white titles on the pale resource bands were hard to read, and Show resources already wrote them dark; the deal is cards going from the bank to the players, which that show already draws (arcs, a pop, overlap, holding the game, B and the Animations setting). **Not:** a new show of its own for the deal (it would repeat the roll pay's timing and drawing); the bank's cards bowing up along the top as before, where they were lost under the HUD (they now swing down over the board).
+
 **DS memory is checked on the Mac: textures and heap** (2026-11-21)
 The DS's texture memory is modelled (`TextureMemory`) and a desktop renderer can be held to it (`Renderer::setTextureBudget`); `GamePictures_test` loads every picture under it. Heap-hungry drawing is held to budgets too (`CloseUpBandsStayWithinTheirMemory`). **Why:** two silent failures on hardware (the title's rocket grey and the cards gone when textures ran out; a crash zoomed in when a picture's band asked for 147 KB in one piece) were found only on the console. **Not:** a log on the card for out-of-memory, as the DS stops before it could be written.
 

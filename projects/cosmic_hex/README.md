@@ -212,7 +212,8 @@ The top screen shows the chosen board from straight above, lit flat like the map
    - the number slides up into place under the name and settles (clipped to a window, `Overlay::clipText`);
    - those tied throw again in a fresh glass;
    - then each player hops into their place in the order (a wind-up, a hop, an overshoot, one after another; those already in their place hop where they are, so the order is always shown), 1st to 4th under them.
-4. **The start's placing:** in turn order each player chooses a home not yet taken and puts their home colony on one of its corners; then, back again, their ship on a corner in open space. On your turn the places are marked, a touch shows the piece there, and Confirm (or A) places it (B, or touching it again, takes it back).
+4. **The starting hands:** each player is dealt 3 random resources (the agreed rules' `startCards`), one card at a time round the table from the first player, each flying out of the ROUND hexagon to its player ([Animation](#animation)).
+5. **The start's placing:** in turn order each player chooses a home not yet taken and puts their home colony on one of its corners; then, back again, their ship on a corner in open space. On your turn the places are marked, a touch shows the piece there, and Confirm (or A) places it (B, or touching it again, takes it back).
 
 ### Playing a turn
 
@@ -312,6 +313,8 @@ Over the board:
 - **A home's pay** (with the home die on): its die, an extruded warm-grey hexagon with a resource's colour on each side and the star on the sixth (`homeDie`, `DicePieces`), springs out of the home rolling about its long axis and lands with the chosen side facing you; the card shows big, then flies to the hand. The game and the main dice wait for it.
 - **A tile turned over** (`Discovery`): the board's own tile lifts off and flies up to face you, face down, turns over; a planet's number token drops onto it (its number then written sharp over the token's picture, as a small texture's digits blur); its name and what it gives are written beside it; it flies back to lie flat in its place, all on the `Gentle` curve. The game is held meanwhile, and the bottom map shows the tile only after, fading in.
 - **A card played, or a Charter revealed** (`CardPlayShow`): it rises from its player, turns over big in the middle to be read, and flies off.
+- **The starting hands dealt** (`RollPayShow`, the cards from the bank): each card pops out of the ROUND hexagon and swings down over the board to its player, one a little after another round the table: yours face up down to your hand (then shown there as cards gained), the others' face down up into their rows of the points bars. Twelve cards take about 2.1 s; the game holds meanwhile, and the placing's banner follows.
+- **A card's path** bows up as it's thrown, but down over the board when both its ends are along the top (the bank and the points bars), so it isn't lost under the HUD.
 - **Cards gained** show your hand as Show resources does, the new ones dropping into the backs of their piles once nothing that brings them is still showing (`HandShow`).
 
 Words over a card or tile (its name, a token's number, a card's words) wait for it to settle, then fade in (`kSecondsWordsIn`).
@@ -478,6 +481,8 @@ It throws them many times and checks each face comes up a sixth of the time and 
 | `art/cards/cards.txt` | The cards' words: a line a card, its title, short title and what it does (the build embeds it and `Art::wordsOf` reads it) |
 
 A card's drawing has no words: the game writes the title (centred, up to two lines) and what it does over it, in the areas `Art.hpp` gives (`kCardTitle`, `kCardArt`, `kCardWords`, in the drawing's 63 x 88 units), so a new drawing keeps to them. `Art_test` checks every card's words fit, in each console's font (the DS's Silkscreen, the 3DS's Orbitron).
+
+- **A title's letters** take their colour from the card's label band, on every card view of both screens (`Palette::inkOnBand`, `TopPictures::titleInkOf`): dark on a light band (every resource card's), light on a dark one.
 
 ## Models
 

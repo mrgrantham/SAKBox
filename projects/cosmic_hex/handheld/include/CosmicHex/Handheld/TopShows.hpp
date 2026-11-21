@@ -14,7 +14,9 @@
 //   HomePayShow    a home's pay on the home die: the die out of the home,
 //                  its face, the card big, then off to the player's hand
 //   RollPayShow    what a roll pays: a card from each paying planet to its
-//                  owner, one a little after another
+//                  owner, one a little after another; and other cards
+//                  changing hands: the starting hand dealt from the bank,
+//                  steals, trades, what's spent
 //
 // Times are seconds on one clock the app keeps (real time: these run while
 // the game is held). Each answers moving(now); the app's frame asks them all.
@@ -328,7 +330,9 @@ public:
   // each steal (after the blockade moves, or the pirate hideout's), a card
   // flying from the victim to the thief; each trade, the cards crossing
   // between the two players (or to and from the bank); and what's built,
-  // its cost going to the bank (behind the ROUND hexagon)
+  // its cost going to the bank (behind the ROUND hexagon); and the starting
+  // hand (Settings::startCards), each card dealt from the bank round the
+  // table from the first player, seen only by whoever it's dealt to
   void saw(const std::vector<TableGame::Played> &moves, const State &before);
   void start(double now);
   bool waiting() const { return !cards_.empty() && !started_; }

@@ -100,12 +100,6 @@ void drawActions(Canvas &canvas, std::vector<Buttons::Button> buttons, const Pre
 
 Art::Card cardOf(Resource resource) { return static_cast<Art::Card>(static_cast<int>(resource)); }
 
-float luminance(Colour c) {
-  return (0.2126f * static_cast<float>(c.r) + 0.7152f * static_cast<float>(c.g) +
-          0.0722f * static_cast<float>(c.b)) /
-         255.0f;
-}
-
 // The rows of the build screen and of the player picker
 Box buildRowBox(int width, std::size_t row) {
   const float k = scaleOf(width);
@@ -150,10 +144,9 @@ const std::vector<Canvas::Colour> &CardSprites::small(Art::Card card) {
   const float u = static_cast<float>(width_) / Art::kCardWidth;
   const Colour bandColour =
       band.at(static_cast<int>(6 * u), static_cast<int>((Art::kCardTitle.y + 2) * u));
-  const Colour ink = luminance(bandColour) > 0.55f ? Colour{16, 20, 30, 255} : kWords;
   band.textCentred(static_cast<float>(width_) / 2,
                    (Art::kCardTitle.y + Art::kCardTitle.height / 2) * u,
-                   Art::wordsOf(card).shortTitle, ink);
+                   Art::wordsOf(card).shortTitle, Palette::inkOnBand(bandColour));
   // (the corners stay see-through: only where the card is drawn changes)
   for (std::size_t p = 0; p < sprite.size(); ++p)
     if (sprite[p].a > 0)

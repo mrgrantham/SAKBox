@@ -215,6 +215,16 @@ void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
 // ------------------------------------------------------------------- Dealt
 
 namespace {
+// A card's title over its label band, fading in by `shown` from the band
+// itself (dark letters on a light band: TopPictures::titleInkOf)
+Scene::Colour titleInk(const TopFrame &f, Art::Card card, float shown = 1) {
+  return fadedIn(f.pictures.titleInkOf(card), shown,
+                 f.pictures.cardBands[static_cast<std::size_t>(card)]);
+}
+Scene::Colour titleInk(const TopFrame &f, Resource resource, float shown = 1) {
+  return titleInk(f, static_cast<Art::Card>(resource), shown); // (resources first in Art::Card)
+}
+
 // An action card's face, `w` wide with its top left at (x, y), turned over
 // `turned` of the way (its width through |cos|: past halfway, its face):
 // its picture (sharp when `closeUp` shows it), its body, and once flat its
@@ -234,13 +244,13 @@ void actionCardFace(const TopFrame &f, Art::Card card, float x, float y, float w
   if (turned < 1 || shown <= 0)
     return;
   const Art::CardWords words = Art::wordsOf(card);
-  // (the title white, centred on the label band, 3 to 19 of the card's
-  // 88 units, as large as fits its width: the user's)
+  // (the title in its band's ink, centred on the label band, 3 to 19 of
+  // the card's 88 units, as large as fits its width: the user's)
   float titleScale = 2 * k;
   while (titleScale > k && Scene::Overlay::textWidth(words.shortTitle, titleScale) > w * 54 / 63)
     titleScale -= 0.25f * k;
-  f.overlay.textCentred(x + w / 2, y + w * 11 / 63, words.shortTitle,
-                        fadedIn(Palette::kWords, shown), titleScale);
+  f.overlay.textCentred(x + w / 2, y + w * 11 / 63, words.shortTitle, titleInk(f, card, shown),
+                        titleScale);
   // (wrapped by the width the letters take as drawn, spacing included)
   const auto lines = Scene::wrapText(words.words, w - 8 * k, [k](std::string_view line) {
     return Scene::Overlay::textWidth(line, k);
@@ -448,14 +458,11 @@ int drawPiles(const TopFrame &f, const Resources &heldOf, const std::function<fl
                        .texture = p.resources[static_cast<std::size_t>(r)],
                        .alpha = static_cast<std::uint8_t>(held == 0 ? 10 : 31)});
     }
-    // The title in the front card's band, dark on a light band, faint when
+    // The title in the front card's band, in its band's ink, faint when
     // there are none; past five, how many in a badge above the pile
     const float front = pileY + (1 - showSlid(order - 1)) * (f.height - pileY + 4);
-    const Scene::Colour band = p.resourceBands[static_cast<std::size_t>(r)];
-    const float light = 0.2126f * band.r + 0.7152f * band.g + 0.0722f * band.b;
-    const Scene::Colour ink = held == 0     ? Scene::Colour{120, 128, 145}
-                              : light > 140 ? Scene::Colour{16, 20, 30}
-                                            : Scene::Colour{242, 245, 251};
+    const Scene::Colour ink =
+        held == 0 ? Scene::Colour{120, 128, 145} : titleInk(f, static_cast<Resource>(r));
     f.overlay.textCentred(x + rw / 2, front + (Art::kCardTitle.y + Art::kCardTitle.height / 2) * u,
                           GameWords::of(static_cast<Resource>(r)), ink);
     if (held > 5) {
@@ -759,6 +766,19 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow
 
 // ---------------------------------------------------------------- Roll pay
 
+namespace {
+// How far a card's path bows (Motion::arc's bulge, in pixels: negative up
+// the screen): up, as a card is thrown; but down over the board when both
+// its ends are along the top (the bank behind the ROUND hexagon, the points
+// bars: the starting hand dealt, a bot's trade), as up there it would be
+// lost under the HUD and off the screen's edge
+float cardPathBow(float fromY, float toY, float k) {
+  constexpr float kAlongTheTop = 48; // (a DS's pixels: the HUD's top rows)
+  const bool alongTheTop = std::max(fromY, toY) < kAlongTheTop * k;
+  return alongTheTop ? 56 * k : -28 * k;
+}
+} // namespace
+
 void drawRollPay(const TopFrame &f, const RollPayShow &show, const State &state, int you) {
   const float k = f.k();
   const TopPictures &p = f.pictures;
@@ -812,7 +832,7 @@ void drawRollPay(const TopFrame &f, const RollPayShow &show, const State &state,
     const bool yours = card.player == you;
     const auto [toX, toY] = placeOf(card.player);
     const float x = Motion::arc(fromX, toX, 0.0f, m->fly);
-    const float y = Motion::arc(fromY, toY, -28 * k, m->fly);
+    const float y = Motion::arc(fromY, toY, cardPathBow(fromY, toY, k), m->fly);
     // Popping out of the planet (a settle), then shrinking as it goes to a
     // bot's bar (yours stays its size, off to your hand)
     // (to the bank: shrinking away into the ROUND hexagon)
@@ -820,12 +840,15 @@ void drawRollPay(const TopFrame &f, const RollPayShow &show, const State &state,
     const float size = 20 * k * m->pop * (yours ? 1 : 1 - 0.6f * m->fly) * shrink;
     if (size < 1)
       continue;
-    // (a card stolen between two others: face down, as at a table)
+    // (a card stolen between two others, or dealt to another: face down, as
+    // at a table; its back the whole card, on the backs' own square)
     const bool hidden = card.secret && card.player != you && card.from != you;
-    picture(f, p.resourceSquare,
-            hidden ? p.backs[static_cast<std::size_t>(Art::kResourceBack)]
-                   : p.resources[static_cast<std::size_t>(card.resource)],
-            x - size / 2, y - size * 52 / 63 / 2, size, size * 52 / 63);
+    if (hidden)
+      picture(f, p.backSquare, p.backs[static_cast<std::size_t>(Art::kResourceBack)], x - size / 2,
+              y - size * 88 / 63 / 2, size, size * 88 / 63);
+    else
+      picture(f, p.resourceSquare, p.resources[static_cast<std::size_t>(card.resource)],
+              x - size / 2, y - size * 52 / 63 / 2, size, size * 52 / 63);
   }
 }
 
@@ -853,9 +876,7 @@ void drawPick(const TopFrame &f, const PickShow &show, std::string_view title,
   card(m->shown, x);
   if (m->words > 0)
     f.overlay.textCentred(x, midY - h / 2 + h * 11 / 52, GameWords::of(m->shown),
-                          fadedIn(Palette::kWords, m->words,
-                                  f.pictures.resourceBands[static_cast<std::size_t>(m->shown)]),
-                          1.5f * k);
+                          titleInk(f, m->shown, m->words), 1.5f * k);
   f.overlay.textCentred(f.width / 2, 12 * k, title, Palette::kWords, k);
   // What you could build with it: a ship, a station, a colony, a card,
   // each dimmed when you couldn't even with this one
@@ -997,9 +1018,7 @@ void drawHomePay(const TopFrame &f, const HomePayShow &show, const State &state,
   // (its words once it's full size, fading in)
   if (m.away <= 0 && m.words > 0) {
     overlay.textCentred(cx, cy - h / 2 + h * 11 / 52, GameWords::of(*pay->resource),
-                        fadedIn(Palette::kWords, m.words,
-                                f.pictures.resourceBands[static_cast<std::size_t>(*pay->resource)]),
-                        1.5f * k);
+                        titleInk(f, *pay->resource, m.words), 1.5f * k);
     overlay.textCentred(f.width / 2, heldY + bigH / 2 + 10 * k,
                         "+1 " + std::string(GameWords::of(*pay->resource)),
                         fadedIn(Palette::kWords, m.words), 1.5f * k);
