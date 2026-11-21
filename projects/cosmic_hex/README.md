@@ -230,6 +230,8 @@ On the board:
   - **It taps what you choose:** a small lift first, a quick drop onto whatever stands on the corner (a ship, a station, or the board itself), the dust a new building raises where it touches, and a settle back up (`CornerPointer::tap`).
   - **On the flat map** it's a still, flat chevron over the same corner (`BoardPicture::Marks::pointer`).
 - **Move a ship:** touch it, and the pointer goes over it, and where it can go is marked on both screens, the moves that take a fuel told apart (orange rings on the top screen, outlined squares on the map; the rest highlight-coloured rings and filled dots). Touch a marked corner to choose it (again to put it down), then Confirm or A to move it there; touch anywhere else and the ship is put down and the pointer goes there. After the roll the turn's offers to players are open (the trading phase), and a ship can still be moved: choosing where ends the offers first, as building does. A ship that can't move says why (roll first, or it has moved this turn).
+- **The blockade** (a 7, or an Enforcer): the planets it can go to are outlined on both screens and the pointer sits in the middle of the tile; touch one to choose it (again to put it down), then Confirm or A, and then whom to steal from if more than one player is there. With no planet turned over yet it has nowhere to go: the game says so and goes on by itself.
+- **A new ship moves off its colony the turn it's built** (the agreed rules): until it has, End Turn shows dimmed, and touching it says to move the ship first.
 - **Drag** to move the board when zoomed in; **X held with R and L** zooms in and out (L and R alone are left and right on a choosing screen).
 - **B** takes whatever is animating straight to its end ([Animation](#animation)).
 

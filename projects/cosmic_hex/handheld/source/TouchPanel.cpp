@@ -311,6 +311,11 @@ void ScreenPadd::drawMapWithButtons() {
   BoardPicture::Marks marks;
   if (selected_ && choosingAHex())
     marks.hex = selected_->hex;
+  // (the blockade: where it can go, thinly; the one chosen, thicker)
+  marks.hexes = bottomScreen_->placingHexes();
+  if (bottomScreen_->placingBlockade())
+    if (const auto chosen = bottomScreen_->chosenPlacement())
+      marks.hex = latest_->state.planets[static_cast<std::size_t>(chosen->a)].hex;
   // (the pointer, flat and still, where the top screen's chevron is going:
   // its target now, not where it was last aimed, which lags a tap by a frame)
   marks.pointer = pointerCorner();

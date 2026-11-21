@@ -543,6 +543,16 @@ void BoardPicture::listPieces(const State &state, const Marks &marks,
     }
     out.push_back({Piece::Kind::MarkHex, on(*marks.hex), {0, 0}, area});
   }
+  for (const Hex &hex : marks.hexes) {
+    if (marks.hex == hex)
+      continue; // (the chosen one, outlined thicker above)
+    Area area{};
+    for (int i = 0; i < 6; ++i) {
+      const HexGrid::Point p = where(HexGrid::corner(hex, i));
+      area = joined(area, {rounded(p.x) - 1, rounded(p.y) - 1, 3, 3});
+    }
+    out.push_back({Piece::Kind::MarkHex, on(hex), {1, 0}, area}); // (look 1: thin)
+  }
   for (const Corner &corner : marks.corners) {
     const HexGrid::Point c = pixelMiddle(where(corner));
     const float r = wholeHalf(0.2f * s);
@@ -574,12 +584,13 @@ void BoardPicture::listPieces(const State &state, const Marks &marks,
   }
   if (marks.pointer) {
     // (its chevron's box, with a pixel's room for its two-pixel lines)
-    const HexGrid::Point c = where(*marks.pointer);
+    const HexGrid::Point c =
+        marks.pointer->index < 0 ? where(marks.pointer->hex) : where(*marks.pointer);
     const auto r = static_cast<float>(rounded(0.3f * s));
     const auto x = static_cast<float>(rounded(c.x)), y = static_cast<float>(rounded(c.y));
     out.push_back({Piece::Kind::Pointer,
                    at(*marks.pointer),
-                   {0, 0},
+                   {static_cast<std::int16_t>(marks.pointer->index < 0 ? -1 : 0), 0},
                    rectArea(x - r - 2, y - 2 * r - 2, 2 * r + 5, r + 5)});
   }
 }
@@ -647,12 +658,14 @@ void BoardPicture::drawPiece(const Piece &piece) {
   }
   case Piece::Kind::MarkHex:
     for (int i = 0; i < 6; ++i)
-      line(where(HexGrid::corner(hex, i)), where(HexGrid::corner(hex, i + 1)), 2, kHighlight);
+      line(where(HexGrid::corner(hex, i)), where(HexGrid::corner(hex, i + 1)),
+           piece.look[0] == 1 ? 1 : 2, kHighlight);
     break;
   case Piece::Kind::Pointer: {
     // A chevron pointing down at the corner, just above it
-    // (in whole pixels round the corner's pixel, so its arms are even)
-    const HexGrid::Point c = where(corner);
+    // (in whole pixels round the corner's pixel, so its arms are even; a
+    // tile's middle when it points at a tile)
+    const HexGrid::Point c = piece.look[0] < 0 ? where(hex) : where(corner);
     const auto r = static_cast<float>(rounded(0.3f * s));
     const auto x = static_cast<float>(rounded(c.x)), y = static_cast<float>(rounded(c.y));
     const HexGrid::Point tip{x, y - static_cast<float>(rounded(r * 0.6f))};

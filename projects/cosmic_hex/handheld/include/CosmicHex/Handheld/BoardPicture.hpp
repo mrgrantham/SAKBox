@@ -101,6 +101,8 @@ public:
   // (the blockade goes on a hex), and corners as dots
   struct Marks {
     std::optional<Hex> hex;
+    // ...and hexes outlined thinly (where the blockade can go)
+    std::vector<Hex> hexes;
     std::vector<Corner> corners;
     // ...and corners marked as an outline (a ship's moves that need fuel)
     std::vector<Corner> fuelCorners;

@@ -18,6 +18,13 @@ Situation situationOf(const State &state, const std::vector<Action> &legal, bool
   if (!yourMove)
     return s;
   s.canEndTurn = has({Kind::EndTurn, Kind::EndTrading});
+  // (the turn could end but for a new ship still on its colony)
+  if (!s.canEndTurn && state.phase == Phase::Main && state.settings.newShipsLeave)
+    s.newShipMustMove = std::any_of(state.ships.begin(), state.ships.end(), [&](const Ship &ship) {
+      return ship.owner == state.turn && !ship.moved &&
+             std::any_of(state.stations.begin(), state.stations.end(),
+                         [&](const Station &station) { return station.at == ship.corner; });
+    });
   // (with the bank, or with players while the turn's offers are open)
   s.canTrade = has({Kind::Trade, Kind::OfferTrade, Kind::EndTrading});
   const Player &me = state.player[static_cast<std::size_t>(state.turn)];
@@ -43,8 +50,8 @@ std::vector<Place> layout(int width, int height, const Situation &s) {
   // Bottom left: Roll, then End Turn in its place once you've rolled
   if (s.canRoll)
     out.push_back({Button::Roll, edge, bottom, size, true});
-  else if (s.canEndTurn)
-    out.push_back({Button::EndTurn, edge, bottom, size, true});
+  else if (s.canEndTurn || s.newShipMustMove)
+    out.push_back({Button::EndTurn, edge, bottom, size, s.canEndTurn});
   // Bottom right, apart from End Turn: Confirm, while placing
   if (s.placing)
     out.push_back({Button::Confirm, right, bottom, size, s.placeChosen});

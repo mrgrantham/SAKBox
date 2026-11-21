@@ -86,6 +86,17 @@ void BottomScreen::follow(const State &state, const std::vector<Action> &legal, 
   }
   if (mode_ == Mode::Keep)
     mode_ = Mode::Board; // (kept)
+  // The blockade (a 7, or an Enforcer): placed as everything else is
+  if (state.phase == Phase::Blockade) {
+    followBlockade(state, legal);
+    return;
+  }
+  if (blockadePlacing_ || blockadeSaid_) {
+    blockadePlacing_ = blockadeSaid_ = false;
+    chosen_.reset();
+    if (mode_ == Mode::Placing)
+      mode_ = Mode::Board;
+  }
   // The start's placing: every place marked, a touch to choose, End Turn
   // to place (the user's: End Turn puts it down)
   const bool starting = state.phase == Phase::PlaceColony || state.phase == Phase::PlaceShip;
@@ -147,6 +158,10 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
         buttons_.say({});
         return confirmChosen();
       case BoardButtons::Button::EndTurn:
+        if (situation_.newShipMustMove) {
+          buttons_.say("Move your new ship off its colony first");
+          break;
+        }
         for (const Action &a : legal_)
           if (a.kind == Kind::EndTurn || a.kind == Kind::EndTrading) {
             buttons_.say({});
@@ -209,6 +224,22 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
         }
       chosen_.reset();
       return {std::nullopt, false}; // (elsewhere: the app's, its pointer goes there)
+    }
+    if (mode_ == Mode::Placing && blockadePlacing_) {
+      // (a marked planet: chosen, for Confirm; it again: put down; it has
+      // to go somewhere, so a touch elsewhere only says so)
+      if (spot)
+        for (const Action &a : placing_)
+          if (state_.planets[static_cast<std::size_t>(a.a)].hex == spot->hex) {
+            if (chosen_ == a)
+              chosen_.reset();
+            else
+              chosen_ = a;
+            buttons_.say({});
+            return {std::nullopt, true};
+          }
+      buttons_.say("Touch a marked planet for the blockade");
+      return {std::nullopt, true};
     }
     if (mode_ == Mode::Placing) {
       // (a marked corner: chosen, for Confirm; it again: put down)
@@ -497,10 +528,61 @@ BottomScreen::Outcome BottomScreen::confirmChosen() {
     return {std::nullopt, true};
   const Action chosen = *chosen_;
   chosen_.reset();
+  if (blockadePlacing_) {
+    // (more than one player there: whom to steal from, next)
+    if (auto choice = Pickers::stealChoiceOf(state_, legal_, chosen.a)) {
+      players_ = std::move(choice);
+      playerChosen_ = -1;
+      cardChosen_ = -1;
+      mode_ = Mode::Players;
+      return {std::nullopt, true};
+    }
+    for (const Action &a : legal_)
+      if (a.kind == Kind::MoveBlockade && a.a == chosen.a)
+        return {a, true};
+    return {std::nullopt, true};
+  }
   if (startPlacing_)
     return {chosen, true};
   mode_ = Mode::Board;
   return build(chosen, placingEndsTrading_);
+}
+
+void BottomScreen::followBlockade(const State &state, const std::vector<Action> &legal) {
+  // One place a planet it can go to (whom to steal from comes after)
+  placing_.clear();
+  for (const Action &a : legal)
+    if (a.kind == Kind::MoveBlockade && a.a >= 0 &&
+        std::none_of(placing_.begin(), placing_.end(), [&](const Action &p) { return p.a == a.a; }))
+      placing_.push_back(a);
+  if (placing_.empty()) {
+    // (nowhere to go, no planet turned over yet: it stays, said once, and
+    // the game goes on by itself: the only move, made for you)
+    if (!blockadeSaid_) {
+      blockadeSaid_ = true;
+      queued_.push_back({Kind::MoveBlockade, -1, -1});
+      buttons_.say("No planet turned over yet: the blockade stays");
+    }
+    return;
+  }
+  if (chosen_ && std::none_of(placing_.begin(), placing_.end(),
+                              [&](const Action &p) { return p.a == chosen_->a; }))
+    chosen_.reset();
+  blockadePlacing_ = true;
+  startPlacing_ = false;
+  placingShip_ = -1;
+  placingEndsTrading_ = false;
+  if (mode_ != Mode::Players) // (choosing whom to steal from: stays)
+    mode_ = Mode::Placing;
+}
+
+std::vector<Hex> BottomScreen::placingHexes() const {
+  std::vector<Hex> out;
+  if (!blockadePlacing_ || mode_ != Mode::Placing)
+    return out;
+  for (const Action &a : placing_)
+    out.push_back(state_.planets[static_cast<std::size_t>(a.a)].hex);
+  return out;
 }
 
 BottomScreen::Outcome BottomScreen::press(Key key) {
@@ -519,7 +601,7 @@ BottomScreen::Outcome BottomScreen::press(Key key) {
       return {};
     if (chosen_)
       chosen_.reset();
-    else if (!startPlacing_)
+    else if (!startPlacing_ && !blockadePlacing_) // (those must be placed)
       mode_ = Mode::Board;
     return {std::nullopt, true};
   case Mode::Build: {

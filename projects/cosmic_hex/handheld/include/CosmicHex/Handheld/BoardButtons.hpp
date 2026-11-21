@@ -39,6 +39,9 @@ struct Situation {
   bool canEndTurn = false; // the rules would take EndTurn (or EndTrading)
   bool canTrade = false;   // the bank, an outpost or the players
   bool holdsCards = false; // any action cards or Charters
+  // A ship built this turn still stands on its colony (Settings::
+  // newShipsLeave): End Turn shows, dimmed, and says to move it first
+  bool newShipMustMove = false;
   // Placing something (the start's home colony and ship, a build, a ship's
   // move): Confirm puts down what's been touched, usable once something has
   bool placing = false, placeChosen = false;

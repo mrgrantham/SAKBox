@@ -104,6 +104,10 @@ public:
   // The ship touched, whose moves are marked (an index into the state's
   // ships), to show it selected
   std::optional<int> selectedShip() const;
+  // Moving the blockade (a 7, or an Enforcer): the planets it can go to,
+  // to be marked
+  std::vector<Hex> placingHexes() const;
+  bool placingBlockade() const { return blockadePlacing_; }
   // While placing (the start's home colony and ship, a build, a ship's
   // move): what's been touched and Confirm would place, to show there;
   // nothing before a touch. Touching another marked place moves it,
@@ -165,6 +169,9 @@ private:
   // A build's move: at once, or after ending the turn's offers to players
   Outcome build(const Action &action, bool endsTrading);
   bool startPlacing_ = false;    // (Placing: the start's)
+  bool blockadePlacing_ = false; // (Placing: the blockade's planet)
+  bool blockadeSaid_ = false;    // (nowhere to go: said once, the move queued)
+  void followBlockade(const State &state, const std::vector<Action> &legal);
   std::optional<Action> chosen_; // (Placing: touched, for Confirm to place)
   Outcome confirmChosen();       // (Confirm or A: what's chosen, placed)
   BoardButtons::Fades fades_;    // (buttons coming and going)

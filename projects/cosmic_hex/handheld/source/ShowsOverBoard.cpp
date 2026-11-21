@@ -398,7 +398,11 @@ void ScreenPadd::updatePointer() {
   tapPointer_ = false;
   // (the camera follows what you chose, and comes back when nothing is)
   const auto followed = followedCorner();
-  follow_.aim(followed ? std::optional(BoardPieces::at(*followed)) : std::nullopt, showsNow());
+  const auto pointAt = [](const CosmicHex::Corner &place) {
+    const Scene::Transform at = BoardPieces::pointerAt(place);
+    return Scene::Vector3{at.m[0][3], at.m[1][3], at.m[2][3]};
+  };
+  follow_.aim(followed ? std::optional(pointAt(*followed)) : std::nullopt, showsNow());
 }
 
 // What the camera follows: the corner you chose (a move, a placement),
@@ -407,6 +411,8 @@ void ScreenPadd::updatePointer() {
 std::optional<CosmicHex::Corner> ScreenPadd::followedCorner() const {
   if (!pointerCorner() || !bottomScreen_ || !latest_)
     return std::nullopt;
+  if (bottomScreen_->placingBlockade())
+    return bottomScreen_->chosenPlacement() ? pointerCorner() : std::nullopt;
   if (const auto chosen = bottomScreen_->chosenPlacement())
     if (const MoveSpot spot = spotOf(latest_->state, *chosen); !spot.corners.empty())
       return spot.corners.back();
@@ -425,7 +431,7 @@ std::optional<CosmicHex::Corner> ScreenPadd::pointerCorner() const {
     return std::nullopt;
   const std::vector<CosmicHex::Corner> places = bottomScreen_->placingCorners();
   const std::optional<int> ship = bottomScreen_->selectedShip();
-  if (places.empty() && !ship && !selected_)
+  if (places.empty() && !ship && !selected_ && !bottomScreen_->placingBlockade())
     return std::nullopt; // (nothing to choose on the board, nothing touched)
   const double t = showsNow();
   const bool busy = gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving ||
@@ -435,6 +441,15 @@ std::optional<CosmicHex::Corner> ScreenPadd::pointerCorner() const {
                     cardPlay_.moving(t) || hand_.moving(t) || dealt_.on() || pick_.at(t);
   if (busy)
     return std::nullopt;
+  // (the blockade: centred on the planet chosen, else on the first it can
+  // go to; a tile's middle is corner -1)
+  if (bottomScreen_->placingBlockade()) {
+    const auto hexes = bottomScreen_->placingHexes();
+    if (const auto chosen = bottomScreen_->chosenPlacement())
+      return CosmicHex::Corner{latest_->state.planets[static_cast<std::size_t>(chosen->a)].hex, -1};
+    if (!hexes.empty())
+      return CosmicHex::Corner{hexes.front(), -1};
+  }
   // (what you've chosen to place, or where a ship's to go: there, ahead
   // of the ship itself)
   if (const std::optional<CosmicHex::Action> chosen = bottomScreen_->chosenPlacement())

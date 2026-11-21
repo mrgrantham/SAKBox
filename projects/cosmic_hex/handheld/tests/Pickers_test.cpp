@@ -72,6 +72,18 @@ TEST(BoardButtonsTest, EndTurnTakesRollsPlaceAndConfirmIsApart) {
   EXPECT_EQ(BoardButtons::at(chosen, 10, 180), BoardButtons::Button::EndTurn);
 }
 
+// A new ship still on its colony: End Turn shows, dimmed (it can't be used
+// until the ship moves off)
+TEST(BoardButtonsTest, EndTurnWaitsForANewShip) {
+  const BoardButtons::Situation waiting{.yourMove = true, .newShipMustMove = true};
+  const auto places = BoardButtons::layout(256, 192, waiting);
+  const auto endTurn = std::find_if(places.begin(), places.end(), [](const BoardButtons::Place &p) {
+    return p.button == BoardButtons::Button::EndTurn;
+  });
+  ASSERT_NE(endTurn, places.end());
+  EXPECT_FALSE(endTurn->usable);
+}
+
 // Buttons coming and going fade: the first layout at once; Roll going fades
 // out where it was (not usable) as End Turn fades in, and then it's gone
 TEST(BoardButtonsTest, ButtonsFadeInAndOut) {

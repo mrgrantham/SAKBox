@@ -505,3 +505,35 @@ TEST(BottomScreenTest, TheTradeRoomMakesABankTrade) {
     EXPECT_EQ(state.player[0].resources[1], 1);
   }
 }
+
+// The blockade (a 7): the planets it can go to marked; a touch on one
+// chooses it, Confirm moves it (or asks whom to steal from). With nowhere
+// to go, the only move is queued for the app, and it says so
+TEST(BottomScreenTest, TheBlockadeIsPlacedLikeEverythingElse) {
+  const State state = playUntil([](const State &s) { return s.phase == Phase::Blockade; });
+  ASSERT_EQ(state.phase, Phase::Blockade);
+  const auto legal = Game::legalActions(state);
+  BottomScreen screen(kWidth, kHeight);
+  screen.update(state, legal, true);
+  const bool nowhere =
+      std::all_of(legal.begin(), legal.end(), [](const Action &a) { return a.a < 0; });
+  if (nowhere) {
+    const auto queued = screen.nextQueued();
+    ASSERT_TRUE(queued.has_value());
+    EXPECT_EQ(queued->kind, Kind::MoveBlockade);
+    EXPECT_FALSE(screen.message().empty());
+    return;
+  }
+  EXPECT_EQ(screen.mode(), Mode::Placing);
+  const auto hexes = screen.placingHexes();
+  ASSERT_FALSE(hexes.empty());
+  const Hex there = hexes.front();
+  EXPECT_FALSE(screen.tap(128, 96, BoardPicture::Spot{there, Corner{there, 0}}).play.has_value());
+  ASSERT_TRUE(screen.chosenPlacement().has_value());
+  const auto confirmed = screen.press(BottomScreen::Key::Confirm);
+  if (confirmed.play) {
+    EXPECT_EQ(confirmed.play->kind, Kind::MoveBlockade);
+  } else {
+    EXPECT_EQ(screen.mode(), Mode::Players); // (whom to steal from)
+  }
+}

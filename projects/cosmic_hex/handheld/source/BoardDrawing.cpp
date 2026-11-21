@@ -389,6 +389,10 @@ void ScreenPadd::drawSelectedShip() {
                     {.shading = Scene::Material::Shading::Unlit,
                      .colour = withFuel ? kFuelOrange : Palette::kHighlight});
   }
+  // Where the blockade can go (a 7): a ring round each planet
+  for (const CosmicHex::Hex &hex : bottomScreen_->placingHexes())
+    renderer_->draw(hexRing_, BoardPieces::onHex(hex),
+                    {.shading = Scene::Material::Shading::Unlit, .colour = Palette::kHighlight});
   // The pointer (CornerPointer): turning and bobbing over the corner in
   // focus, as shown as it's faded in, gliding between corners
   const auto look = pointer_.at(showsNow());
@@ -397,8 +401,8 @@ void ScreenPadd::drawSelectedShip() {
   const auto t = static_cast<float>(showsNow());
   constexpr float kTurn = 6.2831853f; // (a whole turn, radians)
   const float bob = 0.06f * std::sin(t * kTurn * 0.8f);
-  const Scene::Transform from = BoardPieces::onCorner(look->from),
-                         to = BoardPieces::onCorner(look->to);
+  const Scene::Transform from = BoardPieces::pointerAt(look->from),
+                         to = BoardPieces::pointerAt(look->to);
   const auto between = [&](int axis) {
     return from.m[static_cast<std::size_t>(axis)][3] +
            (to.m[static_cast<std::size_t>(axis)][3] - from.m[static_cast<std::size_t>(axis)][3]) *

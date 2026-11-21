@@ -98,6 +98,11 @@ struct BoardPieces {
   static Scene::Vector3 at(Corner corner);
   static Scene::Transform onHex(Hex hex);
   static Scene::Transform onCorner(Corner corner);
+  // Where the board's pointer is for a place: a corner, or (index -1) the
+  // middle of the tile (the blockade's planet)
+  static Scene::Transform pointerAt(Corner place) {
+    return place.index < 0 ? onHex(place.hex) : onCorner(place);
+  }
 
   // The gaps between the tiles (the user's): a thin ring round each
   // tile, from its edge (kTileInset) out to its hex's, in the tiles' own
