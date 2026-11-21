@@ -185,6 +185,8 @@ The DS's version differs in:
 
 Touch or the buttons work everywhere. The buttons are ScratchPadd's `Buttons` panels, and Confirm and Back follow the pad's own convention (`Input::Role`).
 
+- **Raised buttons:** every button (the board's corners, the menus, the setup, the settings and keyboard, the tabs, the choosing screens' buttons) is drawn raised, lit from the top left with a dark drop under it, and sinks a pixel when pressed (ScratchPadd's `Buttons::Bevel::Raised`).
+
 ### The setup
 
 On the touch screen:
@@ -236,6 +238,9 @@ On the board:
 - **B** takes whatever is animating straight to its end ([Animation](#animation)).
 
 The choosing screens (`ChoiceScreens`, drawn on a `Canvas`) take the board's place when needed:
+
+- **Their buttons** (Back, Decline, and the green one that goes ahead: Build, Take, Steal, Play or Reveal, Keep, Trade or Offer, Accept) are a `Buttons` panel at the screen's foot (`ChoiceScreens::ActionButton`): a touch makes one glow and sink a moment (`ChoiceScreens::Press`, kept by `BottomScreen`), and the green one has the D-pad's focus once it's ready, as A presses it. Take shows dimmed until enough are picked. The trade room's minus under each card is a small button too.
+- **What you choose from** (the build rows, the resource cards, the players, the cards) are items in a list, not buttons: outlined in amber when chosen, in the buttons' own row colours.
 
 - **The resource picker** (`Pickers`): the home's pay and salvage open it by themselves; the Cartel and the Supply drop open it from the cards screen. The card in focus is the pick, and Take always shows (A takes it at once).
   - **Each choice opens afresh:** a home paying 2 is two choices in a row, each opened anew (nothing carried over) and saying how many are left ("(2 to choose)"; `ResourceChoice::left`, `sameAs`).

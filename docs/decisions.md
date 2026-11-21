@@ -55,6 +55,12 @@ Stations on 3 planets of one kind, Occupier, and the Deep-space relay (1 point o
 
 ## Platform: ScratchPadd and the consoles
 
+**Buttons are raised, in the library** (2026-11-21)
+Every `Buttons` panel draws its buttons raised by default (`Style::bevel`): the edge colour lit a fifth toward white along the top and left, the face at half brightness along the bottom and right, a 2-pixel dark drop under the face; pressed, it sinks a pixel and the edges swap. The drop and the sink stay inside the button's area, so touches, `areas()` and the bottom map's redrawn areas are unchanged. The lit edge comes from the button's edge colour, so a player's tab or the chosen tab keeps its colour's meaning. **Why:** the owner chose this look (B) from the mockups, for every panel at once; in the library, every app's buttons get it. **Not:** a drop outside the area (every caller's redraw areas would grow), or each app drawing its own bevel.
+
+**Cosmic Hex's choosing screens' buttons are a Buttons panel** (2026-11-21)
+Back, Decline and the green go button keep their places and words, and their touches are still found from their boxes; the screens stay drawn from what they're given, the press passed in (`ChoiceScreens::Press`) and kept by `BottomScreen`. The go button has the D-pad's focus once it's ready, as A presses it. **Why:** they were drawn by hand, without the press glow and focus the other buttons have. **Not:** making the rows, cards and players buttons: they're things to choose from, chosen with an outline, and a press glow on them would mean nothing more.
+
 **Views in the renderer, on every backend** (2026-11-20)
 `Renderer::beginView(camera, viewport)`: a camera drawn into part of the screen, on Metal, OpenGL, Vulkan, the DS and the 3DS, rather than desktop-only or a second renderer. **Why:** the user's pick, for the lab's side-by-side comparison, and one interface that fits every platform (split screen and picture-in-picture later). Views drawn over another share its depth for now.
 

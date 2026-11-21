@@ -23,9 +23,10 @@ void loadCardPictures(Scene::Renderer &renderer, const PlatformProfile &profile,
       return Scene::Texture{};
     const std::vector<Scene::Colour> top(whole.begin(), whole.begin() + width * height);
     // (the band's colour, for its title's letters: dark on a light band)
+    const int bandPixel = (width * 11 / 63) * width + width * 6 / 63;
     if (static_cast<int>(card) < kResources)
       pictures.resourceBands[static_cast<std::size_t>(card)] =
-          top[static_cast<std::size_t>((width * 11 / 63) * width + width * 6 / 63)];
+          top[static_cast<std::size_t>(bandPixel)];
     const PaddedPicture picture = padded(top, width, height);
     uMax = picture.uMax;
     vMax = picture.vMax;
@@ -47,8 +48,9 @@ void loadCardPictures(Scene::Renderer &renderer, const PlatformProfile &profile,
   closeUps.back.load(renderer, profile.closeUpBackSize, profile.closeUpBackSize);
   for (ScratchPadd::PictureSlot &card : closeUps.cards)
     card.load(renderer, size, size);
+  const int smallCardHeight = size * 52 / 63; // (whole pixels, as the card is drawn)
   pictures.closeUpCardSquare = renderer.load(
-      pictureSquare(1, static_cast<float>(size * 52 / 63) / static_cast<float>(size)).data());
+      pictureSquare(1, static_cast<float>(smallCardHeight) / static_cast<float>(size)).data());
   // The two backs, whole cards (the planets for resource cards, the rings
   // for action cards: the agreed designs), for cards held face down
   for (const Art::CardBack design : {Art::CardBack::Rings, Art::CardBack::Planets}) {

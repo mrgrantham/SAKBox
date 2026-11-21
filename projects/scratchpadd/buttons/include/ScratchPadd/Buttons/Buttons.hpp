@@ -3,8 +3,9 @@
 // and whether it can be used now (dimmed when not). A touch finds the button
 // under it; the D-pad moves a focus to the nearest usable button that way;
 // a used button flashes, with a message if it has something to say (why it
-// can't be used, say). With Input's menu roles (Confirm on the pad's own
-// button), the same code works on every pad.
+// can't be used, say). Each is drawn raised, lit from the top left, and
+// sinks a pixel when pressed (Style::bevel). With Input's menu roles
+// (Confirm on the pad's own button), the same code works on every pad.
 //
 //   using namespace ScratchPadd;
 //   Buttons::Panel panel;
@@ -53,6 +54,13 @@ struct Button {
   float shown = 1;
 };
 
+// How a button stands out from what's under it
+enum class Bevel {
+  Flat,   // a face with a one-pixel edge all round
+  Raised, // a face lit along its top and left, shaded along its bottom and
+          // right, with a dark drop under it; pressed, it sinks a pixel
+};
+
 // How a panel looks
 struct Style {
   Colour face{31, 42, 64, 255};
@@ -68,6 +76,14 @@ struct Style {
   Colour message{255, 214, 90, 255};
   float labelScale = 1;
   float dimmed = 0.35f; // an unusable button's icon, how strongly drawn
+  // Raised (the default): the top and left edge a little lighter than the
+  // edge colour (a button's own edge too: a player's colour, the chosen
+  // tab's amber), the bottom and right the face darkened, and `dropPixels`
+  // of `drop` under the face. All of it stays inside the button's area, in
+  // whole pixels, so touches and areas() are the same either way
+  Bevel bevel = Bevel::Raised;
+  Colour drop{6, 9, 16, 255};
+  int dropPixels = 2;
 };
 
 enum class Direction { Up, Down, Left, Right };
@@ -116,8 +132,14 @@ public:
   // Everything draw() draws on: each button (and the flash's outline round
   // it) and the message's band
   std::vector<Area> areas() const;
+  // Where a button's face is drawn, inside its area: all of it when flat;
+  // raised, above its drop, a pixel lower while it's pressed (`sunk`)
+  static Area faceOf(const Button &button, const Style &style, bool sunk);
 
 private:
+  // Whether a button shows pressed now: sunk, its glow over it
+  bool sunk(const Button &button) const;
+  void drawMessage(Canvas &canvas, const Style &style) const; // (the band, if any)
   std::vector<Button> buttons_;
   std::optional<int> focus_, pressed_;
   double pressedAt_ = 0, now_ = 0;

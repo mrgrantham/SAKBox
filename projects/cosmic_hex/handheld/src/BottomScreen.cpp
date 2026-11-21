@@ -17,6 +17,27 @@ constexpr Colour kRollButton{32, 51, 74, 255};
 constexpr Colour kRollEdge{106, 168, 255, 255};
 constexpr Colour kHintBand{10, 15, 26, 255};
 constexpr Colour kHint = Palette::kHighlight;
+
+// A choosing screen's touch on its Back, go or Decline button, remembered
+// with when, for that button to glow and sink a moment
+void rememberActionTouch(ChoiceScreens::Press &press,
+                         const std::optional<ChoiceScreens::Touch> &touch, double now) {
+  using What = ChoiceScreens::Touch::What;
+  if (touch && touch->what == What::Back)
+    press = {ChoiceScreens::ActionButton::Back, now};
+  else if (touch && touch->what == What::Confirm)
+    press = {ChoiceScreens::ActionButton::Confirm, now};
+}
+void rememberActionTouch(ChoiceScreens::Press &press,
+                         const std::optional<ChoiceScreens::TradeTouch> &touch, double now) {
+  using What = ChoiceScreens::TradeTouch::What;
+  if (touch && touch->what == What::Back)
+    press = {ChoiceScreens::ActionButton::Back, now};
+  else if (touch && touch->what == What::Confirm)
+    press = {ChoiceScreens::ActionButton::Confirm, now};
+  else if (touch && touch->what == What::Decline)
+    press = {ChoiceScreens::ActionButton::Decline, now};
+}
 } // namespace
 
 BottomScreen::BottomScreen(int width, int height)
@@ -330,6 +351,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
   }
   case Mode::Build: {
     const auto touch = ChoiceScreens::buildTouch(width_, rows_.size(), x, y);
+    rememberActionTouch(actionPress_, touch, now_);
     if (!touch)
       return {std::nullopt, true};
     if (touch->what == What::Back) {
@@ -353,6 +375,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
   }
   case Mode::Resources: {
     const auto touch = ChoiceScreens::resourcesTouch(width_, x, y);
+    rememberActionTouch(actionPress_, touch, now_);
     if (!touch || !resources_)
       return {std::nullopt, true};
     if (touch->what == What::Back && resourcesCanGoBack_) {
@@ -377,6 +400,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
     const auto touch = players_
                            ? ChoiceScreens::playersTouch(width_, players_->options.size(), x, y)
                            : std::nullopt;
+    rememberActionTouch(actionPress_, touch, now_);
     if (!touch)
       return {std::nullopt, true};
     if (touch->what == What::Item) {
@@ -391,6 +415,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
   }
   case Mode::Cards: {
     const auto touch = ChoiceScreens::cardsTouch(width_, held_.size(), x, y);
+    rememberActionTouch(actionPress_, touch, now_);
     if (!touch)
       return {std::nullopt, true};
     if (touch->what == What::Item)
@@ -404,6 +429,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
   case Mode::Trade: {
     using TradeWhat = ChoiceScreens::TradeTouch::What;
     const auto touch = ChoiceScreens::tradeTouch(width_, trade_, x, y);
+    rememberActionTouch(actionPress_, touch, now_);
     if (!touch)
       return {std::nullopt, true};
     switch (touch->what) {
@@ -432,6 +458,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
   }
   case Mode::Others: {
     const auto touch = ChoiceScreens::othersTouch(width_, others_, x, y);
+    rememberActionTouch(actionPress_, touch, now_);
     if (touch && touch->what == What::Item)
       othersChosen_ = touch->item;
     else if (touch && touch->what == What::Back)
@@ -441,6 +468,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
   case Mode::Keep: {
     const auto touch =
         keep_ ? ChoiceScreens::keepTouch(width_, keep_->cards.size(), x, y) : std::nullopt;
+    rememberActionTouch(actionPress_, touch, now_);
     if (!touch)
       return {std::nullopt, true};
     if (touch->what == What::Item)
@@ -727,6 +755,12 @@ BottomScreen::Outcome BottomScreen::press(Key key) {
 
 void BottomScreen::clearFeedback() { buttons_.clearFeedback(); }
 
+ChoiceScreens::Press BottomScreen::actionPress() const {
+  ChoiceScreens::Press press = actionPress_;
+  press.now = now_;
+  return press;
+}
+
 void BottomScreen::layOutButtons() {
   situation_.placing = mode_ == Mode::Placing;
   situation_.placeChosen = chosen_.has_value();
@@ -805,31 +839,31 @@ std::vector<Corner> BottomScreen::placingCorners() const {
 void BottomScreen::draw(Canvas &canvas) {
   switch (mode_) {
   case Mode::Build:
-    ChoiceScreens::drawBuild(canvas, rows_, buildChosen_);
+    ChoiceScreens::drawBuild(canvas, rows_, buildChosen_, actionPress());
     return;
   case Mode::Resources:
     if (resources_)
       ChoiceScreens::drawResources(canvas, *resources_, picked_,
                                    state_.player[static_cast<std::size_t>(state_.turn)].resources,
-                                   resourcesCanGoBack_, cards_, resourceFocus_);
+                                   resourcesCanGoBack_, cards_, resourceFocus_, actionPress());
     return;
   case Mode::Players:
     if (players_)
       ChoiceScreens::drawPlayers(canvas, *players_, playerChosen_, cardChosen_, Art::kResourceBack,
-                                 cards_);
+                                 cards_, actionPress());
     return;
   case Mode::Cards:
-    ChoiceScreens::drawCards(canvas, held_, heldChosen_, bigCards_);
+    ChoiceScreens::drawCards(canvas, held_, heldChosen_, bigCards_, actionPress());
     return;
   case Mode::Keep:
     if (keep_)
-      ChoiceScreens::drawKeep(canvas, *keep_, keepChosen_, bigCards_);
+      ChoiceScreens::drawKeep(canvas, *keep_, keepChosen_, bigCards_, actionPress());
     return;
   case Mode::Others:
-    ChoiceScreens::drawOthers(canvas, others_, othersChosen_, trade_.names());
+    ChoiceScreens::drawOthers(canvas, others_, othersChosen_, trade_.names(), actionPress());
     return;
   case Mode::Trade:
-    ChoiceScreens::drawTrade(canvas, trade_, cards_);
+    ChoiceScreens::drawTrade(canvas, trade_, cards_, actionPress());
     return;
   case Mode::Board:
   case Mode::Placing:

@@ -113,73 +113,160 @@ float Panel::pressGlow(double now) const {
 
 void Panel::clearFeedback() { message_.clear(); }
 
+namespace {
+// An area in whole pixels (its edges rounded as Canvas rounds them), so a
+// one-pixel edge stays one pixel at any scale
+Area wholePixels(const Area &a) {
+  const float left = std::round(a.x), top = std::round(a.y);
+  return {left, top, std::round(a.x + a.width) - left, std::round(a.y + a.height) - top};
+}
+
+// The raised look's edges: the lit one a fifth of the way from the edge
+// colour to white, the shaded one the face at half its brightness
+Colour lit(Colour c) {
+  const auto towardWhite = [](std::uint8_t v) {
+    return static_cast<std::uint8_t>(v + (255 - v) / 5);
+  };
+  return {towardWhite(c.r), towardWhite(c.g), towardWhite(c.b), c.a};
+}
+Colour shaded(Colour c) {
+  return {static_cast<std::uint8_t>(c.r / 2), static_cast<std::uint8_t>(c.g / 2),
+          static_cast<std::uint8_t>(c.b / 2), c.a};
+}
+
+// Paints rectangles solid, or see-through for a button fading in or out
+struct Painter {
+  Canvas &canvas;
+  float opacity = 1;
+  void rect(float x, float y, float w, float h, Colour colour) const {
+    if (opacity >= 1)
+      canvas.fillRect(x, y, w, h, colour);
+    else
+      canvas.blendRect(x, y, w, h, colour, opacity);
+  }
+};
+
+void drawFlatBody(const Painter &paint, const Area &a, Colour face, Colour edge) {
+  paint.rect(a.x, a.y, a.width, a.height, face);
+  paint.rect(a.x, a.y, a.width, 1, edge);
+  paint.rect(a.x, a.y + a.height - 1, a.width, 1, edge);
+  paint.rect(a.x, a.y + 1, 1, a.height - 2, edge);
+  paint.rect(a.x + a.width - 1, a.y + 1, 1, a.height - 2, edge);
+}
+
+// The gap a sunk face leaves above it and the drop under the face, both in
+// the drop's colour (every pixel of the area painted: nothing stale shows
+// where the face was), then the face and its two-tone edges
+void drawRaisedBody(const Painter &paint, const Area &area, const Area &f, const Style &style,
+                    Colour face, Colour edge, bool sunk) {
+  paint.rect(area.x, area.y, area.width, f.y - area.y, style.drop);
+  const float faceBottom = f.y + f.height;
+  paint.rect(area.x, faceBottom, area.width, area.y + area.height - faceBottom, style.drop);
+  paint.rect(f.x, f.y, f.width, f.height, face);
+  // (pressed, the light from the top left falls on its bottom and right)
+  const Colour topLeft = sunk ? shaded(face) : lit(edge);
+  const Colour bottomRight = sunk ? lit(edge) : shaded(face);
+  paint.rect(f.x, f.y, f.width, 1, topLeft);
+  paint.rect(f.x, f.y + 1, 1, f.height - 1, topLeft);
+  paint.rect(f.x + 1, faceBottom - 1, f.width - 1, 1, bottomRight);
+  paint.rect(f.x + f.width - 1, f.y + 1, 1, f.height - 2, bottomRight);
+}
+
+// A button's face and edges, flat or raised; where its face went
+Area drawBody(const Painter &paint, const Style &style, const Button &button, bool sunk) {
+  const Area area = wholePixels(button.area);
+  const Area face = Panel::faceOf(button, style, sunk);
+  const Colour faceColour = button.face.value_or(style.face);
+  const Colour edgeColour = button.edge.value_or(style.edge);
+  if (style.bevel == Bevel::Flat)
+    drawFlatBody(paint, area, faceColour, edgeColour);
+  else
+    drawRaisedBody(paint, area, face, style, faceColour, edgeColour, sunk);
+  return face;
+}
+
+// A button's icon, in the middle of its face
+void drawIcon(Canvas &canvas, const Button &button, const Area &face, float opacity) {
+  const auto size = static_cast<float>(button.iconSize);
+  const int left = static_cast<int>(std::lround(face.x + (face.width - size) / 2));
+  const int top = static_cast<int>(std::lround(face.y + (face.height - size) / 2));
+  canvas.blend(*button.icon, button.iconSize, button.iconSize, left, top, opacity);
+}
+
+// A button's words, in the middle of its face: the focus colour when the
+// D-pad is on it, darker when it can't be used
+void drawLabel(Canvas &canvas, const Style &style, const Button &button, const Area &face,
+               bool focused) {
+  Colour words = focused ? style.focus : style.words;
+  if (!button.usable) {
+    words.r = static_cast<std::uint8_t>(std::lround(words.r * style.dimmed));
+    words.g = static_cast<std::uint8_t>(std::lround(words.g * style.dimmed));
+    words.b = static_cast<std::uint8_t>(std::lround(words.b * style.dimmed));
+  }
+  canvas.textCentred(face.x + face.width / 2, face.y + face.height / 2, button.label, words,
+                     style.labelScale);
+}
+} // namespace
+
+Area Panel::faceOf(const Button &button, const Style &style, bool sunk) {
+  const Area area = wholePixels(button.area);
+  if (style.bevel == Bevel::Flat)
+    return area;
+  // (the drop no taller than leaves the face room for its edges)
+  const auto drop = static_cast<float>(
+      std::clamp(style.dropPixels, 0, std::max(0, static_cast<int>(area.height) - 4)));
+  const float sink = sunk && drop > 0 ? 1.0f : 0.0f;
+  return {area.x, area.y + sink, area.width, area.height - drop};
+}
+
+bool Panel::sunk(const Button &button) const {
+  return pressed_ == button.id && pressGlow(now_) > 0;
+}
+
 // A button fading in or out: its face, edge and icon see-through over
 // what's under it (no focus, glow or toggle: it can't be touched yet)
 void Panel::drawFading(Canvas &canvas, const Style &style, const Button &button) {
-  const Area &a = button.area;
-  canvas.blendRect(a.x, a.y, a.width, a.height, button.face.value_or(style.face), button.shown);
-  const Colour edge = button.edge.value_or(style.edge);
-  canvas.blendRect(a.x, a.y, a.width, 1, edge, button.shown);
-  canvas.blendRect(a.x, a.y + a.height - 1, a.width, 1, edge, button.shown);
-  canvas.blendRect(a.x, a.y + 1, 1, a.height - 2, edge, button.shown);
-  canvas.blendRect(a.x + a.width - 1, a.y + 1, 1, a.height - 2, edge, button.shown);
-  if (button.icon && button.iconSize > 0) {
-    const int left =
-        static_cast<int>(std::lround(a.x + (a.width - static_cast<float>(button.iconSize)) / 2));
-    const int top =
-        static_cast<int>(std::lround(a.y + (a.height - static_cast<float>(button.iconSize)) / 2));
-    canvas.blend(*button.icon, button.iconSize, button.iconSize, left, top,
-                 (button.usable ? 1.0f : style.dimmed) * button.shown);
-  }
+  const Area face = drawBody({canvas, button.shown}, style, button, false);
+  if (button.icon && button.iconSize > 0)
+    drawIcon(canvas, button, face, (button.usable ? 1.0f : style.dimmed) * button.shown);
 }
 
 void Panel::draw(Canvas &canvas, const Style &style) const {
   for (const Button &button : buttons_) {
-    const Area &a = button.area;
     if (button.shown <= 0)
       continue;
     if (button.shown < 1) {
       drawFading(canvas, style, button);
       continue;
     }
-    canvas.fillRect(a.x, a.y, a.width, a.height, button.face.value_or(style.face));
-    canvas.outline(a.x, a.y, a.width, a.height, button.edge.value_or(style.edge));
-    if (button.icon && button.iconSize > 0) {
-      const int left =
-          static_cast<int>(std::lround(a.x + (a.width - static_cast<float>(button.iconSize)) / 2));
-      const int top =
-          static_cast<int>(std::lround(a.y + (a.height - static_cast<float>(button.iconSize)) / 2));
-      canvas.blend(*button.icon, button.iconSize, button.iconSize, left, top,
-                   button.usable ? 1.0f : style.dimmed);
-    } else if (!button.label.empty()) {
-      const bool focused = focus_ == button.id;
-      Colour words = focused ? style.focus : style.words;
-      if (!button.usable) {
-        words.r = static_cast<std::uint8_t>(std::lround(words.r * style.dimmed));
-        words.g = static_cast<std::uint8_t>(std::lround(words.g * style.dimmed));
-        words.b = static_cast<std::uint8_t>(std::lround(words.b * style.dimmed));
-      }
-      canvas.textCentred(a.x + a.width / 2, a.y + a.height / 2, button.label, words,
-                         style.labelScale);
+    const bool pressedNow = sunk(button);
+    const bool focused = focus_ == button.id;
+    const Area face = drawBody({canvas}, style, button, pressedNow);
+    if (button.icon && button.iconSize > 0)
+      drawIcon(canvas, button, face, button.usable ? 1.0f : style.dimmed);
+    else if (!button.label.empty())
+      drawLabel(canvas, style, button, face, focused);
+    if (focused) {
+      canvas.outline(face.x, face.y, face.width, face.height, style.focus);
+      canvas.outline(face.x + 1, face.y + 1, face.width - 2, face.height - 2, style.focus);
     }
-    if (focus_ == button.id) {
-      canvas.outline(a.x, a.y, a.width, a.height, style.focus);
-      canvas.outline(a.x + 1, a.y + 1, a.width - 2, a.height - 2, style.focus);
-    }
+    const Area &a = button.area;
     if (button.on)
       canvas.outline(a.x - 1, a.y - 1, a.width + 2, a.height + 2, style.on, 2);
-    if (pressed_ == button.id) {
-      if (const float glow = pressGlow(now_); glow > 0)
-        canvas.blendRect(a.x + 1, a.y + 1, a.width - 2, a.height - 2, style.press,
-                         style.pressOpacity * glow);
-    }
+    if (pressedNow)
+      canvas.blendRect(face.x + 1, face.y + 1, face.width - 2, face.height - 2, style.press,
+                       style.pressOpacity * pressGlow(now_));
   }
-  if (!message_.empty() && messageArea_) {
-    const Area &m = *messageArea_;
-    canvas.fillRect(m.x, m.y, m.width, m.height, style.band);
-    canvas.outline(m.x, m.y, m.width, m.height, style.message);
-    canvas.textCentred(m.x + m.width / 2, m.y + m.height / 2, message_, style.message);
-  }
+  drawMessage(canvas, style);
+}
+
+void Panel::drawMessage(Canvas &canvas, const Style &style) const {
+  if (message_.empty() || !messageArea_)
+    return;
+  const Area &m = *messageArea_;
+  canvas.fillRect(m.x, m.y, m.width, m.height, style.band);
+  canvas.outline(m.x, m.y, m.width, m.height, style.message);
+  canvas.textCentred(m.x + m.width / 2, m.y + m.height / 2, message_, style.message);
 }
 
 std::vector<Area> Panel::areas() const {

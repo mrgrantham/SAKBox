@@ -69,16 +69,18 @@ void MenuPicture::draw(const StartMenu &menu) {
   ScratchPadd::Buttons::Panel panel;
   panel.set(std::move(panelButtons));
   panel.setFocus(focused);
-  panel.draw(canvas_, {.face = kButton,
-                       .edge = kEdge,
-                       .words = kWords,
-                       .focus = kChosen,
-                       .labelScale = scale * 1.4f});
+  const ScratchPadd::Buttons::Style style{.face = kButton,
+                                          .edge = kEdge,
+                                          .words = kWords,
+                                          .focus = kChosen,
+                                          .labelScale = scale * 1.4f};
+  panel.draw(canvas_, style);
   for (const std::size_t i : chosenArrows) {
-    const StartMenu::Button &b = buttons[i];
-    canvas_.outline(b.x, b.y, b.width, b.height, kChosen);
-    canvas_.textCentred(b.x + b.width / 2, b.y + b.height / 2, b.step < 0 ? "<" : ">", kChosen,
-                        scale * 1.4f);
+    // (over the arrow's face, above its drop, where the panel drew it)
+    const auto face = ScratchPadd::Buttons::Panel::faceOf(panel.buttons()[i], style, false);
+    canvas_.outline(face.x, face.y, face.width, face.height, kChosen);
+    canvas_.textCentred(face.x + face.width / 2, face.y + face.height / 2,
+                        buttons[i].step < 0 ? "<" : ">", kChosen, scale * 1.4f);
   }
   // Each row's label (left) and value (between its arrows)
   for (int r = 0; r < static_cast<int>(StartMenu::Row::Start); ++r) {

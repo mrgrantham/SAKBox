@@ -681,6 +681,7 @@ Hot functions are marked `[[gnu::hot]]`, which the DS builds put in ITCM, its fa
   - the D-pad moves a focus to the nearest usable button that way (preferring those within 45 degrees of it: on a staggered keyboard, right goes along the row)
   - a pressed button glows a moment (a see-through white over its inside, in and out over a quarter of a second, on the caller's clock: `press(id, now)`, `setTime`, `pressing`), with a message in a band when it has something to say
   - a toggle that's on (`Button::on`) keeps an outline in the highlight colour, which means chosen or on, never just touched
+  - raised by default (`Style::bevel`, `Bevel::Raised`): the top and left edge a little lighter than the edge colour, the bottom and right the face darkened, and a dark drop (`Style::drop`, `dropPixels`, 2) under the face; pressed, it sinks a pixel and the two edges swap. All of it inside the button's area, in whole pixels (crisp at 1x on a DS), so touches and `areas()` don't change; `Bevel::Flat` is the old face and edge all round. `Panel::faceOf` says where the face is, for drawing over it
   - `areas()` says what it draws on. With Input's menu roles the same menus work on every pad. Cosmic Hex's board buttons, title and pause menus and setup are built on it
 - **`//projects/scratchpadd/canvas`**: A picture drawn in pixels by the CPU, for a screen with no 3D of its own, such as a console's bottom screen (from Cosmic Hex): rectangles, outlines, words in the overlay's font (centred by the letters' own pixels), sprites blended over by their alpha, and `Canvas::over` to draw on another picture's pixels without copying them
 - **`//projects/scratchpadd/console_screens`**: The calls an app makes that differ between the DS and the 3DS (from Cosmic Hex): `Graphics` (their graphics set up), `keepRunning()`, `waitForTheRefresh()`, and `BottomScreen`, which puts a picture on the bottom screen (the DS's 16-bit bitmap, a word at a time; the 3DS's framebuffer). Header only: the consoles' Makefiles build it (add `scratchpadd/console_screens` to the app's sources in its BUILD)
@@ -818,6 +819,7 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
   - A touch finds its button, usable or not
   - the D-pad moves to the nearest usable button each way, skipping unusable ones and staying put at an edge, the focus kept across new buttons while its id is there
   - a press's glow in and out, its message until cleared, the glow lightening the button and an on toggle's outline
+  - a raised button lit on its top and left and shaded on its bottom and right, its drop under it and nothing outside its area; pressed, it sinks a pixel with its edges swapped, and rises once the press is over
   - faces, the focus's outline and the message's band drawn
 - **`canvas:Canvas_test`**: Rectangles fill exactly their pixels and are cut at the edges; words are drawn, centred words about their middle; drawing over another picture changes its pixels; sprites blend by their alpha
 - **`startup_splash:Fade_test`**: The fade goes from black to as drawn and back, never past either end or back the wrong way

@@ -49,10 +49,53 @@ Box confirmBox(int width) {
   const float k = scaleOf(width);
   return {196 * k, 168 * k, 56 * k, 21 * k};
 }
-void button(Canvas &canvas, const Box &box, std::string_view words, Colour fill, Colour edge) {
-  canvas.fillRect(box.x, box.y, box.w, box.h, fill);
-  canvas.outline(box.x, box.y, box.w, box.h, edge);
-  canvas.textCentred(box.x + box.w / 2, box.y + box.h / 2, words, kWords);
+Box declineBox(int width) {
+  const float k = scaleOf(width);
+  return {100 * k, 168 * k, 56 * k, 21 * k};
+}
+
+// The action buttons, on ScratchPadd's Buttons: in the screens' own row
+// colours (raised, as every panel), the D-pad's in amber
+namespace Buttons = ScratchPadd::Buttons;
+using ChoiceScreens::ActionButton;
+using ChoiceScreens::Press;
+const Buttons::Style kActionStyle{.face = kRow, .edge = kEdge, .words = kWords, .focus = kChosen};
+constexpr Colour kDecline{74, 32, 32, 255};
+
+Buttons::Area areaOf(const Box &box) { return {box.x, box.y, box.w, box.h}; }
+int idOf(ActionButton button) { return static_cast<int>(button); }
+
+Buttons::Button backButton(int width) {
+  return {.id = idOf(ActionButton::Back), .area = areaOf(backBox(width)), .label = "Back"};
+}
+// The green one that goes ahead; not yet `ready`, dimmed in the row colours
+Buttons::Button goButton(int width, std::string_view words, bool ready = true) {
+  return {.id = idOf(ActionButton::Confirm),
+          .area = areaOf(confirmBox(width)),
+          .label = std::string(words),
+          .usable = ready,
+          .face = ready ? std::optional(kConfirm) : std::nullopt,
+          .edge = ready ? std::optional(kConfirmEdge) : std::nullopt};
+}
+Buttons::Button declineButton(int width) {
+  return {.id = idOf(ActionButton::Decline),
+          .area = areaOf(declineBox(width)),
+          .label = "Decline",
+          .face = kDecline,
+          .edge = kCannot};
+}
+
+// A screen's action buttons drawn: the go button, when ready, in focus (A
+// presses it), and the one just pressed glowing and sunk
+void drawActions(Canvas &canvas, std::vector<Buttons::Button> buttons, const Press &press) {
+  Buttons::Panel panel;
+  panel.set(std::move(buttons));
+  if (const Buttons::Button *go = panel.find(idOf(ActionButton::Confirm)); go && go->usable)
+    panel.setFocus(go->id);
+  if (press.button)
+    panel.press(idOf(*press.button), press.at);
+  panel.setTime(press.now);
+  panel.draw(canvas, kActionStyle);
 }
 
 Art::Card cardOf(Resource resource) { return static_cast<Art::Card>(static_cast<int>(resource)); }
@@ -141,7 +184,11 @@ bool CardSprites::prepare() {
 
 namespace ChoiceScreens {
 
-void drawBuild(Canvas &canvas, const std::vector<BuildRow> &rows, int chosen) {
+bool Press::showing() const {
+  return button && now >= at && now - at < Buttons::Panel::kPressSeconds;
+}
+
+void drawBuild(Canvas &canvas, const std::vector<BuildRow> &rows, int chosen, const Press &press) {
   const float k = scaleOf(canvas);
   canvas.clear(kBackground);
   for (std::size_t i = 0; i < rows.size(); ++i) {
@@ -164,10 +211,11 @@ void drawBuild(Canvas &canvas, const std::vector<BuildRow> &rows, int chosen) {
       canvas.text(x, box.y + 7 * k, "free", kDim);
     canvas.text(box.x + 6 * k, box.y + 22 * k, row.note, row.canBuild ? kDim : kCannot);
   }
-  button(canvas, backBox(canvas.width()), "Back", kRow, kEdge);
+  std::vector<Buttons::Button> actions{backButton(canvas.width())};
   if (chosen >= 0 && chosen < static_cast<int>(rows.size()) &&
       rows[static_cast<std::size_t>(chosen)].canBuild)
-    button(canvas, confirmBox(canvas.width()), "Build", kConfirm, kConfirmEdge);
+    actions.push_back(goButton(canvas.width(), "Build"));
+  drawActions(canvas, std::move(actions), press);
 }
 
 std::optional<Touch> buildTouch(int width, std::size_t rows, int x, int y) {
@@ -183,7 +231,7 @@ std::optional<Touch> buildTouch(int width, std::size_t rows, int x, int y) {
 
 void drawResources(Canvas &canvas, const Pickers::ResourceChoice &choice,
                    const std::vector<Resource> &picked, const Resources &held, bool canGoBack,
-                   CardSprites &cards, int focus) {
+                   CardSprites &cards, int focus, const Press &press) {
   const float k = scaleOf(canvas);
   canvas.clear(kBackground);
   canvas.text(8 * k, 8 * k, choice.title, kWords);
@@ -208,13 +256,14 @@ void drawResources(Canvas &canvas, const Pickers::ResourceChoice &choice,
     if (r == focus)
       canvas.fillRect(box.x + 4 * k, box.y + box.h + 16 * k, box.w - 8 * k, 2 * k, kWords);
   }
+  std::vector<Buttons::Button> actions;
   if (canGoBack)
-    button(canvas, backBox(canvas.width()), "Back", kRow, kEdge);
+    actions.push_back(backButton(canvas.width()));
   // (Take always there, the user's: dim until enough are picked)
-  if (static_cast<int>(picked.size()) == choice.howMany && choice.actionFor(picked))
-    button(canvas, confirmBox(canvas.width()), "Take", kConfirm, kConfirmEdge);
-  else
-    button(canvas, confirmBox(canvas.width()), "Take", kRow, kEdge);
+  const bool ready =
+      static_cast<int>(picked.size()) == choice.howMany && choice.actionFor(picked).has_value();
+  actions.push_back(goButton(canvas.width(), "Take", ready));
+  drawActions(canvas, std::move(actions), press);
 }
 
 std::optional<Touch> resourcesTouch(int width, int x, int y) {
@@ -231,7 +280,7 @@ std::optional<Touch> resourcesTouch(int width, int x, int y) {
 }
 
 void drawPlayers(Canvas &canvas, const Pickers::PlayerChoice &choice, int chosen, int chosenCard,
-                 Art::CardBack backs, CardSprites &cards) {
+                 Art::CardBack backs, CardSprites &cards, const Press &press) {
   const float k = scaleOf(canvas);
   canvas.clear(kBackground);
   canvas.text(8 * k, 8 * k, "Steal from whom?", kWords);
@@ -276,7 +325,7 @@ void drawPlayers(Canvas &canvas, const Pickers::PlayerChoice &choice, int chosen
     }
   }
   if (chosen >= 0 && chosenCard >= 0)
-    button(canvas, confirmBox(canvas.width()), "Steal", kConfirm, kConfirmEdge);
+    drawActions(canvas, {goButton(canvas.width(), "Steal")}, press);
 }
 
 std::optional<Touch> playersTouch(int width, std::size_t players, int x, int y) {
@@ -326,8 +375,8 @@ void cardWords(Canvas &canvas, float y, std::string_view title, std::string_view
 }
 } // namespace
 
-void drawCards(Canvas &canvas, const std::vector<HeldCard> &cards, int chosen,
-               CardSprites &sprites) {
+void drawCards(Canvas &canvas, const std::vector<HeldCard> &cards, int chosen, CardSprites &sprites,
+               const Press &press) {
   const float k = scaleOf(canvas);
   canvas.clear(kBackground);
   canvas.textCentred(static_cast<float>(canvas.width()) / 2, 9 * k,
@@ -340,6 +389,7 @@ void drawCards(Canvas &canvas, const std::vector<HeldCard> &cards, int chosen,
     if (static_cast<int>(i) == chosen)
       canvas.outline(box.x - 2, box.y - 2, box.w + 4, box.h + 4, kChosen, 2);
   }
+  std::vector<Buttons::Button> actions{backButton(canvas.width())};
   if (chosen >= 0 && chosen < static_cast<int>(cards.size())) {
     const HeldCard &held = cards[static_cast<std::size_t>(chosen)];
     // What it does always; when it can't be used now, why, in red above
@@ -348,10 +398,9 @@ void drawCards(Canvas &canvas, const std::vector<HeldCard> &cards, int chosen,
       canvas.textCentred(static_cast<float>(canvas.width()) / 2, 112 * k, held.why, kCannot);
     cardWords(canvas, (held.playable ? 116 : 128) * k, words.title, words.words, kDim);
     if (held.playable)
-      button(canvas, confirmBox(canvas.width()), held.charter ? "Reveal" : "Play", kConfirm,
-             kConfirmEdge);
+      actions.push_back(goButton(canvas.width(), held.charter ? "Reveal" : "Play"));
   }
-  button(canvas, backBox(canvas.width()), "Back", kRow, kEdge);
+  drawActions(canvas, std::move(actions), press);
 }
 
 std::optional<Touch> cardsTouch(int width, std::size_t cards, int x, int y) {
@@ -366,7 +415,8 @@ std::optional<Touch> cardsTouch(int width, std::size_t cards, int x, int y) {
   return std::nullopt;
 }
 
-void drawKeep(Canvas &canvas, const KeepChoice &choice, int chosen, CardSprites &sprites) {
+void drawKeep(Canvas &canvas, const KeepChoice &choice, int chosen, CardSprites &sprites,
+              const Press &press) {
   const float k = scaleOf(canvas);
   canvas.clear(kBackground);
   canvas.textCentred(static_cast<float>(canvas.width()) / 2, 9 * k, "Keep one of these two", kDim);
@@ -381,7 +431,7 @@ void drawKeep(Canvas &canvas, const KeepChoice &choice, int chosen, CardSprites 
   if (chosen >= 0 && chosen < static_cast<int>(choice.cards.size())) {
     const Art::CardWords words = Art::wordsOf(choice.cards[static_cast<std::size_t>(chosen)]);
     cardWords(canvas, 116 * k, words.title, words.words, kDim);
-    button(canvas, confirmBox(canvas.width()), "Keep", kConfirm, kConfirmEdge);
+    drawActions(canvas, {goButton(canvas.width(), "Keep")}, press);
   } else {
     canvas.textCentred(static_cast<float>(canvas.width()) / 2, 116 * k, "Touch one to read it",
                        kDim);
@@ -423,7 +473,7 @@ ScratchPadd::Buttons::Panel othersPanel(int width, const std::vector<PlayerView>
 } // namespace
 
 void drawOthers(Canvas &canvas, const std::vector<PlayerView> &others, int chosen,
-                const PlayerNames &names) {
+                const PlayerNames &names, const Press &press) {
   const float k = scaleOf(canvas);
   canvas.clear(kBackground);
   canvas.textCentred(static_cast<float>(canvas.width()) / 2, 40 * k,
@@ -441,7 +491,7 @@ void drawOthers(Canvas &canvas, const std::vector<PlayerView> &others, int chose
                        std::to_string(view->points) + (view->points == 1 ? " point" : " points"),
                        kWords);
   }
-  button(canvas, backBox(canvas.width()), "Back", kRow, kEdge);
+  drawActions(canvas, {backButton(canvas.width())}, press);
 }
 
 std::optional<Touch> othersTouch(int width, const std::vector<PlayerView> &others, int x, int y) {
@@ -492,13 +542,9 @@ Box tradeMinus(int width, float y, int r) {
 // is held: the user's)
 float giveRow(int width) { return 102 * scaleOf(width); }
 float getRow(int width) { return 34 * scaleOf(width); }
-Box declineBox(int width) {
-  const float k = scaleOf(width);
-  return {100 * k, 168 * k, 56 * k, 21 * k};
-}
 } // namespace
 
-void drawTrade(Canvas &canvas, const TradeRoom &room, CardSprites &cards) {
+void drawTrade(Canvas &canvas, const TradeRoom &room, CardSprites &cards, const Press &press) {
   const float k = scaleOf(canvas);
   canvas.clear(kBackground);
   const int width = canvas.width();
@@ -513,6 +559,9 @@ void drawTrade(Canvas &canvas, const TradeRoom &room, CardSprites &cards) {
                                                         ? " offers you a trade"
                                                         : " answers with a counter"),
                        kChosen);
+  // (each card's minus, a small button under it, gathered as the rows are
+  // drawn and drawn together after them)
+  std::vector<Buttons::Button> minuses;
   const auto row = [&](float y, const Resources &counts, std::string_view label, bool minus,
                        bool showHeld) {
     canvas.text(6 * k, y - 10 * k, label, kDim);
@@ -532,12 +581,10 @@ void drawTrade(Canvas &canvas, const TradeRoom &room, CardSprites &cards) {
       if (answering && std::find(room.changed().begin(), room.changed().end(),
                                  static_cast<Resource>(r)) != room.changed().end())
         canvas.outline(box.x - 3, box.y - 3, box.w + 6, box.h + 6, kChosen);
-      if (minus) {
-        const Box m = tradeMinus(width, y, r);
-        canvas.fillRect(m.x, m.y, m.w, m.h, kRow);
-        canvas.outline(m.x, m.y, m.w, m.h, kEdge);
-        canvas.textCentred(m.x + m.w / 2, m.y + m.h / 2, "-", kWords);
-      }
+      if (minus)
+        minuses.push_back({.id = static_cast<int>(minuses.size()),
+                           .area = areaOf(tradeMinus(width, y, r)),
+                           .label = "-"});
       if (showHeld)
         // (at the card's left, clear of the minus at its right)
         canvas.text(box.x + 3 * k, box.y + box.h + 4 * k,
@@ -547,25 +594,30 @@ void drawTrade(Canvas &canvas, const TradeRoom &room, CardSprites &cards) {
   if (answering) {
     row(giveRow(width), room.theyGive(), "THEY GIVE YOU", false, false);
     row(getRow(width), room.theyWant(), "THEY WANT FROM YOU", false, false);
-    button(canvas, declineBox(width), "Decline", Colour{74, 32, 32, 255}, kCannot);
+    std::vector<Buttons::Button> actions{declineButton(width)};
     if (room.accept())
-      button(canvas, confirmBox(width), "Accept", kConfirm, kConfirmEdge);
+      actions.push_back(goButton(width, "Accept"));
     else
       canvas.textCentred(224 * k, 178 * k, "can't afford", kCannot);
+    drawActions(canvas, std::move(actions), press);
     return;
   }
   const bool bank = room.partner() == TradeRoom::kBank;
   row(giveRow(width), room.give(), bank ? "YOU GIVE (touch a kind)" : "YOU GIVE (touch to add)",
       !bank, true);
   row(getRow(width), room.get(), bank ? "YOU GET" : "YOU ASK FOR", !bank, false);
-  button(canvas, backBox(width), "Back", kRow, kEdge);
+  Buttons::Panel minusButtons;
+  minusButtons.set(std::move(minuses));
+  minusButtons.draw(canvas, kActionStyle);
+  std::vector<Buttons::Button> actions{backButton(width)};
   // The deal, or why not, between the buttons
   const std::string why = room.whyNot();
   canvas.textCentred(static_cast<float>(width) / 2, 160 * k, room.deal(), kWords);
   if (!why.empty())
     canvas.textCentred(static_cast<float>(width) / 2, 180 * k, why, kCannot);
   else
-    button(canvas, confirmBox(width), bank ? "Trade" : "Offer", kConfirm, kConfirmEdge);
+    actions.push_back(goButton(width, bank ? "Trade" : "Offer"));
+  drawActions(canvas, std::move(actions), press);
 }
 
 std::optional<TradeTouch> tradeTouch(int width, const TradeRoom &room, int x, int y) {

@@ -127,7 +127,9 @@ public:
   void setNames(PlayerNames names) { trade_.setNames(std::move(names)); }
   // Whether to draw again soon: a button glowing from a press, or fading in
   // or out (BoardButtons::Fades)
-  bool pressing() const { return buttons_.pressing(now_) || fades_.fading(now_); }
+  bool pressing() const {
+    return buttons_.pressing(now_) || fades_.fading(now_) || actionPress().showing();
+  }
   void clearFeedback();
 
   // Whether a screen to look at is open (your cards, the other players):
@@ -197,8 +199,12 @@ private:
   // The board's buttons (ScratchPadd's Buttons: placed by BoardButtons'
   // layout, their flash and message when tapped)
   ScratchPadd::Buttons::Panel buttons_;
-  void layOutButtons();    // (buttons_ from the layout, for the situation now)
-  Outcome useChosenCard(); // (the cards screen's Play or Reveal)
+  void layOutButtons(); // (buttons_ from the layout, for the situation now)
+  // A choosing screen's Back, go or Decline button touched: it glows and
+  // sinks a moment (ChoiceScreens::Press)
+  ChoiceScreens::Press actionPress_;
+  ChoiceScreens::Press actionPress() const; // (as it shows now)
+  Outcome useChosenCard();                  // (the cards screen's Play or Reveal)
   // (update's work: the screen following the game)
   void follow(const State &state, const std::vector<Action> &legal, bool yourMove,
               bool yourRollWaits);

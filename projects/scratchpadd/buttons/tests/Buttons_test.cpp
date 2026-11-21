@@ -97,7 +97,8 @@ TEST(ButtonsTest, DrawsFacesFocusAndMessage) {
   Panel panel = aPanel();
   panel.setMessageArea(Area{0, 80, 100, 14});
   Canvas canvas(100, 100);
-  const Buttons::Style style;
+  Buttons::Style style;
+  style.bevel = Buttons::Bevel::Flat; // (an edge all round, in the edge colour)
   canvas.clear({0, 0, 0, 255});
   panel.draw(canvas, style);
   EXPECT_EQ(canvas.at(12, 25), style.face);
@@ -111,6 +112,50 @@ TEST(ButtonsTest, DrawsFacesFocusAndMessage) {
   // Everything it draws on is in its areas
   const auto areas = panel.areas();
   EXPECT_EQ(areas.size(), 5u);
+}
+
+// Raised (the default look): lit along the top and left, shaded along the
+// bottom and right, the drop under the face, all inside the button's area
+TEST(ButtonsTest, ARaisedButtonIsLitFromTheTopLeft) {
+  Panel panel;
+  panel.set({{.id = 1, .area = {10, 10, 20, 20}}});
+  const Buttons::Style style;
+  Canvas canvas(40, 40);
+  canvas.clear({0, 0, 0, 255});
+  panel.draw(canvas, style);
+  const auto brightness = [](Canvas::Colour c) { return c.r + c.g + c.b; };
+  const Canvas::Colour top = canvas.at(20, 10), left = canvas.at(10, 20);
+  const Canvas::Colour bottom = canvas.at(20, 27), right = canvas.at(29, 20);
+  EXPECT_GT(brightness(top), brightness(style.edge)); // (lighter than the edge colour)
+  EXPECT_EQ(left, top);
+  EXPECT_LT(brightness(bottom), brightness(style.face));
+  EXPECT_EQ(right, bottom);
+  EXPECT_EQ(canvas.at(20, 20), style.face);
+  EXPECT_EQ(canvas.at(20, 28), style.drop); // (two pixels of drop under the face)
+  EXPECT_EQ(canvas.at(20, 29), style.drop);
+  EXPECT_EQ(canvas.at(20, 30), (Canvas::Colour{0, 0, 0, 255})); // (nothing outside it)
+}
+
+// Pressed, it sinks a pixel (the drop's colour above it) and the edges
+// swap: shaded along the top, lit along the bottom; once the press is
+// over it rises again
+TEST(ButtonsTest, APressedRaisedButtonSinks) {
+  Panel panel;
+  panel.set({{.id = 1, .area = {10, 10, 20, 20}}});
+  const Buttons::Style style;
+  Canvas canvas(40, 40);
+  canvas.clear({0, 0, 0, 255});
+  panel.press(1, 0.0);
+  panel.setTime(Panel::kPressSeconds * 0.5);
+  panel.draw(canvas, style);
+  const auto brightness = [](Canvas::Colour c) { return c.r + c.g + c.b; };
+  EXPECT_EQ(canvas.at(20, 10), style.drop); // (where its top was)
+  const Canvas::Colour top = canvas.at(20, 11), bottom = canvas.at(20, 28);
+  EXPECT_LT(brightness(top), brightness(bottom));
+  EXPECT_EQ(canvas.at(20, 29), style.drop); // (one pixel of drop left)
+  panel.setTime(Panel::kPressSeconds);
+  panel.draw(canvas, style);
+  EXPECT_GT(brightness(canvas.at(20, 10)), brightness(canvas.at(20, 27)));
 }
 
 // The D-pad prefers a button within 45 degrees of the way pressed: right
