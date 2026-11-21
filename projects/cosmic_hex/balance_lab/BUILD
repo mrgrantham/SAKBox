@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_test")
+load("//tools/lto:lto.bzl", "LTO_COPTS", "LTO_LINKOPTS")
 
 # Cosmic Hex's balance lab (see README.md): a batch's settings, bot games
 # played eight at once, the results as charts while they come in, and any
@@ -6,6 +7,8 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_test")
 #   bazel run -c opt //projects/cosmic_hex/balance_lab
 cc_binary(
     name = "balance_lab",
+    copts = LTO_COPTS,
+    linkopts = LTO_LINKOPTS,
     srcs = [
         "src/BoardDrawing.hpp",
         "src/BoardProving.cpp",

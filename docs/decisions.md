@@ -117,3 +117,10 @@ Vertex colours, lines and fog. **Except** pictures drawn from SVG recipes in cod
 
 **Games are separate projects**
 Cosmic Hex and Infinifly are their own projects, using ScratchPadd as a library.
+
+## ThinLTO for the optimised Mac builds (2026-11-21)
+
+- **Decided:** clang's ThinLTO (`-flto=thin`) for `-c opt` on macOS, on Cosmic Hex's rules, the simulator and the balance lab (`tools/lto/lto.bzl`).
+- **Why:** splitting the rules into files by part of the turn moved small helpers out of the files that call them, and the simulator ran about 4% slower; ThinLTO inlines across files when linking. Measured on 60 games: about 5–6% faster than the split without it, every game's log identical.
+- **Not chosen:** putting the helpers back in one file (the split was for readability); `-flto` everywhere (slower links for every program, for code that isn't hot); Bazel's `thin_lto` toolchain feature (the Mac toolchain doesn't offer it).
+- **Still to try:** the DS and 3DS (GCC's `-flto` in the devkitPro builds), kept only if melonDS's frame times say so.

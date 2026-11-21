@@ -72,6 +72,10 @@ It reports:
 - where the winners' points came from (stations, colonies, Core Control, badges, contracts);
 - how many games didn't finish.
 
+### Speed
+
+- **Optimised Mac builds use ThinLTO** (clang's link-time optimisation, [tools/lto](../../tools/lto/lto.bzl)) for the rules, the simulator and the balance lab: the rules are split into files by part of the turn, and inlining across them at link time made the simulator about 5% faster than without (every game the same). Linux builds (GCC) and debug builds go without.
+
 ### Its defaults: the agreed rules
 
 Each can be turned off or changed with the flag beside it.

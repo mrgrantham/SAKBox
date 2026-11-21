@@ -1,9 +1,11 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("//tools/lto:lto.bzl", "LTO_COPTS")
 
 # Cosmic Hex's rules: plain C++, no screens or padds, described for the action
 # log and the bots (see ../README.md and ../design.md)
 cc_library(
     name = "rules",
+    copts = LTO_COPTS,
     srcs = [
         "src/Board.cpp",
         "src/BuildingAndMoving.cpp",
