@@ -107,6 +107,8 @@ Options parse(int argc, char **argv) {
       options.skipFirst = std::string_view(value) == "yes";
     else if (flag == "--first")
       options.randomFirst = std::string_view(value) == "random";
+    else if (flag == "--start-cards")
+      options.startCards = number<int>(flag, value);
     else if (flag == "--seat-bonus") {
       std::string_view rest = value;
       for (int i = 0; i < kMaxPlayers && !rest.empty(); ++i) {

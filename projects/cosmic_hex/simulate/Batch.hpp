@@ -50,8 +50,9 @@ struct Options {
   bool skipFirst = false;                   // the first player skips their first income
   bool randomFirst = false;                 // a random player goes first, rather than player 1
   std::array<int, kMaxPlayers> seatBonus{}; // extra start resources by turn order
-  int empty = 5;    // empty tiles of the zone's 12 (the rest finds, shared out)
-  int outposts = 2; // alien outposts among them (two)
+  int startCards = 0; // a starting hand of this many dealt at random (0: 1 of each)
+  int empty = 5;      // empty tiles of the zone's 12 (the rest finds, shared out)
+  int outposts = 2;   // alien outposts among them (two)
   // Costs instead of the rules' (free stations, and a ship
   // costing one more), and how common each kind of planet is
   // (The defaults: free stations; the ship minerals, fuel, water)

@@ -54,6 +54,8 @@ std::string describe(const State &before, const Action &action) {
   }
   case Kind::TakeSalvage:
     return who + " takes " + resource(action.a) + " from the salvage.";
+  case Kind::DealStartCard:
+    return "A starting card is dealt.";
   case Kind::Settle:
     return who + " builds a station.";
   case Kind::BuildColony:

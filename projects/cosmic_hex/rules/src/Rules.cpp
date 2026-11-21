@@ -77,6 +77,8 @@ std::string_view phaseName(Phase phase) {
     return "trade_reply";
   case Phase::TradeCounter:
     return "trade_counter";
+  case Phase::StartCardsDraw:
+    return "start_cards_draw";
   }
   return "?";
 }
@@ -996,13 +998,15 @@ std::string settingsText(const Settings &s) {
       << " badges=" << s.badgesPerPoint << " ruins=" << s.ruinsBadges
       << " salvage=" << s.salvageResources << " bank=" << s.bankRate << " alien=" << s.alienRate
       << "," << s.alienStationRate << " pays=" << s.stationPays << "," << s.colonyPays
-      << " start=" << s.startResources << " bonus=" << joined(s.seatBonus)
-      << " corners=" << (s.zoneCorners ? 1 : 0) << " tiles=" << joined(s.planetTiles)
-      << " numbers=" << joined(s.numbers) << " finds=" << joined(s.finds)
-      << " ship=" << joined(s.shipCost) << " station=" << joined(s.stationCost)
-      << " kinds=" << joined(s.kindWeights) << " exhaust=" << s.exhaustHomesAt << ","
-      << (s.exhaustedKindRandom ? 1 : 0) << " colony=" << joined(s.colonyCost)
-      << " contract=" << joined(s.contractCost) << " corehexes=";
+      << " start=" << s.startResources
+      << (s.startCards > 0 ? " startcards=" + std::to_string(s.startCards) : "")
+      << " bonus=" << joined(s.seatBonus) << " corners=" << (s.zoneCorners ? 1 : 0)
+      << " tiles=" << joined(s.planetTiles) << " numbers=" << joined(s.numbers)
+      << " finds=" << joined(s.finds) << " ship=" << joined(s.shipCost)
+      << " station=" << joined(s.stationCost) << " kinds=" << joined(s.kindWeights)
+      << " exhaust=" << s.exhaustHomesAt << "," << (s.exhaustedKindRandom ? 1 : 0)
+      << " colony=" << joined(s.colonyCost) << " contract=" << joined(s.contractCost)
+      << " corehexes=";
   std::vector<int> core;
   for (Hex hex : s.coreHexes) {
     core.push_back(hex.q);
@@ -1208,6 +1212,8 @@ std::optional<Settings> readSettings(std::string_view line) {
       std::copy(v.begin(), v.end(), s.seatBonus.begin());
     } else if (key == "start")
       s.startResources = v[0];
+    else if (key == "startcards")
+      s.startCards = v[0];
     else if (key == "corners")
       s.zoneCorners = v[0] != 0;
     else if (key == "tiles")
@@ -1477,7 +1483,8 @@ State newGame(int players, const Settings &settings, int first) {
   for (int p = 0; p < players; ++p) {
     if (!settings.corners) // (with corners, ships are placed at the start)
       state.ships.push_back(Ship{p, homes[static_cast<std::size_t>(p)], false});
-    state.player[static_cast<std::size_t>(p)].resources.fill(settings.startResources);
+    state.player[static_cast<std::size_t>(p)].resources.fill(
+        settings.startCards > 0 ? 0 : settings.startResources);
   }
   for (int order = 0; order < players; ++order) {
     Resources &resources =
@@ -1532,6 +1539,12 @@ State newGame(int players, const Settings &settings, int first) {
     // The start: home colonies, then ships, placed in snake order
     state.phase = Phase::PlaceColony;
     state.turn = setupPlayer(state);
+  }
+  // A starting hand dealt at random comes first; the start above follows it
+  // (startAfterDealing)
+  if (settings.startCards > 0) {
+    state.startCardsLeft = settings.startCards * players;
+    state.phase = Phase::StartCardsDraw;
   }
   indexHexes(state);
   return state;
@@ -1768,6 +1781,7 @@ int Game::currentPlayer(const State &state) {
   case Phase::ContractDraw:
   case Phase::HomeNumberDraw:
   case Phase::HomeDieDraw:
+  case Phase::StartCardsDraw:
     return GameBots::kDealer;
   case Phase::TradeReply:
     return state.offer.replier;
@@ -1777,6 +1791,18 @@ int Game::currentPlayer(const State &state) {
 }
 
 namespace {
+
+// The starting hands dealt: the start newGame would otherwise have begun
+// with (placing pieces, with corners; else the first player's home income)
+void startAfterDealing(State &state) {
+  if (state.settings.corners) {
+    state.phase = Phase::PlaceColony;
+    state.turn = setupPlayer(state);
+    return;
+  }
+  state.turn = state.first;
+  nextHomeIncome(state);
+}
 
 // After a setup placement: the next player's, or the first turn
 void nextSetupStep(State &state) {
@@ -2168,6 +2194,19 @@ bool Game::apply(State &state, const Action &action) {
   Player &me = current(state);
   bool done = false;
   switch (state.phase) {
+  case Phase::StartCardsDraw: {
+    // A starting card, to the next player round the table from the first
+    if (action.kind != Kind::DealStartCard || action.a < 0 || action.a >= kResources ||
+        state.startCardsLeft <= 0)
+      break;
+    const int dealt = state.settings.startCards * state.players - state.startCardsLeft;
+    const int to = (state.first + dealt) % state.players;
+    ++state.player[static_cast<std::size_t>(to)].resources[static_cast<std::size_t>(action.a)];
+    if (--state.startCardsLeft == 0)
+      startAfterDealing(state);
+    done = true;
+    break;
+  }
   case Phase::HomeDieDraw:
   case Phase::HomeIncome:
     // The home's resource: chosen, or rolled on the home die (where its
@@ -2638,6 +2677,8 @@ Action Game::dealerAction(const State &state, SeededRandom::Generator &random) {
     return {Kind::RevealFind, weighted(state.findsLeft)};
   case Phase::HomeDieDraw:
     return {Kind::RollHomeDie, static_cast<int>(random.below(kResources + 1))};
+  case Phase::StartCardsDraw:
+    return {Kind::DealStartCard, static_cast<int>(random.below(kResources))};
   case Phase::HomeNumberDraw: {
     const std::vector<int> &numbers = state.settings.exhaustedNumbers;
     const int number = numbers[random.below(static_cast<std::uint32_t>(numbers.size()))];
@@ -2735,7 +2776,9 @@ std::string Game::writeState(const State &state) {
       << " victims=" << joined(state.victims) << " salvage=" << state.salvageLeft
       << " income=" << state.homeIncomeLeft << " offered=" << state.offered[0] << ","
       << state.offered[1] << " first=" << state.first << " setup=" << state.setupStep
-      << (state.placingShip ? " placing" : "") << "\n";
+      << (state.placingShip ? " placing" : "")
+      << (state.startCardsLeft > 0 ? " dealing=" + std::to_string(state.startCardsLeft) : "")
+      << "\n";
   out << "final=" << (state.finalRound ? 1 : 0) << " trading=" << (state.tradingDone ? 1 : 0)
       << " offer=" << state.offer.give << "," << state.offer.get << "," << state.offer.to << ","
       << state.offer.replier << "," << state.offer.counterGive << "," << state.offer.counterGet
@@ -2815,6 +2858,8 @@ std::string Game::writeAction(const Action &action) {
     return "shipyard " + n(action.a);
   case Kind::RollHomeDie:
     return "home_die " + n(action.a);
+  case Kind::DealStartCard:
+    return "start_card " + res(action.a);
   case Kind::PlaySupplyDrop:
     return "supply " + res(action.a) + " " + res(action.b);
   case Kind::PlayCartel:
@@ -2879,6 +2924,8 @@ std::optional<Action> Game::readAction(std::string_view text) {
       return make(Kind::TakeSalvage, r);
     if (verb == "cartel" && r >= 0)
       return make(Kind::PlayCartel, r);
+    if (verb == "start_card" && r >= 0)
+      return make(Kind::DealStartCard, r);
     if (verb == "find") {
       const int f = indexOf(kFindNames, w[1]);
       return f >= 0 ? make(Kind::RevealFind, f) : std::nullopt;

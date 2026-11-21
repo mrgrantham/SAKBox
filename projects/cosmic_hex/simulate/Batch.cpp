@@ -87,6 +87,7 @@ Settings settingsFor(const Options &options) {
     settings.coreHexes = options.players == 3 ? std::vector<Hex>{{0, 0}, {2, -1}, {-1, -1}, {-1, 2}}
                                               : std::vector<Hex>{{0, 0}, {1, -2}, {-1, 2}};
   settings.seatBonus = options.seatBonus;
+  settings.startCards = options.startCards;
   settings.planetHexes = options.planets;
   settings.homeHexes = options.homes;
   settings.moons = options.moons;

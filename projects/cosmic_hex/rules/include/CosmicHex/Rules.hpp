@@ -252,6 +252,10 @@ struct Settings {
   int stationPays = 1;
   int colonyPays = 2;
   int startResources = 1; // of each, at the start
+  // Or a starting hand dealt at random: this many resources to each player,
+  // dealt one at a time round the table from the first player, before the
+  // setup (in place of startResources; 0: startResources of each, as before)
+  int startCards = 0;
   // Extra resources by turn order (the 1st player's, the 2nd's...), to make
   // up for going later: given in turn, minerals, food, fuel, water, crystals
   std::array<int, kMaxPlayers> seatBonus{0, 0, 0, 0};
@@ -342,6 +346,7 @@ enum class Phase : std::uint8_t {
   Trading,        // (playerTrading) the player may offer trades, or end trading
   TradeReply,     // another player answers the offer: accept, decline, counter
   TradeCounter,   // the offerer answers a counter-offer
+  StartCardsDraw, // (Settings::startCards) the dealer deals the starting hands
 };
 
 // Some resources as one number (to fit an action): each resource's count,
@@ -372,6 +377,7 @@ struct State {
   std::vector<Station> stations; // (corners)
   int first = 0;                 // who took the first turn
   int setupStep = 0;             // (corners) how many setup placements are done
+  int startCardsLeft = 0;        // (Settings::startCards) starting cards still to deal
   std::vector<Hex> turning;      // (corners) planets and tiles still to turn over this move
   bool placingShip = false;      // (corners) a starting ship's finds being turned over
   std::array<Player, kMaxPlayers> player{};
@@ -498,9 +504,10 @@ struct Action {
     DeclineTrade,
     CounterTrade, // the answerer: a: what they'd give, b: what they'd get (bundles)
     EndTrading,
-    PlaceColony, // (corners) a: the corner (its number in boardCorners())
-    PlaceShip,   // (corners) a: the corner
-    NumberHome,  // dealer: a: an exhausted home's number, b: its kind if drawn (else -1)
+    PlaceColony,   // (corners) a: the corner (its number in boardCorners())
+    PlaceShip,     // (corners) a: the corner
+    NumberHome,    // dealer: a: an exhausted home's number, b: its kind if drawn (else -1)
+    DealStartCard, // dealer: a: the resource, to the next player round the table
   };
   Kind kind = Kind::EndTurn;
   int a = 0, b = 0, c = 0;
