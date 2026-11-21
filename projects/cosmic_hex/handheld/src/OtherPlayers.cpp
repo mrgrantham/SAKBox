@@ -15,7 +15,7 @@ PlayerView viewOf(const State &state, int player) {
   const Player &p = state.player[static_cast<std::size_t>(player)];
   view.resourceCards = std::accumulate(p.resources.begin(), p.resources.end(), 0);
   view.actionCards = static_cast<int>(p.contracts.size());
-  view.badges = p.badgesEarned;
+  view.badges = p.badges; // (held: every 3 become a point at once, counted in points)
   view.ships = static_cast<int>(std::count_if(state.ships.begin(), state.ships.end(),
                                               [&](const Ship &s) { return s.owner == player; }));
   std::vector<int> seen; // (planets already listed, by index)

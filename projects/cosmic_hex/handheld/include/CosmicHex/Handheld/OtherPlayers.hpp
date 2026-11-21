@@ -20,7 +20,7 @@ struct PlayerView {
   int player = 0;
   int points = 0;
   int resourceCards = 0, actionCards = 0; // (held, face down)
-  int badges = 0;                         // earned, all told
+  int badges = 0;                         // held, not yet a point (0 to 2)
   int ships = 0, stations = 0, colonies = 0;
   struct Planet {
     PlanetKind kind;

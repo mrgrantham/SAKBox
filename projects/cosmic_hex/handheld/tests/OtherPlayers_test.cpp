@@ -43,3 +43,16 @@ TEST(OtherPlayersTest, AViewHasWhatEveryoneCanSee) {
   EXPECT_EQ(othersOf(state, 0), (std::vector<int>{1, 2, 3}));
   EXPECT_EQ(othersOf(state, 2), (std::vector<int>{3, 0, 1}));
 }
+
+// The badges shown are the ones still held, not all ever earned: every 3
+// become a point at once, and that point is in the points shown
+TEST(OtherPlayersTest, BadgesShownAreTheOnesHeld) {
+  State state = newGame(4, agreedRules(boardR3(), 4));
+  Player &player = state.player[1];
+  player.badgesEarned = 4;
+  player.badgePoints = 1; // (3 of them already a point)
+  player.badges = 1;
+  const PlayerView view = viewOf(state, 1);
+  EXPECT_EQ(view.badges, 1);
+  EXPECT_EQ(view.points, points(state, 1));
+}
