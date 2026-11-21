@@ -1030,6 +1030,11 @@ void Renderer::endFrame() {
 
 Capabilities Renderer::capabilities() const { return {}; }
 
+// (the 3DS's textures are in its 128 MB of main memory: not counted)
+std::optional<TextureMemory> Renderer::textureMemory() const { return std::nullopt; }
+
+void Renderer::setTextureBudget(const TextureMemory &) {}
+
 FrameCounts Renderer::lastFrame() const { return backend_->last; }
 
 FrameTimes Renderer::lastFrameTimes() const { return backend_->times; }

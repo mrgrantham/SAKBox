@@ -78,6 +78,7 @@ struct Renderer::Backend {
   MTL::Texture *blank = nullptr;        // 1 x 1 white, for materials without one
   std::vector<Later> later;
   FrameCounts counting, last;                    // this frame's so far; the last one's
+  std::optional<TextureMemory> textureBudget;    // (Renderer::setTextureBudget)
   std::vector<Overlay::Vertex> overlayTriangles; // reused each frame
 
   // This frame's

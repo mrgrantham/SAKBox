@@ -55,7 +55,6 @@ constexpr unsigned kClearId = 63, kClearIdWithOutlines = 0;
 // doesn't give its space back). Bank A was mapped by nothing; with B alone
 // (128 KB) the last pictures loaded, the card backs, got none
 constexpr std::uint32_t kSlotBytes = 128 * 1024;
-constexpr std::uint32_t kTextureBank = 2 * kSlotBytes;
 // The banks to the CPU, to write textures (as LCD memory), and back to the
 // 3D hardware as its texture slots
 void texturesToCpu() {
@@ -66,18 +65,21 @@ void texturesToGpu() {
   vramSetBankB(VRAM_B_TEXTURE_SLOT0);
   vramSetBankA(VRAM_A_TEXTURE_SLOT1);
 }
+// Waits (a frame at most) for the lines between the screen's last and the
+// 3D hardware starting its next frame (GBATEK: it renders 48 lines ahead,
+// from line 214): texture memory taken from it then shows nowhere. Taken
+// while it drew, the lines drawn meanwhile read nothing (the user's
+// jittery scanlines over the board as a card's close-up was drawn)
+void waitForTheBlank() {
+  while (!(REG_VCOUNT >= 192 && REG_VCOUNT < 208)) {
+  }
+}
 // Where texture memory at `offset` is, to the CPU (banks mapped to it):
 // slot 0 in bank B, slot 1 in bank A
-std::uint16_t *textureMemory(std::uint32_t offset) {
+std::uint16_t *vramAt(std::uint32_t offset) {
   return offset < kSlotBytes ? VRAM_B + offset / 2 : VRAM_A + (offset - kSlotBytes) / 2;
 }
-// The next offset with room for `bytes` that doesn't cross from one slot
-// into the next (the banks aren't side by side to the CPU)
-std::uint32_t roomFor(std::uint32_t offset, std::uint32_t bytes) {
-  if (offset < kSlotBytes && offset + bytes > kSlotBytes)
-    return kSlotBytes;
-  return offset;
-}
+// (a toon texture's bytes: 8 x 8 texels)
 constexpr std::uint32_t kTextureBytes = DisplayList::kTexels * 2;
 // TEXIMAGE_PARAM (GBATEK, "DS 3D Texture Attributes"): the texture's VRAM
 // offset in 8-byte steps, its width and height (8 << n: 0), its format (7:
@@ -218,17 +220,16 @@ std::uint32_t Renderer::Backend::textureFor(LoadedMesh &mesh, Colour colour) {
   for (const auto &[made, parameter] : mesh.textures)
     if (made == colour)
       return parameter;
-  nextTextureOffset = roomFor(nextTextureOffset, kTextureBytes);
-  if (nextTextureOffset + kTextureBytes > kTextureBank)
+  const std::optional<std::uint32_t> at = textures.take(kTextureBytes);
+  if (!at)
     return 0; // (the banks are full: drawn in the toon table's colours)
   const std::vector<std::uint16_t> texels = DisplayList::textureFor(mesh.source, colour);
-  // Written with the bank mapped to the CPU, then mapped back (a frame being
-  // drawn as it's written may show this mesh untextured for that frame)
+  // Written with the bank mapped to the CPU, then mapped back, between frames
+  waitForTheBlank();
   texturesToCpu();
-  std::copy(texels.begin(), texels.end(), textureMemory(nextTextureOffset));
+  std::copy(texels.begin(), texels.end(), vramAt(*at));
   texturesToGpu();
-  const std::uint32_t parameter = textureParameter(nextTextureOffset);
-  nextTextureOffset += kTextureBytes;
+  const std::uint32_t parameter = textureParameter(*at);
   mesh.textures.emplace_back(colour, parameter);
   return parameter;
 }
@@ -457,17 +458,17 @@ Mesh Renderer::load(const MeshData &mesh) {
 
 Texture Renderer::load(const TextureImage &image) {
   const int widthCode = sideCode(image.width), heightCode = sideCode(image.height);
-  const auto bytes = static_cast<std::uint32_t>(image.width * image.height * 2);
-  backend_->nextTextureOffset = roomFor(backend_->nextTextureOffset, bytes);
   const bool blank = image.pixels.empty();
   if (widthCode < 0 || heightCode < 0 ||
-      (!blank && image.pixels.size() < static_cast<std::size_t>(image.width * image.height)) ||
-      backend_->nextTextureOffset + bytes > kTextureBank)
+      (!blank && image.pixels.size() < static_cast<std::size_t>(image.width * image.height)))
     return {};
+  const std::optional<std::uint32_t> at = backend_->textures.takeImage(image.width, image.height);
+  if (!at)
+    return {}; // (the banks are full)
   // Direct colour: 15 bits, the top bit opaque (more than half alpha); a
   // blank one see-through
   texturesToCpu();
-  std::uint16_t *to = textureMemory(backend_->nextTextureOffset);
+  std::uint16_t *to = vramAt(*at);
   for (std::size_t i = 0; i < static_cast<std::size_t>(image.width * image.height); ++i) {
     if (blank) {
       to[i] = 0;
@@ -477,11 +478,9 @@ Texture Renderer::load(const TextureImage &image) {
     to[i] = static_cast<std::uint16_t>(DisplayList::rgb15(c) | (c.a >= 128 ? 0x8000 : 0));
   }
   texturesToGpu();
-  backend_->images.push_back(
-      {textureParameter(backend_->nextTextureOffset, static_cast<std::uint32_t>(widthCode),
-                        static_cast<std::uint32_t>(heightCode)),
-       image.width, image.height});
-  backend_->nextTextureOffset += bytes;
+  backend_->images.push_back({textureParameter(*at, static_cast<std::uint32_t>(widthCode),
+                                               static_cast<std::uint32_t>(heightCode)),
+                              image.width, image.height});
   return {static_cast<std::uint32_t>(backend_->images.size())};
 }
 
@@ -497,12 +496,16 @@ bool Renderer::replace(Texture texture, const TextureImage &image, int firstRow)
   // band from its first row, two bytes a pixel)
   const std::uint32_t offset =
       (loaded.parameter & 0xFFFF) * 8 + static_cast<std::uint32_t>(firstRow * image.width * 2);
-  texturesToCpu();
-  std::uint16_t *to = textureMemory(offset);
-  for (std::size_t i = 0; i < static_cast<std::size_t>(image.width * image.height); ++i) {
+  // (converted first, then copied in between frames: the 3D hardware is
+  // without its textures only for the copy)
+  std::vector<std::uint16_t> texels(static_cast<std::size_t>(image.width * image.height));
+  for (std::size_t i = 0; i < texels.size(); ++i) {
     const Colour c = image.pixels[i];
-    to[i] = static_cast<std::uint16_t>(DisplayList::rgb15(c) | (c.a >= 128 ? 0x8000 : 0));
+    texels[i] = static_cast<std::uint16_t>(DisplayList::rgb15(c) | (c.a >= 128 ? 0x8000 : 0));
   }
+  waitForTheBlank();
+  texturesToCpu();
+  std::copy(texels.begin(), texels.end(), vramAt(offset));
   texturesToGpu();
   return true;
 }
@@ -768,6 +771,10 @@ bool Renderer::toScreen(const Vector3 &point, float &x, float &y) const {
 Capabilities Renderer::capabilities() const {
   return {.lights = Environment::kMostLights, .polygonsPerFrame = kMostPolygons};
 }
+
+std::optional<TextureMemory> Renderer::textureMemory() const { return backend_->textures; }
+
+void Renderer::setTextureBudget(const TextureMemory &) {} // (the DS has its own)
 
 FrameCounts Renderer::lastFrame() const { return backend_->last; }
 

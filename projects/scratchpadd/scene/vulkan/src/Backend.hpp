@@ -131,6 +131,7 @@ struct Renderer::Backend {
   std::vector<LoadedMesh> meshes;    // by Mesh::id - 1; unloaded ones have no vertices
   std::vector<Later> later;
   FrameCounts counting, last;                    // this frame's so far; the last one's
+  std::optional<TextureMemory> textureBudget;    // (Renderer::setTextureBudget)
   std::vector<Overlay::Vertex> overlayTriangles; // reused each frame
   // frameBytes' buffers, reused each frame (the last ones filled so far)
   std::vector<Vulkan::Buffer> frameBuffers;

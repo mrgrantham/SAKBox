@@ -42,6 +42,7 @@
 #include <CosmicHex/Handheld/CardsHeld.hpp>
 #include <CosmicHex/Handheld/DicePieces.hpp>
 #include <CosmicHex/Handheld/Discovery.hpp>
+#include <CosmicHex/Handheld/GamePictures.hpp>
 #include <CosmicHex/Handheld/Hud.hpp>
 #include <CosmicHex/Handheld/MenuPicture.hpp>
 #include <CosmicHex/Handheld/MoveSpots.hpp>
@@ -528,8 +529,8 @@ public:
       }
       while (!bottomScreen_->prepare()) {
       }
-      loadFaces();
-      loadCardPictures();
+      loadFacePictures(*renderer_, kThisPlatform, &*picture_, pictures_);
+      loadCardPictures(*renderer_, kThisPlatform, pictures_, closeUps_);
     });
     titleStarted_ = Clock::now();
     // (how long the start took, shown on the -watch builds)
@@ -883,7 +884,7 @@ private:
     else if (others_.showing(showsNow()) && latest_ && others_.which() >= 0)
       drawOtherPlayer(frame, viewOf(latest_->state, others_.which()), others_.down(showsNow()));
     else if (discovery_.moving(showsNow()))
-      drawDiscovery(frame, discovery_, closeUpFace_, closeUpBack_);
+      drawDiscovery(frame, discovery_, closeUps_.face, closeUps_.back);
     else if (pick_.at(showsNow()) && latest_ && bottomScreen_ && bottomScreen_->resourceChoice()) {
       drawPick(frame, pick_, bottomScreen_->resourceChoice()->title,
                latest_->state.player[static_cast<std::size_t>(latest_->state.turn)].resources,
@@ -891,12 +892,12 @@ private:
       drawBanner(renderer_->overlay());
     } else if (homePay_.moving(showsNow()) && latest_)
       drawHomePay(frame, homePay_, latest_->state,
-                  mode_ == Mode::Playing && homePay_.current()->player == 0, closeUpCards_[0]);
+                  mode_ == Mode::Playing && homePay_.current()->player == 0, closeUps_.cards[0]);
     else if (cardPlay_.moving(showsNow()) && latest_)
       drawCardPlay(frame, cardPlay_, latest_->state, mode_ == Mode::Playing ? 0 : -1);
     else if (dealt_.on())
       drawDealtCards(frame, dealt_, bottomScreen_ ? bottomScreen_->keepChosen() : -1,
-                     closeUpCards_);
+                     closeUps_.cards);
     else
       drawText(frame);
     // The touched corner (or the blockade's hex), ringed on the 3D board too
@@ -1654,95 +1655,6 @@ private:
 
   std::optional<Scene::Display> display_;
   std::optional<Scene::Renderer> renderer_;
-  // Each tile face (Art.hpp) drawn into a texture from its recipe (kFaceSize a side),
-  // once, when the game starts
-  // The cards' pictures for the top screen (ScreenPictures): each
-  // card's drawing down to its picture's foot, no words (titles are the
-  // overlay's, sharp), pictures_.cardWidth across; once, as the DS hands out its
-  // texture memory once (32 wide there: 2 KB a card)
-  void loadCardPictures() {
-    // Resources bigger (the user's: room for their titles, and
-    // the cards under the top one easy to see), action cards smaller: on
-    // the DS 44 and 32 pixels wide, 8 and 2 KB each, all of them fitting
-    // beside the tile faces in the 128 KB the textures share
-    pictures_.resourceWidth = kTopWidth >= 400 ? 64 : 44;
-    pictures_.cardWidth = kTopWidth >= 400 ? 44 : 32;
-    const auto load = [&](CosmicHex::Art::Card card, int width, float &uMax, float &vMax) {
-      const int height = width * 52 / 63;
-      const auto whole = recipePixels(CosmicHex::Art::cardRecipeOf(card), width, width * 88 / 63,
-                                      kThisPlatform.recipeSmoothing);
-      if (whole.empty())
-        return Scene::Texture{};
-      const std::vector<Scene::Colour> top(whole.begin(), whole.begin() + width * height);
-      // (the band's colour, for its title's letters: dark on a light band)
-      if (static_cast<int>(card) < CosmicHex::kResources)
-        pictures_.resourceBands[static_cast<std::size_t>(card)] =
-            top[static_cast<std::size_t>((width * 11 / 63) * width + width * 6 / 63)];
-      const PaddedPicture picture = padded(top, width, height);
-      uMax = picture.uMax;
-      vMax = picture.vMax;
-      return renderer_->load(Scene::TextureImage{picture.width, picture.height, picture.pixels});
-    };
-    float uMax = 1, vMax = 1;
-    for (int r = 0; r < CosmicHex::kResources; ++r)
-      pictures_.resources[static_cast<std::size_t>(r)] =
-          load(static_cast<CosmicHex::Art::Card>(r), pictures_.resourceWidth, uMax, vMax);
-    pictures_.resourceSquare = renderer_->load(pictureSquare(uMax, vMax).data());
-    for (int c = CosmicHex::kResources; c < CosmicHex::Art::kCards; ++c)
-      pictures_.cards[static_cast<std::size_t>(c)] =
-          load(static_cast<CosmicHex::Art::Card>(c), pictures_.cardWidth, uMax, vMax);
-    pictures_.pictureSquare = renderer_->load(pictureSquare(uMax, vMax).data());
-    // The close-ups' slots, blank until one's shown (closeUpTile and
-    // closeUpCards draw into them: PictureSlot)
-    const int size = kThisPlatform.closeUpSize;
-    closeUpFace_.load(*renderer_, size, size);
-    closeUpBack_.load(*renderer_, size, size);
-    for (ScratchPadd::PictureSlot &card : closeUpCards_)
-      card.load(*renderer_, size, size);
-    pictures_.closeUpCardSquare = renderer_->load(
-        pictureSquare(1, static_cast<float>(size * 52 / 63) / static_cast<float>(size)).data());
-    // The two backs, whole cards (the planets for resource cards, the rings
-    // for action cards: the agreed designs), for cards held face down
-    for (const CosmicHex::Art::CardBack design :
-         {CosmicHex::Art::CardBack::Rings, CosmicHex::Art::CardBack::Planets}) {
-      const auto whole = recipePixels(CosmicHex::Art::cardBackRecipe(design), pictures_.cardWidth,
-                                      pictures_.cardWidth * 88 / 63, kThisPlatform.recipeSmoothing);
-      if (whole.empty())
-        continue;
-      const PaddedPicture picture =
-          padded(whole, pictures_.cardWidth, pictures_.cardWidth * 88 / 63);
-      pictures_.backs[static_cast<std::size_t>(design)] =
-          renderer_->load(Scene::TextureImage{picture.width, picture.height, picture.pixels});
-      pictures_.backSquare = renderer_->load(pictureSquare(picture.uMax, picture.vMax).data());
-    }
-  }
-
-  void loadFaces() {
-    for (int i = 0; i < CosmicHex::Art::kFaces; ++i) {
-      const auto face = static_cast<CosmicHex::Art::Face>(i);
-      // The map's, shrunk, when it's no smaller (the DS: 35 pixels to 32,
-      // Half the start's drawing); else from its recipe
-      const std::vector<Scene::Colour> pixels =
-          picture_->wholeFaceSize() >= kFaceSize
-              ? shrunk(picture_->wholeFace(face), picture_->wholeFaceSize(), kFaceSize)
-              : recipePixels(CosmicHex::Art::recipeOf(face), kFaceSize,
-                             kThisPlatform.recipeSmoothing);
-      if (pixels.empty())
-        continue; // (the tile shows white: a broken recipe, tested against on the Mac)
-      pictures_.faces[static_cast<std::size_t>(i)] =
-          renderer_->load(Scene::TextureImage{kFaceSize, kFaceSize, pixels});
-    }
-    // and the number chips, half a face's size
-    constexpr int kChipSize = kFaceSize / 2;
-    for (int n = CosmicHex::Art::kLowestChip; n <= CosmicHex::Art::kHighestChip; ++n) {
-      const std::vector<Scene::Colour> pixels =
-          recipePixels(CosmicHex::Art::chipRecipeOf(n), kChipSize, kThisPlatform.recipeSmoothing);
-      if (pixels.empty())
-        continue;
-      pictures_.chips[static_cast<std::size_t>(n)] =
-          renderer_->load(Scene::TextureImage{kChipSize, kChipSize, pixels});
-    }
-  }
 
   Scene::Mesh station_, colony_, ship_, flame_, stars_, hexRing_, cornerRing_, chevron_;
   // The pictures the board and the views over it draw with (TopViews)
@@ -1780,14 +1692,13 @@ private:
   // (PlatformProfile::closeUpBandRows: on a DS, so a 128-pixel picture
   // never has to be in memory whole), each recipe read once
   void closeUpTile(CosmicHex::Art::Face face) {
-    closeUpTileInto(closeUpFace_, face);
+    closeUpTileInto(closeUps_.face, face, kThisPlatform.closeUpSize);
     if (const CosmicHex::Handheld::Discovery::Found *found = discovery_.current())
-      closeUpTileInto(closeUpBack_, found->faceDown);
+      closeUpTileInto(closeUps_.back, found->faceDown, kThisPlatform.closeUpBackSize);
   }
-  void closeUpTileInto(ScratchPadd::PictureSlot &slot, CosmicHex::Art::Face face) {
+  void closeUpTileInto(ScratchPadd::PictureSlot &slot, CosmicHex::Art::Face face, int size) {
     if (slot.showing(static_cast<int>(face)))
       return; // (drawn already)
-    const int size = kThisPlatform.closeUpSize;
     const auto recipe = ScratchPadd::TextureRecipe::read(CosmicHex::Art::recipeOf(face));
     if (!recipe)
       return;
@@ -1800,11 +1711,11 @@ private:
   }
   void closeUpCards(const std::vector<CosmicHex::Art::Card> &cards) {
     const int size = kThisPlatform.closeUpSize, height = size * 52 / 63;
-    for (std::size_t i = 0; i < cards.size() && i < closeUpCards_.size(); ++i) {
+    for (std::size_t i = 0; i < cards.size() && i < closeUps_.cards.size(); ++i) {
       const auto recipe = ScratchPadd::TextureRecipe::read(CosmicHex::Art::cardRecipeOf(cards[i]));
       if (!recipe)
         continue;
-      closeUpCards_[i].show(
+      closeUps_.cards[i].show(
           *renderer_, static_cast<int>(cards[i]),
           [&](int first, int rows) {
             // (the card's picture: its drawing (the card's 63 x 88) down to
@@ -1866,7 +1777,7 @@ private:
   void updateHomePay() {
     if (const HomePayShow::Pay *pay = homePay_.current(); pay && pay->resource) {
       const auto card = static_cast<CosmicHex::Art::Card>(*pay->resource);
-      if (!closeUpCards_[0].showing(static_cast<int>(card)))
+      if (!closeUps_.cards[0].showing(static_cast<int>(card)))
         closeUpCards({card});
     }
     const HomePayShow::Step step = homePay_.update(showsNow());
@@ -2164,14 +2075,8 @@ private:
     roll_.skip(gameClock_.seconds());
   }
 
-  // Close-ups (PlatformProfile::closeUpSize): a discovered tile's face and
-  // the two cards dealt, drawn sharp when they're shown, into slots loaded
-  // once and reused (PictureSlot)
-  ScratchPadd::PictureSlot closeUpFace_;
-  // ...and its back, flying up face down (the user's: sharp too; two
-  // designs, so it's mostly drawn already)
-  ScratchPadd::PictureSlot closeUpBack_;
-  std::array<ScratchPadd::PictureSlot, 2> closeUpCards_;
+  // Close-ups: the slots pictures shown big are drawn into (GamePictures)
+  CloseUpSlots closeUps_;
   std::optional<ConsoleScreens::BottomScreen> bottom_;
   bool bottomDirty_ = true, touchWasDown_ = false, dragged_ = false;
   std::array<int, 2> touchStart_{}, touchLast_{};

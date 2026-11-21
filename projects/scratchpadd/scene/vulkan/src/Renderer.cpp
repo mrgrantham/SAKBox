@@ -778,6 +778,10 @@ Mesh Renderer::load(const MeshData &mesh) {
 }
 
 Texture Renderer::load(const TextureImage &image) {
+  // (held to a console's texture memory: past it, no texture, as there)
+  if (backend_->textureBudget && image.width > 0 && image.height > 0 &&
+      !backend_->textureBudget->takeImage(image.width, image.height))
+    return {};
   const std::size_t count =
       static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height);
   if (image.width <= 0 || image.height <= 0 ||
@@ -1201,6 +1205,10 @@ bool Renderer::toScreen(const Vector3 &point, float &x, float &y) const {
 }
 
 Capabilities Renderer::capabilities() const { return {}; }
+
+std::optional<TextureMemory> Renderer::textureMemory() const { return backend_->textureBudget; }
+
+void Renderer::setTextureBudget(const TextureMemory &budget) { backend_->textureBudget = budget; }
 
 FrameCounts Renderer::lastFrame() const { return backend_->last; }
 

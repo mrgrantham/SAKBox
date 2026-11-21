@@ -16,10 +16,12 @@
 
 #include <ScratchPadd/Scene/MeshData.hpp>
 #include <ScratchPadd/Scene/Overlay.hpp>
+#include <ScratchPadd/Scene/TextureMemory.hpp>
 #include <ScratchPadd/Scene/Types.hpp>
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <span>
 
 namespace ScratchPadd::Scene {
@@ -99,6 +101,14 @@ public:
   void endFrame();
 
   Capabilities capabilities() const;
+  // Texture memory, where it's counted: the DS's own (two 128 KB banks),
+  // or a budget a desktop renderer was given; none elsewhere
+  std::optional<TextureMemory> textureMemory() const;
+  // Holds a desktop renderer to a console's texture memory (TextureMemory,
+  // e.g. TextureMemory::ds()): a picture past it loads as no texture, as it
+  // would there, so a test can check a console's pictures fit. On a
+  // console, which has its own, it does nothing
+  void setTextureBudget(const TextureMemory &budget);
   // What the last frame drew
   FrameCounts lastFrame() const;
   // How long it took, where the backend can measure it (the 3DS: its GPU's

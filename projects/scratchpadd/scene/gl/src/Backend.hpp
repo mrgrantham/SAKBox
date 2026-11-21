@@ -74,6 +74,7 @@ struct Renderer::Backend {
   std::vector<GLuint> textures;   // by Texture::id - 1; unloaded ones are 0
   std::vector<Later> later;
   FrameCounts counting, last;                    // this frame's so far; the last one's
+  std::optional<TextureMemory> textureBudget;    // (Renderer::setTextureBudget)
   std::vector<Overlay::Vertex> overlayTriangles; // reused each frame
 
   GLuint program = 0;

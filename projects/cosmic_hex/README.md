@@ -316,6 +316,7 @@ What the app plays and draws is in `handheld/`, tested on the Mac:
 | `BottomScreen`, `BoardButtons`, `ChoiceScreens`, `BuildMenu`, `Pickers`, `CardChoices`, `TradeRoom` | The bottom screen and its choosing screens |
 | `Hud`, `RollDice`, `TopShows`, `TopViews` | What's over the board on the top screen |
 | `PlatformProfile` | Each console's numbers (texture sizes, memory budgets, the dice's step) |
+| `GamePictures` | The pictures the top screen draws with, loaded once at the start; `GamePictures_test` loads them as the DS would, its 256 KB of texture memory emulated, with room left for toon textures |
 
 ## The layout solver
 

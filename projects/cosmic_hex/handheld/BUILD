@@ -11,6 +11,7 @@ cc_library(
         "src/BoardMotion.cpp",
         "src/BoardPicture.cpp",
         "src/Hud.cpp",
+        "src/GamePictures.cpp",
         "src/RecipePixels.cpp",
         "src/RollDice.cpp",
         "src/BoardPieces.cpp",
@@ -63,6 +64,7 @@ cc_library(
         "include/CosmicHex/Handheld/PointsBars.hpp",
         "include/CosmicHex/Handheld/PlatformProfile.hpp",
         "include/CosmicHex/Handheld/Hud.hpp",
+        "include/CosmicHex/Handheld/GamePictures.hpp",
         "include/CosmicHex/Handheld/RecipePixels.hpp",
         "include/CosmicHex/Handheld/RollDice.hpp",
         "include/CosmicHex/Handheld/ScreenFlow.hpp",
@@ -137,6 +139,21 @@ cc_test(
     srcs = ["tests/BoardMotion_test.cpp"],
     deps = [
         ":handheld",
+        "@gtest//:gtest_main",
+    ],
+)
+
+# The game's pictures loaded with the DS's texture memory emulated: needs a
+# window (tagged display), as Renderer_test does
+cc_test(
+    name = "GamePictures_test",
+    size = "small",
+    srcs = ["tests/GamePictures_test.cpp"],
+    tags = ["display"],
+    deps = [
+        ":handheld",
+        "//projects/expected_capabilities",
+        "//projects/scratchpadd/scene/desktop",
         "@gtest//:gtest_main",
     ],
 )

@@ -388,3 +388,20 @@ TEST(SceneTest, ViewportsSideBySideMeetExactly) {
   }
   EXPECT_EQ(pixelsOf({}, 320, 240), (PixelRect{0, 0, 320, 240}));
 }
+
+// The DS's texture memory as its allocator hands it out: one piece after
+// another, none across the slots' boundary, nothing past the end
+TEST(SceneTest, TextureMemoryHandsOutAsTheDsDoes) {
+  TextureMemory memory = TextureMemory::ds();
+  EXPECT_EQ(memory.capacity(), 256u * 1024);
+  EXPECT_EQ(memory.takeImage(128, 128), 0u); // (32 KB)
+  EXPECT_EQ(memory.takeImage(128, 128), 32u * 1024);
+  EXPECT_EQ(memory.takeImage(128, 128), 64u * 1024);
+  EXPECT_EQ(memory.takeImage(64, 64), 96u * 1024); // (8 KB)
+  // (24 KB left in slot 0: 32 KB starts at slot 1 instead)
+  EXPECT_EQ(memory.takeImage(128, 128), 128u * 1024);
+  EXPECT_EQ(memory.used(), 160u * 1024);
+  for (int i = 0; i < 3; ++i)
+    EXPECT_TRUE(memory.takeImage(128, 128).has_value());
+  EXPECT_FALSE(memory.takeImage(8, 8).has_value()); // (full)
+}

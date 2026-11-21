@@ -100,8 +100,8 @@ struct Renderer::Backend {
   unsigned nextOutlineId = 0;
   // The next translucent polygon ID: meshes then the overlay (one count a frame)
   unsigned nextTranslucentId = 1;
-  // Where the next toon texture goes in VRAM bank B, in bytes
-  std::uint32_t nextTextureOffset = 0;
+  // Textures' memory (banks B and A), handed out in turn: TextureMemory
+  TextureMemory textures = TextureMemory::ds();
   Fog fogSet;
   Scalar fogNear = 0, fogFar = 0;
   // What the text layer shows, redrawn only when the overlay's text changes,
