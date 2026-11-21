@@ -108,7 +108,7 @@ Options parse(int argc, char **argv) {
     else if (flag == "--first")
       options.randomFirst = std::string_view(value) == "random";
     else if (flag == "--new-ships-leave")
-      options.newShipsLeave = std::string_view(value) == "yes";
+      options.newShipsLeave = std::string_view(value) != "no";
     else if (flag == "--start-cards")
       options.startCards = number<int>(flag, value);
     else if (flag == "--seat-bonus") {

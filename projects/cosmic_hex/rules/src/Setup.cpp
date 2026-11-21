@@ -313,6 +313,14 @@ Settings agreedRules(const Board &board, int players) {
   // starting in empty space can't reach a three's centre before the others
   // move; with no Core Control, it makes R3 fair (1,800 games)
   s.firstRoundBoost = false;
+  // A starting hand of 3 dealt at random (the user's: 1 of each and the
+  // home's 2 a turn made too many cards early); fair by turn order over
+  // 3,600 games with the next rule
+  s.startCards = 3;
+  // A new ship moves off its colony the turn it's built, by the usual
+  // move (the user's: no ship standing on a station); fair, games about 2
+  // rounds shorter
+  s.newShipsLeave = true;
   return s;
 }
 

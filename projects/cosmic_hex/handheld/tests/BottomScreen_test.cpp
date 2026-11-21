@@ -285,6 +285,10 @@ TEST(BottomScreenTest, RollWhenYourRollWaits) {
 // says to touch a corner first
 TEST(BottomScreenTest, AtTheStartATouchChoosesAndEndTurnPlaces) {
   State state = newGame(4, agreedRules(boardR3(), 4));
+  // (the starting hands dealt first, by the dealer)
+  SeededRandom::Generator dealer(3);
+  while (state.phase == Phase::StartCardsDraw)
+    Game::apply(state, Game::dealerAction(state, dealer));
   ASSERT_EQ(state.phase, Phase::PlaceColony);
   const std::vector<Action> legal = Game::legalActions(state);
   BottomScreen screen(kWidth, kHeight);

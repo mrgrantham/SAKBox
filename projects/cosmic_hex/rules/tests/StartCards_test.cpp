@@ -42,7 +42,9 @@ TEST(StartCardsTest, TheDealerDealsRoundTheTableFirst) {
     ASSERT_TRUE(Game::apply(state, Game::dealerAction(state, random)));
   for (int p = 0; p < 4; ++p)
     EXPECT_EQ(cardsOf(state, p), 3);
-  const State usual = newGame(4, agreedRules(boardR3()), 2);
+  Settings oneOfEach = agreedRules(boardR3());
+  oneOfEach.startCards = 0;
+  const State usual = newGame(4, oneOfEach, 2);
   EXPECT_EQ(state.phase, usual.phase);
   EXPECT_EQ(state.turn, usual.turn);
 }
@@ -75,7 +77,9 @@ TEST(StartCardsTest, TheLogKeepsIt) {
   EXPECT_EQ(read->startCardsLeft, 12);
   const Action deal{Kind::DealStartCard, 3};
   EXPECT_EQ(Game::readAction(Game::writeAction(deal)), deal);
-  const std::string plain = Game::writeState(newGame(4, agreedRules(boardR3())));
+  Settings oneOfEach = agreedRules(boardR3());
+  oneOfEach.startCards = 0;
+  const std::string plain = Game::writeState(newGame(4, oneOfEach));
   EXPECT_EQ(plain.find("startcards"), std::string::npos);
   EXPECT_EQ(plain.find("dealing"), std::string::npos);
 }

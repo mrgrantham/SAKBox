@@ -87,6 +87,8 @@ Each can be turned off or changed with the flag beside it.
 | Free stations (the ship costing minerals, fuel and water) | `--station-cost`, `--ship-cost` |
 | Finishing the round | `--finish-round no` (end at once) |
 | Trading between players | `--trading no` |
+| A starting hand of 3 dealt at random | `--start-cards 0` (1 of each) |
+| A new ship moves off its colony the turn it's built | `--new-ships-leave no` |
 | Finds beside the small systems | `--finds usual` |
 
 ### Flags
@@ -125,8 +127,8 @@ Costs and income:
 
 - `--station-cost` and `--ship-cost`: five numbers, minerals, food, fuel, water, crystals (`--station-cost 0,0,0,0,0` for free stations)
 - `--seat-bonus a,b,c,d`: extra start resources for the 1st, 2nd, 3rd and 4th to play
-- `--new-ships-leave yes`: a ship built this turn must move off its colony (by the usual move) before the turn ends
-- `--start-cards N`: a starting hand of N resources dealt at random to each player (by the dealer, one at a time round the table from the first player), instead of 1 of each
+- `--new-ships-leave no`: a new ship waits on its colony until the next turn (the agreed rule has it move off the turn it's built)
+- `--start-cards N`: a starting hand of N resources dealt at random to each player (by the dealer, one at a time round the table from the first player); 3 by default, 0 for 1 of each
 - `--home-die yes`: the home's resources rolled on a six-sided die, one face per resource and the sixth the player's choice (with `--exhaust 5`, the agreed hybrid)
 - `--home-steps 0,2,5,1`: the home's income in steps by points, from,amount pairs (here 2 a turn, then 1 from 5 points, as Starfarers' reserve pile); it takes the place of `--catch-up-below`
 - `--catch-up-below N` and `--catch-up-gap N`: a player behind takes an extra resource with their home's income

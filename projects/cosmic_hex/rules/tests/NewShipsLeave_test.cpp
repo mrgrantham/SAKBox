@@ -67,7 +67,9 @@ TEST(NewShipsLeaveTest, ANewShipMovesThisTurnByTheUsualMove) {
 }
 
 TEST(NewShipsLeaveTest, OffANewShipWaitsAsBefore) {
-  State state = untilShipCanBeBuilt(agreedRules(boardR3()));
+  Settings settings = agreedRules(boardR3());
+  settings.newShipsLeave = false;
+  State state = untilShipCanBeBuilt(settings);
   const auto legal = Game::legalActions(state);
   const auto build = std::find_if(legal.begin(), legal.end(),
                                   [](const Action &a) { return a.kind == Kind::BuildShip; });
