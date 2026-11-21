@@ -256,6 +256,11 @@ struct Settings {
   // dealt one at a time round the table from the first player, before the
   // setup (in place of startResources; 0: startResources of each, as before)
   int startCards = 0;
+  // (corners) A ship built this turn must move off its colony before the
+  // turn ends, by the usual move (shipMove edges, boostMove more for a
+  // fuel): no ship is left standing on a station (the user's). Off: a new
+  // ship waits on its colony until the next turn, as before
+  bool newShipsLeave = false;
   // Extra resources by turn order (the 1st player's, the 2nd's...), to make
   // up for going later: given in turn, minerals, food, fuel, water, crystals
   std::array<int, kMaxPlayers> seatBonus{0, 0, 0, 0};

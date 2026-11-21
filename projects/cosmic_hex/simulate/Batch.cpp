@@ -88,6 +88,7 @@ Settings settingsFor(const Options &options) {
                                               : std::vector<Hex>{{0, 0}, {1, -2}, {-1, 2}};
   settings.seatBonus = options.seatBonus;
   settings.startCards = options.startCards;
+  settings.newShipsLeave = settings.newShipsLeave || options.newShipsLeave;
   settings.planetHexes = options.planets;
   settings.homeHexes = options.homes;
   settings.moons = options.moons;

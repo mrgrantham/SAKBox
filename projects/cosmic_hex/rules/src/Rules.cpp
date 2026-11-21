@@ -58,6 +58,8 @@ bool applyMain(State &state, const Action &action) {
   case Kind::CashBadges:
     return applyCashBadges(state, action);
   case Kind::EndTurn:
+    if (aNewShipMustLeave(state)) // (a new ship moves off its colony first)
+      return false;
     endTurn(state);
     return true;
   default:
@@ -130,7 +132,8 @@ void oneForEachResource(Kind kind, std::vector<Action> &out) {
 // The main part of a turn: ending it, trading with the bank, the ships and
 // stations, the contracts and cards, and cashing badges
 void mainActions(const State &state, std::vector<Action> &out) {
-  out.push_back({Kind::EndTurn});
+  if (!aNewShipMustLeave(state))
+    out.push_back({Kind::EndTurn});
   bankTradeActions(state, out);
   buildAndMoveActions(state, out);
   contractActions(state, out);

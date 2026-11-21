@@ -88,3 +88,15 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "NewShipsLeave_test",
+    size = "small",
+    srcs = ["tests/NewShipsLeave_test.cpp"],
+    deps = [
+        ":rules",
+        "//projects/game_bots",
+        "//projects/seeded_random",
+        "@gtest//:gtest_main",
+    ],
+)

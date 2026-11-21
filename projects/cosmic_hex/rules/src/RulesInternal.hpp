@@ -226,6 +226,10 @@ bool isRelaySpot(const State &state, Corner corner);
 // as a station, or upgrading a station to a colony
 bool applyBuildOrMove(State &state, const Action &action);
 void buildAndMoveActions(const State &state, std::vector<Action> &out);
+// (Settings::newShipsLeave) Whether one of the player to move's ships still
+// stands on a station with somewhere to go (built this turn, not yet
+// moved): the turn can't end until it has
+bool aNewShipMustLeave(const State &state);
 
 // ---------------------------------------------------------------------------
 // Exploring (Exploring.cpp)

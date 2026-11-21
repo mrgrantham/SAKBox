@@ -134,8 +134,11 @@ bool buildShipsAtColony(State &state, const Action &action) {
   if (surplus)
     playCard(state, kShipyardCard);
   pay(me.resources, settings.shipCost);
+  // (it moves from next turn; or, when new ships leave, this one: by the
+  // usual move, before the turn can end)
+  const bool movesNow = settings.newShipsLeave;
   for (int i = 0; i < building; ++i)
-    state.ships.push_back(Ship{state.turn, Hex{}, true, colony->at}); // moves from next turn
+    state.ships.push_back(Ship{state.turn, Hex{}, !movesNow, colony->at});
   return true;
 }
 
@@ -432,6 +435,15 @@ namespace Internal {
 
 bool applyBuildOrMove(State &state, const Action &action) {
   return state.settings.corners ? applyOnCorners(state, action) : applyOnHexes(state, action);
+}
+
+bool aNewShipMustLeave(const State &state) {
+  if (!state.settings.newShipsLeave)
+    return false;
+  return std::any_of(state.ships.begin(), state.ships.end(), [&](const Ship &ship) {
+    return ship.owner == state.turn && !ship.moved && stationAt(state, ship.corner) >= 0 &&
+           !cornerMovesFor(state, ship).empty();
+  });
 }
 
 void buildAndMoveActions(const State &state, std::vector<Action> &out) {

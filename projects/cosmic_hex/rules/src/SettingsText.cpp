@@ -35,13 +35,13 @@ std::string settingsText(const Settings &s) {
       << "," << s.alienStationRate << " pays=" << s.stationPays << "," << s.colonyPays
       << " start=" << s.startResources
       << (s.startCards > 0 ? " startcards=" + std::to_string(s.startCards) : "")
-      << " bonus=" << joined(s.seatBonus) << " corners=" << (s.zoneCorners ? 1 : 0)
-      << " tiles=" << joined(s.planetTiles) << " numbers=" << joined(s.numbers)
-      << " finds=" << joined(s.finds) << " ship=" << joined(s.shipCost)
-      << " station=" << joined(s.stationCost) << " kinds=" << joined(s.kindWeights)
-      << " exhaust=" << s.exhaustHomesAt << "," << (s.exhaustedKindRandom ? 1 : 0)
-      << " colony=" << joined(s.colonyCost) << " contract=" << joined(s.contractCost)
-      << " corehexes=";
+      << (s.newShipsLeave ? " newshipsleave=1" : "") << " bonus=" << joined(s.seatBonus)
+      << " corners=" << (s.zoneCorners ? 1 : 0) << " tiles=" << joined(s.planetTiles)
+      << " numbers=" << joined(s.numbers) << " finds=" << joined(s.finds)
+      << " ship=" << joined(s.shipCost) << " station=" << joined(s.stationCost)
+      << " kinds=" << joined(s.kindWeights) << " exhaust=" << s.exhaustHomesAt << ","
+      << (s.exhaustedKindRandom ? 1 : 0) << " colony=" << joined(s.colonyCost)
+      << " contract=" << joined(s.contractCost) << " corehexes=";
   std::vector<int> core;
   for (Hex hex : s.coreHexes) {
     core.push_back(hex.q);
@@ -249,6 +249,8 @@ std::optional<Settings> readSettings(std::string_view line) {
       s.startResources = v[0];
     else if (key == "startcards")
       s.startCards = v[0];
+    else if (key == "newshipsleave")
+      s.newShipsLeave = v[0] != 0;
     else if (key == "corners")
       s.zoneCorners = v[0] != 0;
     else if (key == "tiles")
