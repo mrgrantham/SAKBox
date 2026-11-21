@@ -261,10 +261,29 @@ TEST(BoardPictureTest, MarksAnywhereStayInsideThePicture) {
         marks.preview = BoardPicture::Marks::Preview{corner, 1, (corner.index % 2) == 0};
         marks.corners.push_back(corner);
         marks.hex = corner.hex;
+        marks.pointer = corner;
         picture.draw(state, marks);
       }
     }
   SUCCEED();
+}
+
+// The flat pointer: a white chevron drawn just above the corner in focus
+TEST(BoardPictureTest, ThePointerIsAFlatChevronAboveItsCorner) {
+  const State state = aGame();
+  BoardPicture plain(256, 192), pointed(256, 192);
+  const Corner corner = boardCorners()[40];
+  plain.draw(state);
+  pointed.draw(state, {.pointer = corner});
+  int white = 0;
+  for (int y = 0; y < 192; ++y)
+    for (int x = 0; x < 256; ++x) {
+      const std::size_t i = (static_cast<std::size_t>(y) * 256) + static_cast<std::size_t>(x);
+      const auto &p = pointed.pixels()[i];
+      if (p != plain.pixels()[i] && p.r > 230 && p.g > 230 && p.b > 230)
+        ++white;
+    }
+  EXPECT_GT(white, 6);
 }
 
 // Zoomed in within a budget, only the faces on screen are drawn sharp, no

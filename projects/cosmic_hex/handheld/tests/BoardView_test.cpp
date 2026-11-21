@@ -132,3 +132,25 @@ TEST(BoardViewTest, TheGridLiesOnlyBetweenTheTiles) {
   EXPECT_NEAR(area, static_cast<double>(tiles.size()) * hexArea * (1 - kTileInset * kTileInset),
               1e-3);
 }
+
+// Following a chosen corner: the camera slides (eye and target together,
+// no zoom) to centre it, eased, no further than kFurthest; and back
+TEST(BoardViewTest, TheCameraFollowsTheChosenCorner) {
+  CameraFollow follow;
+  const auto start = follow.camera(0.3f, 0);
+  EXPECT_NEAR((start.eye - gameCamera(0.3f).eye).length(), 0, 1e-5f);
+  follow.aim(ScratchPadd::Scene::Vector3{2, 0, 1}, 10);
+  const auto half = follow.camera(0.3f, 10 + CameraFollow::kSeconds / 2);
+  const auto there = follow.camera(0.3f, 11);
+  EXPECT_NEAR(
+      (there.target - gameCamera(0.3f).target - ScratchPadd::Scene::Vector3{2, 0, 1}).length(), 0,
+      1e-4f);
+  EXPECT_NEAR(((there.eye - there.target) - (start.eye - start.target)).length(), 0, 1e-4f);
+  EXPECT_GT((half.target - start.target).length(), 0.1f);
+  EXPECT_LT((half.target - start.target).length(), (there.target - start.target).length());
+  follow.aim(ScratchPadd::Scene::Vector3{100, 0, 0}, 20); // (an edge: no further than kFurthest)
+  EXPECT_NEAR(follow.offsetAt(21).length(), CameraFollow::kFurthest, 1e-3f);
+  follow.aim(std::nullopt, 30);
+  EXPECT_NEAR(follow.offsetAt(31).length(), 0, 1e-5f);
+  EXPECT_FALSE(follow.moving(31));
+}

@@ -109,21 +109,30 @@ TEST(TopShowsTest, APanelSlidesDownAndBackUp) {
   EXPECT_FALSE(panel.showing(5.31));
 }
 
-// Another chosen while it's open: the last one lifts away, then the next
-// comes down
-TEST(TopShowsTest, ChoosingAnotherLiftsTheLastAwayThenBringsItDown) {
+// Another chosen while it's open: a carousel. The last slides out one way
+// as the next comes in from the other, side by side; the next player's
+// from the right, the one before from the left
+TEST(TopShowsTest, ChoosingAnotherSlidesLikeACarousel) {
   PanelShow panel(0.3f);
   panel.open(2, 0);
-  panel.choose(3, 1);
+  panel.choose(3, 1); // (the next: in from the right)
   EXPECT_EQ(panel.which(), 3);
-  EXPECT_EQ(panel.drawn(1).which, 2);
-  EXPECT_FLOAT_EQ(panel.drawn(1).down, 1);
-  EXPECT_EQ(panel.drawn(1.1).which, 2);
-  EXPECT_LT(panel.drawn(1.1).down, 1);
-  EXPECT_EQ(panel.drawn(1.2).which, 3);
-  EXPECT_LT(panel.drawn(1.2).down, 1);
-  EXPECT_EQ(panel.drawn(1.31).which, 3);
-  EXPECT_FLOAT_EQ(panel.drawn(1.31).down, 1);
+  auto both = panel.drawn(1.15);
+  ASSERT_EQ(both.size(), 2u);
+  EXPECT_EQ(both[0].which, 2);
+  EXPECT_EQ(both[1].which, 3);
+  EXPECT_FLOAT_EQ(both[0].down, 1);                       // (in place, sliding across)
+  EXPECT_LT(both[0].across, 0);                           // (going left)
+  EXPECT_GT(both[1].across, 0);                           // (coming from the right)
+  EXPECT_NEAR(both[1].across - both[0].across, 1, 1e-5f); // (side by side)
+  const auto done = panel.drawn(1.31);
+  ASSERT_EQ(done.size(), 1u);
+  EXPECT_EQ(done[0].which, 3);
+  EXPECT_FLOAT_EQ(done[0].across, 0);
+  panel.choose(2, 2, -1); // (back: in from the left)
+  both = panel.drawn(2.1);
+  ASSERT_EQ(both.size(), 2u);
+  EXPECT_LT(both[1].across, 0);
 }
 
 // Who goes first: each player's die thrown in turn, landing on their
@@ -373,4 +382,27 @@ TEST(TopShowsTest, ThePointerFadesInGlidesAndFadesAway) {
   pointer.aim(c, 5); // (back, at its new corner: no glide from the last)
   EXPECT_EQ(pointer.at(5.1)->from, c);
   EXPECT_FALSE(pointer.moving(6));
+}
+
+// A corner chosen: the pointer taps it once it's there. Up a little first,
+// down to touching, dust from the touch, then back up and settled
+TEST(TopShowsTest, ThePointerTapsTheCornerChosen) {
+  const Corner a = CosmicHex::boardCorners()[0], b = CosmicHex::boardCorners()[1];
+  CornerPointer pointer;
+  pointer.aim(a, 0);
+  pointer.aim(b, 1); // (gliding to b)
+  pointer.tap(1);    // (waits for the glide)
+  EXPECT_FLOAT_EQ(pointer.at(1.1)->dip, 0);
+  const double start = 1 + CornerPointer::kSecondsGlide;
+  EXPECT_LT(pointer.at(start + CornerPointer::kSecondsLift * 0.9)->dip, 0); // (the lift)
+  const double touch = start + CornerPointer::kSecondsLift + CornerPointer::kSecondsDrop;
+  EXPECT_NEAR(pointer.at(touch - 0.001)->dip, 1, 0.05f);
+  EXPECT_FALSE(pointer.at(touch - 0.01)->dust.has_value());
+  ASSERT_TRUE(pointer.at(touch + 0.1)->dust.has_value());
+  EXPECT_GT(*pointer.at(touch + 0.1)->dust, 0);
+  EXPECT_LT(pointer.at(touch + 0.1)->dip, 1); // (going back up)
+  EXPECT_TRUE(pointer.moving(touch + 0.1));
+  EXPECT_NEAR(pointer.at(touch + 1)->dip, 0, 1e-4f);
+  EXPECT_FALSE(pointer.at(touch + 1)->dust.has_value());
+  EXPECT_FALSE(pointer.moving(touch + 1));
 }

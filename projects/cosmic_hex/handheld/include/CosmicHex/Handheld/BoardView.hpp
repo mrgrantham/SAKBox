@@ -11,9 +11,12 @@
 // need it there to stay in front of the tiles under them.
 #pragma once
 
+#include <ScratchPadd/Motion/Motion.hpp>
 #include <ScratchPadd/Scene/Types.hpp>
 
+#include <algorithm>
 #include <cmath>
+#include <optional>
 
 namespace CosmicHex::Handheld {
 
@@ -46,6 +49,49 @@ inline ScratchPadd::Scene::Camera topDownCamera() {
           .nearPlane = kBoardNearPlane,
           .farPlane = kBoardFarPlane};
 }
+
+// The game's camera following the corner you choose (the user's choice:
+// follow only, no zoom): the board slides so the corner comes to the
+// middle, over half a second, slow in and out, and back when nothing's
+// chosen. It slides no further than kFurthest from the board's own
+// centre, so the board never leaves the screen for an edge corner.
+//
+//   follow.aim(cornerPoint, now);     // (nothing: back to the middle)
+//   camera = follow.camera(turn, now);
+class CameraFollow {
+public:
+  static constexpr float kSeconds = 0.5f, kFurthest = 3.5f;
+  void aim(std::optional<ScratchPadd::Scene::Vector3> point, double now) {
+    const ScratchPadd::Scene::Vector3 to = point ? clamped(*point) : ScratchPadd::Scene::Vector3{};
+    if ((to - to_).length() < 1e-4f)
+      return;
+    from_ = offsetAt(now); // (from wherever it's got to)
+    to_ = to;
+    since_ = now;
+  }
+  ScratchPadd::Scene::Vector3 offsetAt(double now) const {
+    const auto t = static_cast<float>(std::clamp((now - since_) / kSeconds, 0.0, 1.0));
+    return from_ +
+           (to_ - from_) * ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::Gentle, t);
+  }
+  ScratchPadd::Scene::Camera camera(float turn, double now) const {
+    ScratchPadd::Scene::Camera c = gameCamera(turn);
+    const ScratchPadd::Scene::Vector3 offset = offsetAt(now);
+    c.eye = c.eye + offset;
+    c.target = c.target + offset;
+    return c;
+  }
+  bool moving(double now) const { return now - since_ < kSeconds; }
+
+private:
+  static ScratchPadd::Scene::Vector3 clamped(ScratchPadd::Scene::Vector3 p) {
+    p.y = 0; // (along the board)
+    const float length = p.length();
+    return length > kFurthest ? p * (kFurthest / length) : p;
+  }
+  ScratchPadd::Scene::Vector3 from_{}, to_{};
+  double since_ = -1e9;
+};
 
 // `t` of the way from one camera to another (0 to 1)
 inline ScratchPadd::Scene::Camera cameraBetween(const ScratchPadd::Scene::Camera &from,

@@ -139,25 +139,27 @@ void PanelShow::open(int which, double now) {
   closing_.stop();
 }
 
-void PanelShow::choose(int which, double now) {
+void PanelShow::choose(int which, double now, int direction) {
   if (which == which_)
     return;
-  // (in place: the last one lifts away; still coming down, it's a cut)
+  // (in place: the carousel turns; still coming down, it's a cut)
   last_ = inPlace(now) ? which_ : -1;
   which_ = which;
+  direction_ = direction < 0 ? -1 : 1;
   switched_.start(now);
 }
 
-PanelShow::Drawn PanelShow::drawn(double now) const {
+std::vector<PanelShow::Drawn> PanelShow::drawn(double now) const {
   if (last_ < 0 || !switched_.on() || closing_.on())
-    return {which_, down(now)};
-  // (the first half the last one going up, the second the next coming down)
+    return {{which_, down(now)}};
   const float t = static_cast<float>(switched_.seconds(now)) / kSecondsSwitch;
   if (t >= 1)
-    return {which_, down(now)};
-  if (t < 0.5f)
-    return {last_, 1 - Motion::along(Motion::Curve::Gentle, t * 2)};
-  return {which_, Motion::along(Motion::Curve::Gentle, t * 2 - 1)};
+    return {{which_, down(now)}};
+  // (both together, side by side: the last out one way, the next in from
+  // the other, eased at both ends)
+  const float moved = Motion::along(Motion::Curve::Gentle, t);
+  const auto way = static_cast<float>(direction_);
+  return {{last_, 1, -way * moved}, {which_, 1, way * (1 - moved)}};
 }
 
 void PanelShow::close(double now) {
@@ -751,16 +753,41 @@ void CornerPointer::aim(std::optional<Corner> corner, double now) {
   }
 }
 
+void CornerPointer::tap(double now) {
+  // (once it's arrived: a tap mid-glide waits for the glide's end)
+  tapAt_ = std::max(now, glidedAt_ + kSecondsGlide);
+}
+
 std::optional<CornerPointer::Look> CornerPointer::at(double now) const {
   const float shown = shownAt(now);
   if (!from_ || !to_ || shown <= 0) // (both set together, by aim)
     return std::nullopt;
   const float t = std::clamp(static_cast<float>(now - glidedAt_) / kSecondsGlide, 0.0f, 1.0f);
-  return Look{*from_, *to_, Motion::along(Motion::Curve::EaseOut, t), shown};
+  Look look{*from_, *to_, Motion::along(Motion::Curve::EaseOut, t), shown};
+  if (tapAt_ && now >= *tapAt_) {
+    // A small lift, a quick drop to the touch, then back up settling
+    const auto since = static_cast<float>(now - *tapAt_);
+    const float dropFrom = kSecondsLift, touches = kSecondsLift + kSecondsDrop,
+                settled = touches + kSecondsSettle;
+    if (since < dropFrom)
+      look.dip = -kLift * Motion::along(Motion::Curve::EaseOut, since / kSecondsLift);
+    else if (since < touches)
+      look.dip = -kLift + ((1 + kLift) *
+                           Motion::along(Motion::Curve::EaseIn, (since - dropFrom) / kSecondsDrop));
+    else if (since < settled)
+      look.dip = 1 - Motion::along(Motion::Curve::Settle, (since - touches) / kSecondsSettle);
+    // (the dust from the moment it touches, as long as a building's)
+    const auto touched = static_cast<float>(now - *tapAt_) - kSecondsLift - kSecondsDrop;
+    if (touched >= 0 && touched < kSecondsDust)
+      look.dust = touched / kSecondsDust;
+  }
+  return look;
 }
 
 bool CornerPointer::moving(double now) const {
-  return now - fadedAt_ < kSecondsFade || now - glidedAt_ < kSecondsGlide;
+  const bool tapping = tapAt_ && now - *tapAt_ < kSecondsLift + kSecondsDrop +
+                                                     std::max(kSecondsSettle, kSecondsDust);
+  return now - fadedAt_ < kSecondsFade || now - glidedAt_ < kSecondsGlide || tapping;
 }
 
 } // namespace CosmicHex::Handheld

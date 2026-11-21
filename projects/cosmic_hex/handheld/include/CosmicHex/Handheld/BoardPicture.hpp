@@ -112,6 +112,9 @@ public:
       bool ship = false; // (else a colony)
     };
     std::optional<Preview> preview;
+    // The board's pointer (the top screen's chevron), flat and still: a
+    // white chevron just above the corner in focus, over everything
+    std::optional<Corner> pointer;
     // A tile just turned over that the map doesn't show yet: face down
     // (shown 0), its face fading in over it (to 1, as it is); the top
     // screen shows it turning over first (Discovery)
@@ -170,7 +173,16 @@ private:
   // index), what it looks like (a face and whether it's sharp, a chip's
   // number, a player and whether a colony), and the pixels it can touch
   struct Piece {
-    enum class Kind : std::uint8_t { Face, Chip, Station, Ship, Blockade, MarkHex, MarkCorner };
+    enum class Kind : std::uint8_t {
+      Face,
+      Chip,
+      Station,
+      Ship,
+      Blockade,
+      MarkHex,
+      MarkCorner,
+      Pointer
+    };
     Kind kind;
     std::array<std::int16_t, 3> place;
     std::array<std::int16_t, 2> look;

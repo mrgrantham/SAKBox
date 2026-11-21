@@ -119,8 +119,10 @@ private:
 
 // ---------------------------------------------------------------------------
 // A view sliding down over the board, and back up when closed; another
-// chosen while it's open, the last one lifts away and the next comes down
-// (the user's: other players' views change with a movement, not a cut)
+// chosen while it's open, the views slide sideways like a carousel: the
+// last one out one way as the next comes in from the other, both easing
+// in and out (Lasseter's slow in and out), the next player's from the
+// right (the user's: other players' views change with a movement)
 
 class PanelShow {
 public:
@@ -128,15 +130,19 @@ public:
 
   explicit PanelShow(float seconds) : seconds_(seconds) {}
   void open(int which, double now);
-  void choose(int which, double now); // (another, while it's open)
+  // Another, while it's open: `direction` 1 for the next player round
+  // the table (it comes in from the right), -1 the one before
+  void choose(int which, double now, int direction = 1);
   void close(double now);
-  // Which to draw now and how far down (0 above the screen, 1 in place):
-  // the one chosen, or the last, lifting away as another's chosen
+  // What to draw now: which, how far down (0 above the screen, 1 in place)
+  // and how far across (screen widths: 0 in place, -1 off to the left, 1
+  // off to the right). One, or two while they slide past each other
   struct Drawn {
     int which;
     float down;
+    float across = 0;
   };
-  Drawn drawn(double now) const;
+  std::vector<Drawn> drawn(double now) const;
   // Shown: open, or still sliding back up
   bool showing(double now) const;
   bool moving(double now) const { return showing(now); }
@@ -149,6 +155,7 @@ public:
 private:
   float seconds_;
   int which_ = -1, last_ = -1;
+  int direction_ = 1; // (the last switch's: the next came in from the right)
   ScratchPadd::Motion::Showing opened_, closing_, switched_;
 };
 
@@ -454,7 +461,10 @@ private:
 // The board's pointer (the user's): a chevron over the corner in focus,
 // fading in gently when the game wants you to choose on the board (where to
 // place, build or move a ship) and away while pieces move, things are built
-// and turns end; gliding from corner to corner as the focus moves
+// and turns end; gliding from corner to corner as the focus moves. When you
+// choose a corner it taps it (the user's): a small lift first (Lasseter's
+// anticipation), a quick drop onto whatever is there (a ship, a station,
+// or the board), the build's dust where it touches, and a settle back up
 
 class CornerPointer {
 public:
@@ -463,10 +473,21 @@ public:
   // Each frame: the corner it should point at now, or nothing (fading away)
   void aim(std::optional<Corner> corner, double now);
 
+  // A tap at the corner it's aimed at, once it's there (after a glide)
+  void tap(double now);
+  static constexpr float kSecondsLift = 0.08f, kSecondsDrop = 0.1f, kSecondsSettle = 0.3f;
+  static constexpr float kLift = 0.15f; // (of the way down, up first)
+  static constexpr float kSecondsDust = 0.5f;
+
   struct Look {
     Corner from, to; // (gliding from one to the other)
     float along;     // 0 at `from`, 1 at `to`, eased
     float shown;     // 0 gone, 1 fully in, eased
+    // A tap: how far down it is toward what's at the corner (0 at its
+    // usual height, 1 touching; a little below 0 in the lift before), and
+    // the dust from the touch (0 to 1 as it spreads and fades), if any
+    float dip = 0;
+    std::optional<float> dust;
   };
   // Nothing once it's faded away (or before it's first aimed)
   std::optional<Look> at(double now) const;
@@ -476,6 +497,7 @@ private:
   float shownAt(double now) const;
 
   std::optional<Corner> from_, to_;
+  std::optional<double> tapAt_; // (when the tap's lift starts)
   bool on_ = false;
   double fadedAt_ = 0, glidedAt_ = 0;
   float fadeFrom_ = 0; // (how shown it was when the fade turned)

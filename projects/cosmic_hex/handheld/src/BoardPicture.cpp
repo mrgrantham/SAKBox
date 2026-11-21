@@ -296,6 +296,7 @@ void BoardPicture::setZoomBudget(std::size_t bytes) {
 namespace {
 constexpr Colour kGrid{58, 74, 104, 255};
 constexpr Colour kHighlight = Palette::kHighlight;
+constexpr Colour kPointer{245, 245, 250}; // (white, as the top screen's chevron)
 constexpr Colour kDark{10, 14, 24, 255};
 // A face fading in: in this many steps (each drawn once)
 constexpr int kRevealSteps = 8;
@@ -560,6 +561,15 @@ void BoardPicture::listPieces(const State &state, const Marks &marks,
                      rectArea(c.x - half - 1, c.y - half - 1, 2 * half + 2, 2 * half + 2)});
     }
   }
+  if (marks.pointer) {
+    // (its chevron's box, with a pixel's room for its two-pixel lines)
+    const HexGrid::Point c = where(*marks.pointer);
+    const float r = 0.3f * s;
+    out.push_back({Piece::Kind::Pointer,
+                   at(*marks.pointer),
+                   {0, 0},
+                   rectArea(c.x - r - 2, c.y - 2 * r - 2, 2 * r + 4, r + 4)});
+  }
 }
 
 void BoardPicture::drawPiece(const Piece &piece) {
@@ -625,6 +635,15 @@ void BoardPicture::drawPiece(const Piece &piece) {
     for (int i = 0; i < 6; ++i)
       line(where(HexGrid::corner(hex, i)), where(HexGrid::corner(hex, i + 1)), 2, kHighlight);
     break;
+  case Piece::Kind::Pointer: {
+    // A chevron pointing down at the corner, just above it
+    const HexGrid::Point c = where(corner);
+    const float r = 0.3f * s;
+    const HexGrid::Point tip{c.x, c.y - r * 0.6f};
+    line({c.x - r, c.y - 2 * r}, tip, 2, kPointer);
+    line({c.x + r, c.y - 2 * r}, tip, 2, kPointer);
+    break;
+  }
   case Piece::Kind::MarkCorner: {
     const HexGrid::Point c = where(corner);
     const float r = 0.2f * s;
