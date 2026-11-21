@@ -102,6 +102,39 @@ cc_library(
     ],
 )
 
+# The app's parts that need no console (source/): the table's padd and its
+# messages, the menus, the memory readout, the screens' sizes. Built on
+# the Mac only so clang-tidy can check them (compile_commands.json); the
+# consoles build every file in source/ with their Makefiles. ScreenPadd
+# isn't here: it draws on a console's screens (its Display, ConsoleScreens'
+# nds.h or 3ds.h) and the rocket the console build cooks with Blender.
+cc_library(
+    name = "app_parts",
+    srcs = [
+        "source/MemoryReadout.cpp",
+        "source/MenuScreens.cpp",
+        "source/TablePadd.cpp",
+    ],
+    hdrs = [
+        "source/AppBasics.hpp",
+        "source/MemoryReadout.hpp",
+        "source/MenuScreens.hpp",
+        "source/ScreenLayout.hpp",
+        "source/TableMessages.hpp",
+        "source/TablePadd.hpp",
+    ],
+    deps = [
+        ":handheld",
+        "//projects/cosmic_hex/rules",
+        "//projects/scratchpadd/basis",
+        "//projects/scratchpadd/canvas",
+        "//projects/scratchpadd/input",
+        "//projects/scratchpadd/owner_name",
+        "//projects/scratchpadd/storage",
+        "@spdlog",
+    ],
+)
+
 # The sources, for the consoles' Makefile builds (the app's own in source/)
 filegroup(
     name = "sources",

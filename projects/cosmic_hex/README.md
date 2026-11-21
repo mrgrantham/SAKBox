@@ -152,7 +152,7 @@ Every game has its own seed, made from `--seed` and the game's number (so runs w
 
 ## On a handheld
 
-One app runs on the 3DS and the DS: `handheld/source/cosmic_hex_on_a_handheld.cpp`, the differences in `#if` blocks and in each platform's `PlatformProfile`.
+One app runs on the 3DS and the DS: `handheld/source/` (`main` in `cosmic_hex_on_a_handheld.cpp`, its parts in [The app's files](#the-apps-files)), the differences in `#if` blocks and in each platform's `PlatformProfile`.
 
 ### Build and run
 
@@ -340,6 +340,35 @@ What the app plays and draws is in `handheld/`, tested on the Mac:
 | `Hud`, `RollDice`, `TopShows`, `TopViews` | What's over the board on the top screen |
 | `PlatformProfile` | Each console's numbers (texture sizes, memory budgets, the dice's step) |
 | `GamePictures` | The pictures the top screen draws with, loaded once at the start; `GamePictures_test` loads them as the DS would, its 256 KB of texture memory emulated, with room left for toon textures |
+
+### The app's files
+
+The app itself is in `handheld/source/`, built by the consoles' Makefiles (every file there). Its parts that need no console (`app_parts`) are also built on the Mac, so clang-tidy checks them.
+
+| File | What it holds |
+| --- | --- |
+| `cosmic_hex_on_a_handheld.cpp` | `main`: the padds started |
+| `TablePadd`, `TableMessages.hpp` | The game on its own thread (TableGame, the bots, the dealer), and what it and the screens say to each other |
+| `ScreenPadd.hpp` | The screens' padd, declared; its members defined by role in the files below |
+| `ScreenPadd.cpp` | Starting, the frame loop, holding the game, the animations' pace |
+| `GameFlow.cpp` | A new state's arrival, starting and stopping games, who goes first, the dice, the win |
+| `BoardDrawing.cpp` | The stage's scenes: the title, the setup's board, the game's board and its pieces |
+| `ShowsOverBoard.cpp` | What shows over the board: the HUD, banners, close-ups, the shows' updates, the pointer |
+| `TouchPanel.cpp` | The touch panel's picture, the buttons and touch, your moves |
+| `MenuScreens` | The title, pause, setup and settings menus, your name and the animations setting |
+| `ScreenLayout.hpp` | Where each role draws, and its size |
+| `AppBasics.hpp`, `MemoryReadout` | The build's switches and timings; memory measured for the `-watch` builds |
+
+### Toward one screen
+
+The app draws by role, not by screen (`ScreenLayout.hpp`): the **stage** (the 3D scene: the title, the boards, the shows over them; the top screen) and the **touch panel** (the menus, the flat map and its buttons; the bottom screen). A one-screen version would place both on its one screen:
+
+- **Unchanged:** `TablePadd` and its messages, `GameFlow.cpp`, `MenuScreens`' choices and what they keep, the shows' timing and holds.
+- **The stage** (`BoardDrawing.cpp`, `ShowsOverBoard.cpp`) draws through the renderer at `kStageWidth` x `kStageHeight`: on one screen, into its part of the screen (the renderer would need a viewport, or the stage takes the whole screen with the touch panel over it).
+- **The touch panel** (`TouchPanel.cpp`, `MenuScreens`) is a picture drawn by the CPU (`BoardPicture`, `Canvas`, `MenuPicture`) and copied to the bottom screen (`ConsoleScreens::BottomScreen`): on one screen it would go to a texture (`Renderer::replace`, as the close-ups do) drawn over or beside the stage, only when it changes.
+- **`ScreenLayout.hpp`** would give each area a place (x, y) as well as a size, and the touch handling (`handleTouch`, `MenuScreens::tap`, `scripted`) would take the touch panel's place off each touch.
+- **Holding a still frame** (`PlatformProfile::holdStillFrames`, the DS's top screen) would have to count the touch panel's changes too, as both would be one frame.
+- **The menus** on the title, setup and settings screens would cover part of the scene behind them, or take the screen in turn with it.
 
 ## The layout solver
 
