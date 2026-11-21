@@ -14,7 +14,10 @@
 //            the wheel zooms toward the cursor; a trackpad's two-finger
 //            scroll turns it (Shift pans, Ctrl or Cmd zooms); 1, 3, 7 (the
 //            numpad or the number row) look from the front, right and top,
-//            Ctrl for the opposite; Home frames it all; Esc undoes a drag
+//            Ctrl for the opposite; Home frames it all; Esc undoes a drag.
+//            View changes glide. In its top-right corner, the ViewCube or
+//            Blender's axis gizmo (a setting); along its bottom, Rewind's
+//            strip (Alt+Left and Alt+Right step back and forward)
 //   Plots    from the side, from above, and the timing (how far along
 //            against time): the physics as lines, the bake as dots
 //
@@ -27,6 +30,7 @@
 
 #include <AnimationLab/OrbitView.hpp>
 #include <AnimationLab/Settings.hpp>
+#include <AnimationLab/ViewHistory.hpp>
 
 #include <ScratchPadd/DebugUi/DebugUi.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
@@ -34,6 +38,7 @@
 #include <ScratchPadd/ScratchPadd.hpp>
 
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -72,7 +77,18 @@ private:
   void drawView(double t);
   // The mouse, trackpad and keys moving the view, over the 3D's part of the
   // window (`area`: x, y, width, height in points; `panes` views across it)
-  void moveView(const float area[4], int panes);
+  // (`taken`: the mouse is on the corner widget or Rewind's strip, so a
+  // click there doesn't start a drag of the view)
+  void moveView(const float area[4], int panes, bool taken);
+  // The corner widget (the ViewCube or Blender's axis gizmo) and Rewind's
+  // strip, drawn over the 3D and acting on clicks and drags there; true
+  // while the mouse is theirs (app/LabNavigation.cpp)
+  bool navigate(const float area[4]);
+  bool navigateCube(const float area[4]);
+  bool navigateAxes(const float area[4]);
+  bool navigateRewind(const float area[4]);
+  void readViewSettings();
+  void writeViewSettings() const;
   void drawPlots(double t);
 
   Playing play(const Settings &settings) const;
@@ -108,7 +124,23 @@ private:
   Clock::time_point changedAt_ = Clock::now();
 
   OrbitView view_;
-  bool frameNext_ = true; // (frame what's shown: at the start, a run chosen, Home)
+  bool frameNext_ = true;   // (frame what's shown: at the start, a run chosen, Home)
+  bool framedOnce_ = false; // (the first framing is at once; the rest glide)
+  Clock::time_point lastFrame_ = Clock::now();
+  float frameSeconds_ = 0; // (since the frame before)
+
+  // The view's corner and Rewind (app/LabNavigation.cpp)
+  enum class Corner : std::uint8_t { ViewCube, Axes };
+  Corner corner_ = Corner::ViewCube; // (kept in view.txt)
+  ViewHistory viewHistory_;
+  // A press on the corner widget: where, and whether it's become a drag
+  // (and on the cube's compass: turning only about the world's up)
+  struct CornerPress {
+    ScreenPoint from;
+    bool dragged = false, compass = false;
+  };
+  std::optional<CornerPress> cornerPress_;
+  std::optional<float> scrubbing_; // (the place on Rewind's strip, while it's held)
   std::string name_ = "throw";
   std::string saved_;
   Clock::time_point playFrom_ = Clock::now();

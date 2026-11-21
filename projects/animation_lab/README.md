@@ -47,7 +47,7 @@ within 3 hundredths of a unit.
 ## Build and test
 
 ```bash
-bazel test //projects/animation_lab:Lab_test
+bazel test //projects/animation_lab/...
 ```
 
 ## The window
@@ -87,9 +87,44 @@ the ideas in Blender's view navigation code, no dependency):
 | 1, 3, 7 (numpad or number row) | Look from the front, the right, the top; with Ctrl the opposite |
 | Home (or the numpad's .) | Frame it all |
 | Esc during a drag | Put the view back as it was |
+| Alt+← and Alt+→ | Rewind: back to the view before, and forward again |
 
 The view frames what's shown when the lab starts, when a run is chosen or
 compared, and on Home; otherwise it stays where you put it.
+
+#### Glides, Rewind and the corner widget
+
+From Autodesk Research's papers on 3D navigation ("Safe 3D Navigation" and
+"ViewCube", both 2008), kept in the UX guides folder:
+
+- **Glides:** every change of view the lab makes (the numpad's views, Home,
+  Rewind, the corner widget's clicks) moves over 0.4 s, eased, the short
+  way round, so you see where you went. A drag, pan or zoom takes over from
+  a glide at once (`OrbitView::glideTo`).
+- **Rewind** (`ViewHistory`): undo for the view.
+  - Each view you stop at for a moment (0.3 s) is a step: after a drag, a
+    run of zooming, a numpad view or a glide.
+  - A strip along the bottom of the 3D view has a dot per step. Drag along
+    it and the view moves smoothly through them; letting go settles on the
+    nearest. Its arrows, and Alt+← and Alt+→, step back and forward.
+  - Nothing's lost: moving after going back adds a step at the end. The
+    newest 50 are kept.
+- **The corner widget**, top right, chosen under Making → View (kept in
+  `view.txt`):
+  - **ViewCube** (`ViewCube`): click a face, an edge or a corner to look
+    from there (26 views; the cells of an edge or a corner light together).
+    Drag it to turn; letting go within 10° of one of the 26 settles on it.
+    Drag the compass ring under it (N away from the front) to turn about the
+    world's up only. The house above it frames everything. Faces are tinted
+    with their axis's colour. It has no roll arrows: the view is a
+    turntable, so it never rolls.
+  - **Blender's axes** (`AxisGizmo`): click a ball to look from that end of
+    its axis (again, once there, for the opposite end); drag it to turn. X
+    red, Y green, Z blue, as Blender's; the lab's world has y up, so Y
+    points up where Blender's Z would.
+- Not done: the paper's thumbnails of each step on Rewind's strip (it would
+  need each view drawn to an off-screen picture, which the renderers don't
+  do yet).
 - **Plots** (bottom right): from the side, from above, and the timing (how
   far along against time), the physics as lines and the bake as dots.
 

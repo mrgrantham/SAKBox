@@ -7,13 +7,19 @@ cc_library(
     name = "lab",
     srcs = [
         "src/Lab.cpp",
+        "src/AxisGizmo.cpp",
         "src/OrbitView.cpp",
         "src/Settings.cpp",
+        "src/ViewCube.cpp",
+        "src/ViewHistory.cpp",
     ],
     hdrs = [
         "include/AnimationLab/Lab.hpp",
+        "include/AnimationLab/AxisGizmo.hpp",
         "include/AnimationLab/OrbitView.hpp",
         "include/AnimationLab/Settings.hpp",
+        "include/AnimationLab/ViewCube.hpp",
+        "include/AnimationLab/ViewHistory.hpp",
     ],
     strip_include_prefix = "include/",
     visibility = ["//visibility:public"],
@@ -29,6 +35,26 @@ cc_test(
     name = "OrbitView_test",
     size = "small",
     srcs = ["tests/OrbitView_test.cpp"],
+    deps = [
+        ":lab",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "ViewHistory_test",
+    size = "small",
+    srcs = ["tests/ViewHistory_test.cpp"],
+    deps = [
+        ":lab",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "ViewWidgets_test",
+    size = "small",
+    srcs = ["tests/ViewWidgets_test.cpp"],
     deps = [
         ":lab",
         "@gtest//:gtest_main",
@@ -52,6 +78,7 @@ cc_test(
 cc_binary(
     name = "animation_lab",
     srcs = [
+        "app/LabNavigation.cpp",
         "app/LabShapes.cpp",
         "app/LabShapes.hpp",
         "app/LabWindowPadd.cpp",

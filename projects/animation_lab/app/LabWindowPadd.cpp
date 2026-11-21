@@ -89,6 +89,7 @@ void LabWindowPadd::starting() {
           Scene::TextureImage{shape.pictureWidth, shape.pictureHeight, shape.picture});
   }
   readHistory();
+  readViewSettings();
   if (!history_.empty()) {
     chosen_ = static_cast<int>(history_.size()) - 1;
     settings_ = history_.back().settings;
@@ -383,6 +384,16 @@ void LabWindowPadd::drawMaking() {
   ImGui::SameLine();
   ImGui::Checkbox("the physics, not the bake", &showPhysics_);
   ImGui::Separator();
+  ImGui::TextUnformatted("View");
+  int corner = corner_ == Corner::ViewCube ? 0 : 1;
+  bool cornerChanged = ImGui::RadioButton("ViewCube", &corner, 0);
+  ImGui::SameLine();
+  cornerChanged |= ImGui::RadioButton("Blender's axes", &corner, 1);
+  if (cornerChanged) {
+    corner_ = corner == 0 ? Corner::ViewCube : Corner::Axes;
+    writeViewSettings();
+  }
+  ImGui::Separator();
   ImGui::InputText("name", &name_);
   if (ImGui::Button("Save"))
     save();
@@ -390,7 +401,7 @@ void LabWindowPadd::drawMaking() {
     ImGui::TextWrapped("%s", saved_.c_str());
 }
 
-void LabWindowPadd::moveView(const float area[4], int panes) {
+void LabWindowPadd::moveView(const float area[4], int panes, bool taken) {
   const ImGuiIO &io = ImGui::GetIO();
   const float paneWidth = area[2] / static_cast<float>(panes);
   const bool inside = !io.WantCaptureMouse && io.MousePos.x >= area[0] &&
@@ -402,8 +413,9 @@ void LabWindowPadd::moveView(const float area[4], int panes) {
               paneY = io.MousePos.y - area[1];
   // A drag: middle (Blender's), left (nothing to select here), or Alt-left
   // (Blender's three-button emulation, the same)
-  if (inside && (ImGui::IsMouseClicked(ImGuiMouseButton_Middle) ||
-                 ImGui::IsMouseClicked(ImGuiMouseButton_Left)))
+  if (inside && !taken &&
+      (ImGui::IsMouseClicked(ImGuiMouseButton_Middle) ||
+       ImGui::IsMouseClicked(ImGuiMouseButton_Left)))
     view_.begin();
   if (view_.dragging()) {
     const bool held =
@@ -424,7 +436,7 @@ void LabWindowPadd::moveView(const float area[4], int panes) {
   // The wheel: a mouse's (whole steps, up and down) zooms toward the
   // cursor; a trackpad's two-finger scroll (in fractions, or sideways)
   // turns the view, with Shift pans, with Ctrl or Cmd zooms
-  if (inside && (io.MouseWheel != 0 || io.MouseWheelH != 0)) {
+  if (inside && !taken && (io.MouseWheel != 0 || io.MouseWheelH != 0)) {
     const bool trackpad =
         io.MouseWheelH != 0 || std::fabs(io.MouseWheel - std::round(io.MouseWheel)) > 1e-3f;
     constexpr float kPixelsAStep = 12;
@@ -442,12 +454,21 @@ void LabWindowPadd::moveView(const float area[4], int panes) {
     const auto pressed = [](ImGuiKey pad, ImGuiKey row) {
       return ImGui::IsKeyPressed(pad, false) || ImGui::IsKeyPressed(row, false);
     };
+    const auto look = [this](OrbitView::Side side) { view_.glideTo(view_.looking(side)); };
     if (pressed(ImGuiKey_Keypad1, ImGuiKey_1))
-      view_.look(ctrl ? OrbitView::Side::Back : OrbitView::Side::Front);
+      look(ctrl ? OrbitView::Side::Back : OrbitView::Side::Front);
     if (pressed(ImGuiKey_Keypad3, ImGuiKey_3))
-      view_.look(ctrl ? OrbitView::Side::Left : OrbitView::Side::Right);
+      look(ctrl ? OrbitView::Side::Left : OrbitView::Side::Right);
     if (pressed(ImGuiKey_Keypad7, ImGuiKey_7))
-      view_.look(ctrl ? OrbitView::Side::Bottom : OrbitView::Side::Top);
+      look(ctrl ? OrbitView::Side::Bottom : OrbitView::Side::Top);
+    // Rewind: Alt+Left back to the view before, Alt+Right forward again
+    // (a browser's back and forward)
+    if (io.KeyAlt && ImGui::IsKeyPressed(ImGuiKey_LeftArrow))
+      if (const auto pose = viewHistory_.back(view_.destination()))
+        view_.glideTo(*pose);
+    if (io.KeyAlt && ImGui::IsKeyPressed(ImGuiKey_RightArrow))
+      if (const auto pose = viewHistory_.forward(view_.destination()))
+        view_.glideTo(*pose);
     if (ImGui::IsKeyPressed(ImGuiKey_Home, false) ||
         ImGui::IsKeyPressed(ImGuiKey_KeypadDecimal, false))
       frameNext_ = true;
@@ -463,7 +484,12 @@ void LabWindowPadd::drawView(double t) {
   const bool twoViews = other_ && sideBySide_;
   const int panes = twoViews ? 2 : 1;
   const float area[4] = {left, 0, size.x - left, bottom};
-  moveView(area, panes);
+  const Clock::time_point now = Clock::now();
+  frameSeconds_ = std::chrono::duration<float>(now - lastFrame_).count();
+  lastFrame_ = now;
+  const bool taken = navigate(area);
+  moveView(area, panes, taken);
+  view_.advance(frameSeconds_);
   // (what's shown, for framing and the floor)
   Scene::Vector3 low{1e9f, 1e9f, 1e9f}, high{-1e9f, -1e9f, -1e9f};
   for (const Playing *p : {&now_, other_ ? &*other_ : nullptr})
@@ -477,10 +503,16 @@ void LabWindowPadd::drawView(double t) {
     low = high = {};
   if (frameNext_) {
     const float margin = std::max(now_.settings.size, other_ ? other_->settings.size : 0.0f);
-    view_.frame(low - Scene::Vector3{margin, margin, margin},
-                high + Scene::Vector3{margin, margin, margin}, area[2] / panes / area[3]);
+    view_.glideTo(view_.framing(low - Scene::Vector3{margin, margin, margin},
+                                high + Scene::Vector3{margin, margin, margin},
+                                area[2] / static_cast<float>(panes) / area[3]),
+                  framedOnce_ ? OrbitView::kGlideSeconds : 0);
     frameNext_ = false;
+    framedOnce_ = true;
   }
+  // (a view still a moment after it changed is a step for Rewind)
+  viewHistory_.watch(view_.pose, frameSeconds_,
+                     view_.dragging() || view_.gliding() || cornerPress_ || scrubbing_);
   const Scene::Camera camera = view_.camera();
   Scene::Environment environment;
   environment.background = {24, 26, 32};
