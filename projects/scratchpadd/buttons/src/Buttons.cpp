@@ -28,7 +28,9 @@ const Button *Panel::find(int id) const {
 
 std::optional<int> Panel::at(int x, int y) const {
   for (const Button &button : buttons_)
-    if (button.area.contains(x, y))
+    // (one fading out, no longer usable, lets the touch pass; one fading
+    // in answers at once, so a quick tap isn't lost)
+    if ((button.shown >= 1 || button.usable) && button.area.contains(x, y))
       return button.id;
   return std::nullopt;
 }
@@ -111,9 +113,35 @@ float Panel::pressGlow(double now) const {
 
 void Panel::clearFeedback() { message_.clear(); }
 
+// A button fading in or out: its face, edge and icon see-through over
+// what's under it (no focus, glow or toggle: it can't be touched yet)
+void Panel::drawFading(Canvas &canvas, const Style &style, const Button &button) {
+  const Area &a = button.area;
+  canvas.blendRect(a.x, a.y, a.width, a.height, button.face.value_or(style.face), button.shown);
+  const Colour edge = button.edge.value_or(style.edge);
+  canvas.blendRect(a.x, a.y, a.width, 1, edge, button.shown);
+  canvas.blendRect(a.x, a.y + a.height - 1, a.width, 1, edge, button.shown);
+  canvas.blendRect(a.x, a.y + 1, 1, a.height - 2, edge, button.shown);
+  canvas.blendRect(a.x + a.width - 1, a.y + 1, 1, a.height - 2, edge, button.shown);
+  if (button.icon && button.iconSize > 0) {
+    const int left =
+        static_cast<int>(std::lround(a.x + (a.width - static_cast<float>(button.iconSize)) / 2));
+    const int top =
+        static_cast<int>(std::lround(a.y + (a.height - static_cast<float>(button.iconSize)) / 2));
+    canvas.blend(*button.icon, button.iconSize, button.iconSize, left, top,
+                 (button.usable ? 1.0f : style.dimmed) * button.shown);
+  }
+}
+
 void Panel::draw(Canvas &canvas, const Style &style) const {
   for (const Button &button : buttons_) {
     const Area &a = button.area;
+    if (button.shown <= 0)
+      continue;
+    if (button.shown < 1) {
+      drawFading(canvas, style, button);
+      continue;
+    }
     canvas.fillRect(a.x, a.y, a.width, a.height, button.face.value_or(style.face));
     canvas.outline(a.x, a.y, a.width, a.height, button.edge.value_or(style.edge));
     if (button.icon && button.iconSize > 0) {

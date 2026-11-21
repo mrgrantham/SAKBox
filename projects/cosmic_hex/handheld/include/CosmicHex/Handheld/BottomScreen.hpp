@@ -11,9 +11,11 @@
 //   screen.draw(canvas, boardPixels);              // when it's to be redrawn
 //
 // Touching one of your ships marks where it can go; touching a marked
-// corner moves it there. Taps it doesn't use (elsewhere on the board, when
-// nothing's being placed) are the app's: selecting a corner to list its
-// moves.
+// corner chooses it (touching it again, or B, puts it down), and Confirm
+// (or A) moves the ship there. Builds and the start's placing go the same
+// way. Taps it doesn't use (elsewhere on the board) are the app's: the
+// board's pointer goes there, and touching the same place again puts the
+// pointer away.
 #pragma once
 
 #include <CosmicHex/Handheld/BoardButtons.hpp>
@@ -102,11 +104,11 @@ public:
   // The ship touched, whose moves are marked (an index into the state's
   // ships), to show it selected
   std::optional<int> selectedShip() const;
-  // At the start (placing your home colony, then your ship), what's been
-  // touched and End Turn would place, to show there; nothing before a touch.
-  // Touching another place moves it, touching it again (or B) takes it back,
-  // and End Turn (or A) places it
-  std::optional<Action> startPlacement() const { return startPlacement_; }
+  // While placing (the start's home colony and ship, a build, a ship's
+  // move): what's been touched and Confirm would place, to show there;
+  // nothing before a touch. Touching another marked place moves it,
+  // touching it again (or B) puts it down, and Confirm (or A) places it
+  std::optional<Action> chosenPlacement() const { return chosen_; }
 
   // Feedback for a tap on a button (the user's: taps that did
   // nothing gave no sign they'd landed): the button flashes and a short
@@ -119,7 +121,9 @@ public:
   void setTime(double now) { now_ = now; }
   // Who's who at the table (the tabs and the trade room say names)
   void setNames(PlayerNames names) { trade_.setNames(std::move(names)); }
-  bool pressing() const { return buttons_.pressing(now_); }
+  // Whether to draw again soon: a button glowing from a press, or fading in
+  // or out (BoardButtons::Fades)
+  bool pressing() const { return buttons_.pressing(now_) || fades_.fading(now_); }
   void clearFeedback();
 
   // Whether a screen to look at is open (your cards, the other players):
@@ -160,8 +164,10 @@ private:
   bool placingEndsTrading_ = false; // (and building ends the turn's offers first)
   // A build's move: at once, or after ending the turn's offers to players
   Outcome build(const Action &action, bool endsTrading);
-  bool startPlacing_ = false; // (Placing: the start's, touch then End Turn)
-  std::optional<Action> startPlacement_;
+  bool startPlacing_ = false;    // (Placing: the start's)
+  std::optional<Action> chosen_; // (Placing: touched, for Confirm to place)
+  Outcome confirmChosen();       // (Confirm or A: what's chosen, placed)
+  BoardButtons::Fades fades_;    // (buttons coming and going)
   std::optional<Pickers::ResourceChoice> resources_;
   std::vector<Resource> picked_;
   bool resourcesCanGoBack_ = false;

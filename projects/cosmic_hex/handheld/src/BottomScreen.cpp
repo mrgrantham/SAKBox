@@ -57,7 +57,7 @@ void BottomScreen::follow(const State &state, const std::vector<Action> &legal, 
     if (mode_ != Mode::Cards && mode_ != Mode::Others)
       mode_ = Mode::Board;
     startPlacing_ = false;
-    startPlacement_.reset();
+    chosen_.reset();
     return;
   }
   // An offer to you, or a counter to yours: the trade room, by itself, to
@@ -94,21 +94,20 @@ void BottomScreen::follow(const State &state, const std::vector<Action> &legal, 
     for (const Action &a : legal)
       if (a.kind == Kind::PlaceColony || a.kind == Kind::PlaceShip)
         placing_.push_back(a);
-    if (startPlacement_ &&
-        std::find(placing_.begin(), placing_.end(), *startPlacement_) == placing_.end())
-      startPlacement_.reset();
+    if (chosen_ && std::find(placing_.begin(), placing_.end(), *chosen_) == placing_.end())
+      chosen_.reset();
     startPlacing_ = true;
     placingShip_ = -1; // (not a ship's moves)
     mode_ = Mode::Placing;
-    situation_.placing = true;
-    situation_.placeChosen = startPlacement_.has_value();
     return;
   }
   if (startPlacing_) {
     startPlacing_ = false;
-    startPlacement_.reset();
+    chosen_.reset();
     mode_ = Mode::Board;
   }
+  if (chosen_ && std::find(placing_.begin(), placing_.end(), *chosen_) == placing_.end())
+    chosen_.reset();
   // Placing what was chosen: only while those moves are still the rules'
   // (or will be, once the turn's offers to players end)
   if (mode_ == Mode::Placing && !placingEndsTrading_ &&
@@ -140,17 +139,14 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
           buttons_.say("Build: on your turn");
         }
         break;
-      case BoardButtons::Button::EndTurn:
-        if (startPlacing_) {
-          if (!startPlacement_) {
-            buttons_.say("Touch a marked corner first");
-            break;
-          }
-          const Action placed = *startPlacement_;
-          startPlacement_.reset();
-          buttons_.say({});
-          return {placed, true};
+      case BoardButtons::Button::Confirm:
+        if (!chosen_) {
+          buttons_.say("Touch a marked corner first");
+          break;
         }
+        buttons_.say({});
+        return confirmChosen();
+      case BoardButtons::Button::EndTurn:
         for (const Action &a : legal_)
           if (a.kind == Kind::EndTurn || a.kind == Kind::EndTrading) {
             buttons_.say({});
@@ -203,29 +199,35 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
         for (const Action &a : placing_) {
           const MoveSpot where = spotOf(state_, a);
           if (!where.corners.empty() && where.corners.back() == spot->corner) {
-            if (startPlacement_ == a)
-              startPlacement_.reset();
+            if (chosen_ == a)
+              chosen_.reset();
             else
-              startPlacement_ = a;
-            situation_.placeChosen = startPlacement_.has_value();
+              chosen_ = a;
             buttons_.say({});
             return {std::nullopt, true};
           }
         }
-      return {std::nullopt, true};
+      chosen_.reset();
+      return {std::nullopt, false}; // (elsewhere: the app's, its pointer goes there)
     }
     if (mode_ == Mode::Placing) {
-      // (a marked corner: that move; anywhere else: put it down again)
+      // (a marked corner: chosen, for Confirm; it again: put down)
       if (spot)
         for (const Action &a : placing_) {
           const MoveSpot where = spotOf(state_, a);
           if (!where.corners.empty() && where.corners.back() == spot->corner) {
-            mode_ = Mode::Board;
-            return build(a, placingEndsTrading_);
+            if (chosen_ == a)
+              chosen_.reset();
+            else
+              chosen_ = a;
+            buttons_.say({});
+            return {std::nullopt, true};
           }
         }
+      // (anywhere else: the ship or build put down, and the touch goes on:
+      // another of your ships, or the app's pointer)
       mode_ = Mode::Board;
-      return {std::nullopt, true};
+      chosen_.reset();
     }
     // One of your ships touched: where it can go, marked, to touch. While
     // the turn's offers to players are open (the trading phase, after the
@@ -490,6 +492,17 @@ BottomScreen::Outcome BottomScreen::useChosenCard() {
   return {std::nullopt, true};
 }
 
+BottomScreen::Outcome BottomScreen::confirmChosen() {
+  if (!chosen_)
+    return {std::nullopt, true};
+  const Action chosen = *chosen_;
+  chosen_.reset();
+  if (startPlacing_)
+    return {chosen, true};
+  mode_ = Mode::Board;
+  return build(chosen, placingEndsTrading_);
+}
+
 BottomScreen::Outcome BottomScreen::press(Key key) {
   const auto step = [](int at, int by, int count) {
     return count <= 0 ? -1 : std::clamp(at + by, 0, count - 1);
@@ -498,21 +511,16 @@ BottomScreen::Outcome BottomScreen::press(Key key) {
   case Mode::Board:
     return {};
   case Mode::Placing:
-    if (startPlacing_) {
-      // (A places what's been touched, as End Turn; B takes it back)
-      if (key == Key::Confirm && startPlacement_) {
-        const Action placed = *startPlacement_;
-        startPlacement_.reset();
-        return {placed, true};
-      }
-      if (key == Key::Back)
-        startPlacement_.reset();
-      situation_.placeChosen = startPlacement_.has_value();
-      return {std::nullopt, key == Key::Back};
-    }
+    // (A places what's been touched, as Confirm; B puts it down, and then
+    // the ship or build itself)
+    if (key == Key::Confirm && chosen_)
+      return confirmChosen();
     if (key != Key::Back)
       return {};
-    mode_ = Mode::Board;
+    if (chosen_)
+      chosen_.reset();
+    else if (!startPlacing_)
+      mode_ = Mode::Board;
     return {std::nullopt, true};
   case Mode::Build: {
     const int count = static_cast<int>(rows_.size());
@@ -638,8 +646,13 @@ BottomScreen::Outcome BottomScreen::press(Key key) {
 void BottomScreen::clearFeedback() { buttons_.clearFeedback(); }
 
 void BottomScreen::layOutButtons() {
+  situation_.placing = mode_ == Mode::Placing;
+  situation_.placeChosen = chosen_.has_value();
+  // (buttons that came or went since fade in or out: Roll giving way to
+  // End Turn, Confirm while placing)
+  fades_.update(BoardButtons::layout(width_, height_, situation_), now_);
   std::vector<ScratchPadd::Buttons::Button> buttons;
-  for (const BoardButtons::Place &place : BoardButtons::layout(width_, height_, situation_)) {
+  for (const auto &[place, opacity] : fades_.shown(now_)) {
     // Its icon (art/icons), drawn at the button's size the first time
     const int icon = static_cast<int>(BoardButtons::iconOf(place.button));
     const int inner = static_cast<int>(place.size) - 4;
@@ -662,7 +675,8 @@ void BottomScreen::layOutButtons() {
          .on = (place.button == BoardButtons::Button::ShowResources && info_ == Info::Resources) ||
                (place.button == BoardButtons::Button::MoveList && moveList_),
          .face = roll ? std::optional(kRollButton) : std::nullopt,
-         .edge = roll ? std::optional(kRollEdge) : std::nullopt});
+         .edge = roll ? std::optional(kRollEdge) : std::nullopt,
+         .shown = opacity});
   }
   buttons_.set(std::move(buttons));
   // (a tapped button's message in a band at the bottom; while placing, the
@@ -758,9 +772,9 @@ void BottomScreen::drawOverBoard(Canvas &canvas) {
                     static_cast<float>(width_) - 56 * k, 16 * k, kHintBand);
     const char *hint = "Where to? Touch a marked corner";
     if (startPlacing_ && state_.phase == Phase::PlaceColony)
-      hint = startPlacement_ ? "End Turn: place your colony" : "Home colony: touch a corner";
+      hint = chosen_ ? "End Turn: place your colony" : "Home colony: touch a corner";
     else if (startPlacing_)
-      hint = startPlacement_ ? "End Turn: place your ship" : "Your ship: touch a corner";
+      hint = chosen_ ? "End Turn: place your ship" : "Your ship: touch a corner";
     if (!buttons_.message().empty())
       hint = buttons_.message().c_str(); // (a tapped button's message, in the band's place)
     canvas.textCentred(static_cast<float>(width_) / 2, static_cast<float>(height_) - 8 * k, hint,
@@ -777,7 +791,7 @@ std::vector<BoardPicture::Area> BottomScreen::overBoardAreas() const {
                               static_cast<int>(std::ceil(y + h)) + 2 - y0};
   };
   std::vector<BoardPicture::Area> out;
-  for (const BoardButtons::Place &place : BoardButtons::layout(width_, height_, situation_))
+  for (const auto &[place, opacity] : fades_.shown(now_)) // (fading ones too)
     out.push_back(area(place.x, place.y, place.size, place.size));
   const float k = static_cast<float>(width_) / 256;
   if (!buttons_.message().empty() && mode_ == Mode::Board)

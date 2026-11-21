@@ -28,6 +28,15 @@ State playUntil(bool (*until)(const State &)) {
   return state;
 }
 constexpr int kWidth = 256, kHeight = 192;
+// Confirm's place while placing: bottom right (BoardButtons' layout)
+BoardButtons::Place confirmButton() {
+  for (const auto &place : BoardButtons::layout(
+           kWidth, kHeight, BoardButtons::Situation{.yourMove = true, .placing = true}))
+    if (place.button == BoardButtons::Button::Confirm)
+      return place;
+  ADD_FAILURE() << "no Confirm while placing";
+  return BoardButtons::Place{};
+}
 } // namespace
 
 TEST(BottomScreenTest, TheHomesPayIsPickedByTouch) {
@@ -95,12 +104,14 @@ TEST(BottomScreenTest, BuildThenChooseWhereOnTheBoard) {
     return;
   }
   // More than one place: back on the board with them marked; touching one
-  // makes that move
+  // chooses it, and Confirm makes that move
   ASSERT_EQ(screen.mode(), Mode::Placing);
   const auto corners = screen.placingCorners();
   ASSERT_FALSE(corners.empty());
   const BoardPicture::Spot there{corners.front().hex, corners.front()};
-  const auto placed = screen.tap(128, 96, there);
+  EXPECT_FALSE(screen.tap(128, 96, there).play.has_value());
+  EXPECT_TRUE(screen.chosenPlacement().has_value());
+  const auto placed = screen.press(BottomScreen::Key::Confirm);
   ASSERT_TRUE(placed.play.has_value());
   if (placed.play) {
     EXPECT_TRUE(concerns(state, *placed.play, there));
@@ -147,7 +158,8 @@ TEST(BottomScreenTest, ButtonsAlwaysAnswer) {
   EXPECT_NE(canvas.at(128, kHeight - 11).b, 48);
 }
 
-// Touching one of your ships marks where it can go; touching one moves it
+// Touching one of your ships marks where it can go; touching one chooses
+// it (again: put down), and Confirm, the green check bottom right, moves it
 TEST(BottomScreenTest, TouchAShipThenWhereItGoes) {
   State state = playUntil([](const State &s) { return s.phase == Phase::Main; });
   const auto legal = Game::legalActions(state);
@@ -162,12 +174,48 @@ TEST(BottomScreenTest, TouchAShipThenWhereItGoes) {
   const Corner to = boardCorners()[static_cast<std::size_t>(move->b)];
   const auto marked = screen.placingCorners();
   EXPECT_NE(std::find(marked.begin(), marked.end(), to), marked.end());
-  const auto moved = screen.tap(128, 96, BoardPicture::Spot{to.hex, to});
+  EXPECT_FALSE(screen.tap(128, 96, BoardPicture::Spot{to.hex, to}).play.has_value());
+  EXPECT_EQ(screen.chosenPlacement(), *move);
+  EXPECT_FALSE(screen.tap(128, 96, BoardPicture::Spot{to.hex, to}).play.has_value());
+  EXPECT_FALSE(screen.chosenPlacement().has_value()); // (touched again: put down)
+  screen.tap(128, 96, BoardPicture::Spot{to.hex, to});
+  const auto confirm = confirmButton();
+  const auto moved = screen.tap(static_cast<int>(confirm.x + confirm.size / 2),
+                                static_cast<int>(confirm.y + confirm.size / 2), std::nullopt);
   ASSERT_TRUE(moved.play.has_value());
   if (moved.play) {
     EXPECT_EQ(moved.play->kind, Kind::Move);
     EXPECT_EQ(moved.play->b, move->b);
   }
+  EXPECT_EQ(screen.mode(), Mode::Board);
+}
+
+// While a ship's moves are marked, a touch elsewhere puts it down and is
+// the app's (the board's pointer goes there)
+TEST(BottomScreenTest, ATouchElsewherePutsTheShipDown) {
+  State state = playUntil([](const State &s) { return s.phase == Phase::Main; });
+  const auto legal = Game::legalActions(state);
+  const auto move = std::find_if(legal.begin(), legal.end(),
+                                 [](const Action &a) { return a.kind == Kind::Move; });
+  ASSERT_NE(move, legal.end());
+  const Corner from = state.ships[static_cast<std::size_t>(move->a)].corner;
+  BottomScreen screen(kWidth, kHeight);
+  screen.update(state, legal, true);
+  screen.tap(128, 96, BoardPicture::Spot{from.hex, from});
+  ASSERT_EQ(screen.mode(), Mode::Placing);
+  const auto marked = screen.placingCorners();
+  // (a corner that isn't marked, and has no ship of theirs)
+  for (const Corner &corner : boardCorners()) {
+    if (std::find(marked.begin(), marked.end(), corner) != marked.end() || corner == from)
+      continue;
+    if (std::any_of(state.ships.begin(), state.ships.end(),
+                    [&](const Ship &s) { return s.corner == corner; }))
+      continue;
+    EXPECT_FALSE(screen.tap(128, 96, BoardPicture::Spot{corner.hex, corner}).used);
+    EXPECT_EQ(screen.mode(), Mode::Board);
+    return;
+  }
+  ADD_FAILURE() << "no unmarked corner";
 }
 
 // After the roll, with the turn's offers to players open (the trading
@@ -203,7 +251,8 @@ TEST(BottomScreenTest, AShipMovesFromTheTradingPhase) {
     EXPECT_NE(std::find(marked.begin(), marked.end(), c), marked.end());
   }
   const Corner to = boardCorners()[static_cast<std::size_t>(move.b)];
-  const auto first = screen.tap(128, 96, BoardPicture::Spot{to.hex, to});
+  screen.tap(128, 96, BoardPicture::Spot{to.hex, to});
+  const auto first = screen.press(BottomScreen::Key::Confirm);
   ASSERT_TRUE(first.play.has_value());
   if (first.play) {
     EXPECT_EQ(first.play->kind, Kind::EndTrading);
@@ -281,9 +330,9 @@ TEST(BottomScreenTest, RollWhenYourRollWaits) {
 }
 
 // The start's placing: every place marked; a touch chooses (nothing played
-// yet), End Turn places it; B takes the choice back, and End Turn then only
+// yet), Confirm places it; B takes the choice back, and Confirm then only
 // says to touch a corner first
-TEST(BottomScreenTest, AtTheStartATouchChoosesAndEndTurnPlaces) {
+TEST(BottomScreenTest, AtTheStartATouchChoosesAndConfirmPlaces) {
   State state = newGame(4, agreedRules(boardR3(), 4));
   // (the starting hands dealt first, by the dealer)
   SeededRandom::Generator dealer(3);
@@ -295,37 +344,30 @@ TEST(BottomScreenTest, AtTheStartATouchChoosesAndEndTurnPlaces) {
   screen.update(state, legal, true);
   EXPECT_EQ(screen.mode(), Mode::Placing);
   EXPECT_EQ(screen.placingCorners().size(), legal.size());
-  const auto endTurn = [&] {
-    for (const auto &place : BoardButtons::layout(
-             kWidth, kHeight, BoardButtons::Situation{.yourMove = true, .placing = true}))
-      if (place.button == BoardButtons::Button::EndTurn)
-        return place;
-    ADD_FAILURE() << "no End Turn while placing";
-    return BoardButtons::Place{};
-  }();
-  const auto tapEndTurn = [&] {
-    return screen.tap(static_cast<int>(endTurn.x + endTurn.size / 2),
-                      static_cast<int>(endTurn.y + endTurn.size / 2), std::nullopt);
+  const auto confirm = confirmButton();
+  const auto tapConfirm = [&] {
+    return screen.tap(static_cast<int>(confirm.x + confirm.size / 2),
+                      static_cast<int>(confirm.y + confirm.size / 2), std::nullopt);
   };
-  // End Turn before a touch: nothing placed
-  EXPECT_FALSE(tapEndTurn().play.has_value());
+  // Confirm before a touch: nothing placed
+  EXPECT_FALSE(tapConfirm().play.has_value());
   EXPECT_FALSE(screen.message().empty());
   // A touch on a marked corner: chosen, not played
   const Corner corner = boardCorners()[static_cast<std::size_t>(legal[2].a)];
   const auto touched = screen.tap(128, 96, BoardPicture::Spot{corner.hex, corner});
   EXPECT_FALSE(touched.play.has_value());
-  ASSERT_TRUE(screen.startPlacement().has_value());
-  EXPECT_EQ(*screen.startPlacement(), legal[2]);
-  // B takes it back; touched again, End Turn places it
+  ASSERT_TRUE(screen.chosenPlacement().has_value());
+  EXPECT_EQ(*screen.chosenPlacement(), legal[2]);
+  // B takes it back; touched again, Confirm places it
   screen.press(BottomScreen::Key::Back);
-  EXPECT_FALSE(screen.startPlacement().has_value());
+  EXPECT_FALSE(screen.chosenPlacement().has_value());
   screen.tap(128, 96, BoardPicture::Spot{corner.hex, corner});
-  const auto placed = tapEndTurn();
+  const auto placed = tapConfirm();
   ASSERT_TRUE(placed.play.has_value());
   if (placed.play) {
     EXPECT_EQ(*placed.play, legal[2]);
   }
-  EXPECT_FALSE(screen.startPlacement().has_value());
+  EXPECT_FALSE(screen.chosenPlacement().has_value());
 }
 
 namespace {

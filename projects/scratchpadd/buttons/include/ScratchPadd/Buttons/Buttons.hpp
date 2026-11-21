@@ -47,6 +47,10 @@ struct Button {
   // Its own face and edge colours, when it should stand out (a Play
   // button's green); otherwise the style's
   std::optional<Colour> face, edge;
+  // How much of it shows (0 to 1), for a button fading in or out: drawn
+  // see-through over what's under it. One fading in (usable) answers a
+  // touch at once; one fading out (not usable) lets it pass
+  float shown = 1;
 };
 
 // How a panel looks
@@ -107,6 +111,8 @@ public:
 
   // The buttons drawn on `canvas`, the message in its band
   void draw(Canvas &canvas, const Style &style) const;
+  // (draw's work for a button part shown: Button::shown under 1)
+  static void drawFading(Canvas &canvas, const Style &style, const Button &button);
   // Everything draw() draws on: each button (and the flash's outline round
   // it) and the message's band
   std::vector<Area> areas() const;

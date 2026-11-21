@@ -40,10 +40,14 @@ std::vector<Place> layout(int width, int height, const Situation &s) {
   };
   if (s.moveListButton)
     out.push_back({Button::MoveList, edge, edge + 2 * step, size, true});
+  // Bottom left: Roll, then End Turn in its place once you've rolled
   if (s.canRoll)
     out.push_back({Button::Roll, edge, bottom, size, true});
-  if (s.canEndTurn || s.placing)
-    out.push_back({Button::EndTurn, right, bottom, size, s.canEndTurn || s.placeChosen});
+  else if (s.canEndTurn)
+    out.push_back({Button::EndTurn, edge, bottom, size, true});
+  // Bottom right, apart from End Turn: Confirm, while placing
+  if (s.placing)
+    out.push_back({Button::Confirm, right, bottom, size, s.placeChosen});
   return out;
 }
 
@@ -73,8 +77,56 @@ Art::Icon iconOf(Button button) {
     return Art::Icon::Roll;
   case Button::EndTurn:
     return Art::Icon::EndTurn;
+  case Button::Confirm:
+    return Art::Icon::Confirm;
   }
   return Art::Icon::Build;
+}
+
+void Fades::update(const std::vector<Place> &places, double now) {
+  // (the first layout: there at once; nothing fades in as a screen opens)
+  const double came = first_ ? now - kSeconds : now;
+  first_ = false;
+  for (Tracked &t : tracked_) {
+    const auto still = std::find_if(places.begin(), places.end(),
+                                    [&](const Place &p) { return p.button == t.place.button; });
+    if (still != places.end()) {
+      if (t.going) // (back again: fading in from where it is)
+        t = {*still, now - kSeconds * opacityOf(t, now), false};
+      else
+        t.place = *still;
+    } else if (!t.going) {
+      t = {t.place, now, true};
+      t.place.usable = false;
+    }
+  }
+  for (const Place &p : places)
+    if (std::none_of(tracked_.begin(), tracked_.end(),
+                     [&](const Tracked &t) { return t.place.button == p.button; }))
+      tracked_.push_back({p, came, false});
+  // (gone and faded: forgotten)
+  tracked_.erase(
+      std::remove_if(tracked_.begin(), tracked_.end(),
+                     [&](const Tracked &t) { return t.going && now - t.since >= kSeconds; }),
+      tracked_.end());
+}
+
+float Fades::opacityOf(const Tracked &tracked, double now) const {
+  const auto along = static_cast<float>(std::clamp((now - tracked.since) / kSeconds, 0.0, 1.0));
+  return tracked.going ? 1 - along : along;
+}
+
+std::vector<Fades::Shown> Fades::shown(double now) const {
+  std::vector<Shown> out;
+  out.reserve(tracked_.size());
+  for (const Tracked &t : tracked_)
+    out.push_back({t.place, opacityOf(t, now)});
+  return out;
+}
+
+bool Fades::fading(double now) const {
+  return std::any_of(tracked_.begin(), tracked_.end(),
+                     [&](const Tracked &t) { return now - t.since < kSeconds; });
 }
 
 } // namespace CosmicHex::Handheld::BoardButtons

@@ -58,11 +58,12 @@ enum class Icon : std::uint8_t {
   Trade,
   ShowResources,
   Cards,
-  EndTurn,
+  EndTurn, // (an arrow round to itself, in its own colour)
   OtherPlayers,
-  MoveList // (debug builds: the list of moves on the top screen, on or off)
+  MoveList, // (debug builds: the list of moves on the top screen, on or off)
+  Confirm   // (the green check: a chosen move or placement goes ahead)
 };
-inline constexpr int kIcons = 8;
+inline constexpr int kIcons = 9;
 std::string_view iconRecipeOf(Icon icon);
 
 // The cards. Each drawing is the card

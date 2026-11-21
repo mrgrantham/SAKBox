@@ -56,6 +56,51 @@ TEST(BoardButtonsTest, TheCornersAndWhatShows) {
   }
 }
 
+// Bottom left: Roll, then End Turn in its place once you've rolled; bottom
+// right, apart from it: Confirm while placing, usable once a place is chosen
+TEST(BoardButtonsTest, EndTurnTakesRollsPlaceAndConfirmIsApart) {
+  const BoardButtons::Situation rolled{.yourMove = true, .canEndTurn = true};
+  const auto after = BoardButtons::layout(256, 192, rolled);
+  EXPECT_EQ(BoardButtons::at(after, 10, 180), BoardButtons::Button::EndTurn);
+  EXPECT_FALSE(BoardButtons::at(after, 240, 180).has_value());
+  BoardButtons::Situation placing = rolled;
+  placing.placing = true;
+  EXPECT_FALSE(BoardButtons::at(BoardButtons::layout(256, 192, placing), 240, 180).has_value());
+  placing.placeChosen = true;
+  const auto chosen = BoardButtons::layout(256, 192, placing);
+  EXPECT_EQ(BoardButtons::at(chosen, 240, 180), BoardButtons::Button::Confirm);
+  EXPECT_EQ(BoardButtons::at(chosen, 10, 180), BoardButtons::Button::EndTurn);
+}
+
+// Buttons coming and going fade: the first layout at once; Roll going fades
+// out where it was (not usable) as End Turn fades in, and then it's gone
+TEST(BoardButtonsTest, ButtonsFadeInAndOut) {
+  BoardButtons::Fades fades;
+  const BoardButtons::Situation before{.yourMove = true, .canRoll = true};
+  const BoardButtons::Situation rolled{.yourMove = true, .canEndTurn = true};
+  const auto opacityOf = [&](BoardButtons::Button button, double now) {
+    for (const auto &[place, opacity] : fades.shown(now))
+      if (place.button == button)
+        return opacity;
+    return -1.0f;
+  };
+  fades.update(BoardButtons::layout(256, 192, before), 10);
+  EXPECT_FLOAT_EQ(opacityOf(BoardButtons::Button::Roll, 10), 1);
+  EXPECT_FALSE(fades.fading(10));
+  fades.update(BoardButtons::layout(256, 192, rolled), 20);
+  const double half = 20 + BoardButtons::Fades::kSeconds / 2;
+  EXPECT_NEAR(opacityOf(BoardButtons::Button::Roll, half), 0.5f, 1e-3f);
+  EXPECT_NEAR(opacityOf(BoardButtons::Button::EndTurn, half), 0.5f, 1e-3f);
+  EXPECT_TRUE(fades.fading(half));
+  for (const auto &[place, opacity] : fades.shown(half))
+    if (place.button == BoardButtons::Button::Roll) {
+      EXPECT_FALSE(place.usable);
+    }
+  fades.update(BoardButtons::layout(256, 192, rolled), 21);
+  EXPECT_LT(opacityOf(BoardButtons::Button::Roll, 21), 0); // (gone)
+  EXPECT_FLOAT_EQ(opacityOf(BoardButtons::Button::EndTurn, 21), 1);
+}
+
 TEST(PickersTest, TheHomesPayIsAResourceChoice) {
   const State state = playUntil([](const State &s) {
     return s.phase == Phase::HomeIncome && Game::currentPlayer(s) != GameBots::kDealer;

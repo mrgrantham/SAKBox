@@ -154,7 +154,7 @@ CHIP_NUMBERS = [2, 3, 4, 5, 6, 8, 9, 10, 11, 12]
 
 # The board screen's buttons' icons (SVG files, to swap for your
 # own drawings), each drawn on a transparent square
-ICONS = ["roll", "build", "trade", "show_resources", "cards", "end_turn", "other_players", "move_list"]
+ICONS = ["roll", "build", "trade", "show_resources", "cards", "end_turn", "other_players", "move_list", "confirm"]
 
 [texture_recipe(
     name = "icon_" + name,

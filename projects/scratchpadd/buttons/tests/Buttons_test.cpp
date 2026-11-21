@@ -128,3 +128,21 @@ TEST(ButtonsTest, TheDPadPrefersTheWayPressed) {
   panel.move(Direction::Down);
   EXPECT_EQ(panel.focus(), 3);
 }
+
+// A button part shown (fading in or out) is drawn see-through over what's
+// under it; one fading in answers a touch at once, one fading out (no
+// longer usable) lets it pass
+TEST(ButtonsTest, AFadingButtonIsSeeThrough) {
+  Panel panel;
+  panel.set({{.id = 1, .area = {10, 10, 20, 20}, .usable = false, .shown = 0.5f}});
+  EXPECT_FALSE(panel.at(15, 15).has_value());
+  Canvas canvas(40, 40);
+  const Buttons::Style style;
+  canvas.clear({0, 0, 0, 255});
+  panel.draw(canvas, style);
+  const Canvas::Colour half = canvas.at(15, 25);
+  EXPECT_GT(half.b, 0);
+  EXPECT_LT(half.b, style.face.b); // (half the face over black)
+  panel.set({{.id = 1, .area = {10, 10, 20, 20}, .shown = 0.2f}});
+  EXPECT_EQ(panel.at(15, 15), 1); // (fading in)
+}
