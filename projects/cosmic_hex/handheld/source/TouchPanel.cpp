@@ -311,9 +311,10 @@ void ScreenPadd::drawMapWithButtons() {
   BoardPicture::Marks marks;
   if (selected_ && choosingAHex())
     marks.hex = selected_->hex;
-  // (the pointer, flat and still, where the top screen's chevron is)
-  if (const auto look = pointer_.at(showsNow()))
-    marks.pointer = look->to;
+  // (the pointer, flat and still, where the top screen's chevron is going:
+  // its target now, not where it was last aimed, which lags a tap by a frame)
+  marks.pointer = pointerCorner();
+  flatPointer_ = marks.pointer;
   // (and at the start, what's been touched, shown as the piece)
   const std::optional<CosmicHex::Action> chosen = bottomScreen_->chosenPlacement();
   std::optional<CosmicHex::Corner> chosenAt;

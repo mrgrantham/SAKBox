@@ -277,8 +277,9 @@ private:
   std::array<int, 2> touchStart_{}, touchLast_{};
   // What's selected on the board (touched), and the list of moves' cursor
   std::optional<BoardPicture::Spot> selected_;
-  bool tapPointer_ = false; // (a touch chose a corner: the pointer taps it)
-  CameraFollow follow_;     // (the game's camera, following the corner chosen)
+  bool tapPointer_ = false;                      // (a touch chose a corner: the pointer taps it)
+  std::optional<CosmicHex::Corner> flatPointer_; // (where the map last drew the pointer)
+  CameraFollow follow_;                          // (the game's camera, following the corner chosen)
   std::optional<CosmicHex::Corner> followedCorner() const;
   // The PAUSED banner's coming and going (an info view holding the game):
   // since when it's been held, or let go

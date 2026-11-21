@@ -303,6 +303,17 @@ constexpr int kRevealSteps = 8;
 
 int rounded(float v) { return static_cast<int>(std::lround(v)); }
 
+// The middle of the pixel a corner falls on: the pixel the grid's lines meet
+// at there (they round to the nearest), so a piece drawn round it sits
+// square on the corner rather than a pixel off (the user saw pieces off
+// centre: each edge of a square had rounded on its own)
+HexGrid::Point pixelMiddle(HexGrid::Point p) {
+  return {static_cast<float>(rounded(p.x)) + 0.5f, static_cast<float>(rounded(p.y)) + 0.5f};
+}
+// A half-width that makes a square round a pixel's middle whole pixels each
+// side of it: an odd number of pixels wide, that pixel in the middle
+float wholeHalf(float half) { return std::round(half) + 0.5f; }
+
 // A square sprite `size` a side centred on `centre`: its pixels
 BoardPicture::Area spriteArea(HexGrid::Point centre, int size) {
   return {rounded(centre.x) - size / 2, rounded(centre.y) - size / 2, size, size};
@@ -497,15 +508,15 @@ void BoardPicture::listPieces(const State &state, const Marks &marks,
     pushFace(site.hex, Art::Face::FindFaceDown, faceOf(site),
              spriteArea(where(site.hex), facesSize()));
   for (const Station &station : state.stations) {
-    const HexGrid::Point c = where(station.at);
-    const float half = station.colony ? 0.26f * s : 0.18f * s;
+    const HexGrid::Point c = pixelMiddle(where(station.at));
+    const float half = wholeHalf(station.colony ? 0.26f * s : 0.18f * s);
     out.push_back({Piece::Kind::Station,
                    at(station.at),
                    {static_cast<std::int16_t>(station.owner), station.colony},
                    rectArea(c.x - half - 1, c.y - half - 1, 2 * half + 2, 2 * half + 2)});
   }
   for (const Ship &ship : state.ships) {
-    const HexGrid::Point c = where(ship.corner);
+    const HexGrid::Point c = pixelMiddle(where(ship.corner));
     const float r = 0.3f * s;
     out.push_back(
         {Piece::Kind::Ship,
@@ -533,8 +544,8 @@ void BoardPicture::listPieces(const State &state, const Marks &marks,
     out.push_back({Piece::Kind::MarkHex, on(*marks.hex), {0, 0}, area});
   }
   for (const Corner &corner : marks.corners) {
-    const HexGrid::Point c = where(corner);
-    const float r = 0.2f * s;
+    const HexGrid::Point c = pixelMiddle(where(corner));
+    const float r = wholeHalf(0.2f * s);
     // (look 1: outlined, a move that needs fuel)
     const bool fuel = std::ranges::find(marks.fuelCorners, corner) != marks.fuelCorners.end();
     out.push_back({Piece::Kind::MarkCorner,
@@ -544,7 +555,7 @@ void BoardPicture::listPieces(const State &state, const Marks &marks,
   }
   if (marks.preview) {
     // (as the piece itself will be, drawn last)
-    const HexGrid::Point c = where(marks.preview->corner);
+    const HexGrid::Point c = pixelMiddle(where(marks.preview->corner));
     const auto owner = static_cast<std::int16_t>(marks.preview->owner);
     if (marks.preview->ship) {
       const float r = 0.3f * s;
@@ -554,7 +565,7 @@ void BoardPicture::listPieces(const State &state, const Marks &marks,
                      triangleArea({c.x, c.y - r - 1}, {c.x - r - 1, c.y + r + 1},
                                   {c.x + r + 1, c.y + r + 1})});
     } else {
-      const float half = 0.26f * s;
+      const float half = wholeHalf(0.26f * s);
       out.push_back({Piece::Kind::Station,
                      at(marks.preview->corner),
                      {owner, 1},
@@ -564,11 +575,12 @@ void BoardPicture::listPieces(const State &state, const Marks &marks,
   if (marks.pointer) {
     // (its chevron's box, with a pixel's room for its two-pixel lines)
     const HexGrid::Point c = where(*marks.pointer);
-    const float r = 0.3f * s;
+    const auto r = static_cast<float>(rounded(0.3f * s));
+    const auto x = static_cast<float>(rounded(c.x)), y = static_cast<float>(rounded(c.y));
     out.push_back({Piece::Kind::Pointer,
                    at(*marks.pointer),
                    {0, 0},
-                   rectArea(c.x - r - 2, c.y - 2 * r - 2, 2 * r + 4, r + 4)});
+                   rectArea(x - r - 2, y - 2 * r - 2, 2 * r + 5, r + 5)});
   }
 }
 
@@ -604,18 +616,20 @@ void BoardPicture::drawPiece(const Piece &piece) {
   }
   case Piece::Kind::Station: {
     // a colony bigger, with a dark middle
-    const HexGrid::Point c = where(corner);
+    const HexGrid::Point c = pixelMiddle(where(corner));
     const bool colony = piece.look[1] != 0;
-    const float half = colony ? 0.26f * s : 0.18f * s;
+    const float half = wholeHalf(colony ? 0.26f * s : 0.18f * s);
     fillRect(c.x - half - 1, c.y - half - 1, 2 * half + 2, 2 * half + 2, kDark);
     fillRect(c.x - half, c.y - half, 2 * half, 2 * half, BoardColours::ofPlayer(piece.look[0]));
-    if (colony)
-      fillRect(c.x - 0.08f * s, c.y - 0.08f * s, 0.16f * s, 0.16f * s, kDark);
+    if (colony) {
+      const float middle = wholeHalf(0.08f * s);
+      fillRect(c.x - middle, c.y - middle, 2 * middle, 2 * middle, kDark);
+    }
     break;
   }
   case Piece::Kind::Ship: {
     // a dart pointing up
-    const HexGrid::Point c = where(corner);
+    const HexGrid::Point c = pixelMiddle(where(corner));
     const float r = 0.3f * s;
     fillTriangle({c.x, c.y - r - 1}, {c.x - r - 1, c.y + r + 1}, {c.x + r + 1, c.y + r + 1}, kDark);
     fillTriangle({c.x, c.y - r}, {c.x - r, c.y + r}, {c.x + r, c.y + r},
@@ -637,16 +651,18 @@ void BoardPicture::drawPiece(const Piece &piece) {
     break;
   case Piece::Kind::Pointer: {
     // A chevron pointing down at the corner, just above it
+    // (in whole pixels round the corner's pixel, so its arms are even)
     const HexGrid::Point c = where(corner);
-    const float r = 0.3f * s;
-    const HexGrid::Point tip{c.x, c.y - r * 0.6f};
-    line({c.x - r, c.y - 2 * r}, tip, 2, kPointer);
-    line({c.x + r, c.y - 2 * r}, tip, 2, kPointer);
+    const auto r = static_cast<float>(rounded(0.3f * s));
+    const auto x = static_cast<float>(rounded(c.x)), y = static_cast<float>(rounded(c.y));
+    const HexGrid::Point tip{x, y - static_cast<float>(rounded(r * 0.6f))};
+    line({x - r, y - 2 * r}, tip, 2, kPointer);
+    line({x + r, y - 2 * r}, tip, 2, kPointer);
     break;
   }
   case Piece::Kind::MarkCorner: {
-    const HexGrid::Point c = where(corner);
-    const float r = 0.2f * s;
+    const HexGrid::Point c = pixelMiddle(where(corner));
+    const float r = wholeHalf(0.2f * s);
     if (piece.look[0] == 0) {
       fillRect(c.x - r, c.y - r, 2 * r, 2 * r, kHighlight);
     } else {

@@ -390,6 +390,9 @@ void ScreenPadd::updateDiscovery() {
 // it fades away (the user's)
 void ScreenPadd::updatePointer() {
   pointer_.aim(pointerCorner(), showsNow());
+  // (the map draws the pointer too: again when it's moved)
+  if (pointerCorner() != flatPointer_)
+    touchDirty_ = true;
   if (tapPointer_ && pointerCorner())
     pointer_.tap(showsNow());
   tapPointer_ = false;

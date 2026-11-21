@@ -517,7 +517,9 @@ void drawOtherPlayer(const TopFrame &f, const PlayerView &view, float down, floa
     if (!f.pictures.backSquare || !back)
       return;
     for (int i = 0; i < std::min(count, kBacksShown); ++i)
-      picture(f, f.pictures.backSquare, back, x + static_cast<float>(i % kBacksARow) * backStep,
+      // (the cards slide with the panel: they're pictures, not the overlay's)
+      picture(f, f.pictures.backSquare, back,
+              x + (across * f.width) + static_cast<float>(i % kBacksARow) * backStep,
               y + 11 * k + static_cast<float>(static_cast<int>(i / kBacksARow)) * rowStep, backW,
               backH, kPictureDistance * (1 - 0.002f * static_cast<float>(i)));
   };
