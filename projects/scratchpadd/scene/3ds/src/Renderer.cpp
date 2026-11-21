@@ -9,6 +9,7 @@
 // them hung a 3DS's GPU, though not Azahar's.)
 #include "Backend.hpp"
 
+#include <ScratchPadd/Scene/3DS/TextureTiles.hpp>
 #include <ScratchPadd/Scene/OverlayText.hpp>
 #include <ScratchPadd/Scene/Primitives.hpp>
 
@@ -51,23 +52,12 @@ void describeSceneVertices(C3D_AttrInfo &attributes) {
   AttrInfo_AddLoader(&attributes, 3, GPU_FLOAT, 2);
 }
 
-// Where an image's pixel (x, y) goes in the GPU's order: 8 x 8 tiles, rows
-// of tiles from the image's first row (so texture coordinate v 0 is its
-// top, as Scene's), each tile's pixels in Morton order
-std::size_t tiledIndex(int x, int y, int width) {
-  const int tile = (y / 8) * (width / 8) + x / 8;
-  const int tx = x % 8, ty = y % 8;
-  const int inTile = (tx & 1) | ((ty & 1) << 1) | ((tx & 2) << 1) | ((ty & 2) << 2) |
-                     ((tx & 4) << 2) | ((ty & 4) << 3);
-  return static_cast<std::size_t>(tile) * 64 + static_cast<std::size_t>(inTile);
-}
-
-// An image's pixels in the GPU's order for a GPU_RGBA8 texture, each pixel
-// as bytes A, B, G, R
+// An image's pixels in the GPU's order (TextureTiles.hpp: last row first)
+// for a GPU_RGBA8 texture, each pixel as bytes A, B, G, R
 void tilePixels(const Colour *pixels, int width, int height, std::uint8_t *out) {
   for (int y = 0; y < height; ++y)
     for (int x = 0; x < width; ++x) {
-      std::uint8_t *at = out + tiledIndex(x, y, width) * 4;
+      std::uint8_t *at = out + tiledIndex(x, y, width, height) * 4;
       const Colour &c = pixels[static_cast<std::size_t>(y) * width + x];
       at[0] = c.a;
       at[1] = c.b;
@@ -86,7 +76,7 @@ std::optional<C3D_Tex> makeFontAtlas() {
   std::vector<std::uint8_t> tiled(atlas.alpha.size());
   for (int y = 0; y < atlas.height; ++y)
     for (int x = 0; x < atlas.width; ++x)
-      tiled[tiledIndex(x, y, atlas.width)] =
+      tiled[tiledIndex(x, y, atlas.width, atlas.height)] =
           atlas.alpha[static_cast<std::size_t>(y) * static_cast<std::size_t>(atlas.width) +
                       static_cast<std::size_t>(x)];
   C3D_TexLoadImage(&texture, tiled.data(), GPU_TEXFACE_2D, 0);

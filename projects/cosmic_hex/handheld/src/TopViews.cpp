@@ -101,6 +101,29 @@ void tokenNumber(const TopFrame &f, const Scene::Transform &pose, int number, fl
 }
 } // namespace
 
+DiscoveryLayout discoveryLayout(float width, float height, Scene::LineHeight lineHeight) {
+  const float k = width / 256;
+  // (room at the screen's edges, and between the words and the tile)
+  const float margin = 3 * k, gap = 2 * k;
+  constexpr float kMostOfTheHeight = 0.55f;
+  DiscoveryLayout layout{.headingScale = k, .titleScale = 2 * k, .givesScale = 1.5f * k};
+  const auto top =
+      Scene::stackDown(margin, std::array{layout.headingScale, layout.titleScale}, gap, lineHeight);
+  layout.heading = top[0];
+  layout.title = top[1];
+  // The tile is centred on the screen (it faces you along the camera's
+  // line of sight), so the room it has is twice the nearer of the words
+  // above and below the middle
+  const float middle = height / 2;
+  const float roomAbove = middle - layout.title.bottom - gap;
+  const float roomBelow = height - margin - lineHeight(layout.givesScale) - gap - middle;
+  const float half = std::min({kMostOfTheHeight * height / 2, roomAbove, roomBelow});
+  layout.tileHeight = 2 * half;
+  layout.gives =
+      Scene::stackDown(middle + half + gap, std::array{layout.givesScale}, 0, lineHeight)[0];
+  return layout;
+}
+
 void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
                    const ScratchPadd::PictureSlot &closeUp,
                    const ScratchPadd::PictureSlot &closeUpBack) {
@@ -108,7 +131,7 @@ void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
   const Discovery::Found *found = show.current();
   if (!moment || !found)
     return;
-  const float k = f.k();
+  const DiscoveryLayout layout = discoveryLayout(f.width, f.height);
   const float lifted = moment->lifted();
   // A dim backdrop while it faces you: in as it turns over, gone early on
   // its way back (the tile passes through its plane on the way up and down)
@@ -118,13 +141,15 @@ void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
   // On the board: where it lies, flat (its axes the world's)
   const Scene::Vector3 onBoard = BoardPieces::centre(found->hex);
   const float radius = (BoardPieces::at({found->hex, 0}) - onBoard).length();
-  // Facing you: in front of the camera, about 55% of the screen tall, its
-  // face towards you, its top up the screen
+  // Facing you: in front of the camera, as tall as its words leave room
+  // for (its corners `radius` from its middle), its face towards you, its
+  // top up the screen
   const Scene::Camera &camera = f.camera;
   const Scene::Vector3 forward = (camera.target - camera.eye).normalised();
   const Scene::Vector3 right = forward.cross(camera.up).normalised();
   const Scene::Vector3 screenUp = right.cross(forward);
-  const float distance = 2 * radius / (0.55f * 2 * std::tan(camera.fieldOfView * kPi / 360));
+  const float share = layout.tileHeight / f.height;
+  const float distance = 2 * radius / (share * 2 * std::tan(camera.fieldOfView * kPi / 360));
   const Scene::Vector3 facing = camera.eye + forward * distance;
   // Between: its position and axes carried from one to the other (the axes
   // made square again: Gram-Schmidt)
@@ -167,14 +192,14 @@ void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
   }
   // Its words, while it faces you
   if (lifted > 0.98f) {
-    f.overlay.textCentred(f.width / 2, 10 * k, f.names[found->by] + " discovers",
-                          BoardColours::ofPlayer(found->by), k);
+    f.overlay.textCentred(f.width / 2, layout.heading.middle(), f.names[found->by] + " discovers",
+                          BoardColours::ofPlayer(found->by), layout.headingScale);
     // (once it's turned over, fading in)
     if (moment->named > 0) {
-      f.overlay.textCentred(f.width / 2, f.height / 2 - 66 * k, found->name,
-                            fadedIn(Palette::kWords, moment->named), 2 * k);
-      f.overlay.textCentred(f.width / 2, f.height / 2 + 64 * k, found->gives,
-                            fadedIn(Palette::kSoftWords, moment->named), 1.5f * k);
+      f.overlay.textCentred(f.width / 2, layout.title.middle(), found->name,
+                            fadedIn(Palette::kWords, moment->named), layout.titleScale);
+      f.overlay.textCentred(f.width / 2, layout.gives.middle(), found->gives,
+                            fadedIn(Palette::kSoftWords, moment->named), layout.givesScale);
     }
     // The token's number written sharp over its picture once it's landed
     // (the user's A: a small texture's digits blur; the words are crisp
@@ -654,7 +679,12 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow
                      {60, 72, 98}, 1);
     }
   }
-  overlay.textCentred(f.width / 2, 12 * k + drop, "WHO GOES FIRST",
+  // Its lines down from the top: the title, the names, their numbers, the
+  // order (or the rounds before), and a tie's call
+  const float numberScale = std::round(1.5f * k);
+  const auto [titleLine, namesLine, numbersLine, orderLine, tiedLine] =
+      Scene::stackDown(3 * k, std::array{2 * k, k, numberScale, k, k}, k);
+  overlay.textCentred(f.width / 2, titleLine.middle() + drop, "WHO GOES FIRST",
                       fadedIn(Palette::kWords, in, {10, 15, 26}), 2 * k);
   // Each player's name over their lane, and under it their number rolling
   // into place as their die lands (an odometer, the user's); the numbers of
@@ -681,7 +711,7 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow
     if (const float in = show.sortedWords(f.now, rankOf(p));
         in > 0 && rankOf(p) < static_cast<int>(kOrdinals.size()))
       overlay.textCentred(
-          x, 60 * k, kOrdinals[static_cast<std::size_t>(rankOf(p))],
+          x, orderLine.middle(), kOrdinals[static_cast<std::size_t>(rankOf(p))],
           fadedIn(rankOf(p) == 0 ? Palette::kHighlight : Palette::kDimWords, in, {10, 15, 26}), k);
     const auto round = static_cast<std::size_t>(show.round());
     const bool winner = show.allLanded() && p == roll.first;
@@ -689,24 +719,26 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow
     if (sorted > 0 && show.shown(round, p) == 0)
       for (std::size_t r = round; r-- > 0;)
         if (const int n = show.shown(r, p)) {
-          overlay.textCentred(x, 44 * k + hop, std::to_string(n), Palette::kDimWords,
-                              std::round(1.5f * k));
+          overlay.textCentred(x, numbersLine.middle() + hop, std::to_string(n), Palette::kDimWords,
+                              numberScale);
           break;
         }
     if (const int n = show.shown(round, p))
-      odometer(f, x, 44 * k + hop, n, static_cast<float>(f.now - show.shownAt(round, p)),
+      odometer(f, x, numbersLine.middle() + hop, n,
+               static_cast<float>(f.now - show.shownAt(round, p)),
                winner ? Palette::kHighlight : Palette::kWords);
     std::string before;
     for (std::size_t r = 0; r < round && r < roll.rounds.size(); ++r)
       if (const int n = show.shown(r, p))
         before += (before.empty() ? "" : " ") + std::to_string(n);
     if (!before.empty() && sorted <= 0)
-      overlay.textCentred(x, 58 * k, before, Palette::kDimWords, k);
-    overlay.textCentred(x, 28 * k + hop + drop, f.names.shortOf(p),
+      overlay.textCentred(x, orderLine.middle(), before, Palette::kDimWords, k);
+    overlay.textCentred(x, namesLine.middle() + hop + drop, f.names.shortOf(p),
                         fadedIn(Palette::player(p), in, {10, 15, 26}), k);
   }
   if (show.round() > 0 && !show.allLanded())
-    overlay.textCentred(f.width / 2, 70 * k, "tied: they throw again", Palette::kHighlight, k);
+    overlay.textCentred(f.width / 2, tiedLine.middle(), "tied: they throw again",
+                        Palette::kHighlight, k);
   // Once all have landed: the order, by name
   if (!show.allLanded())
     return;
@@ -715,11 +747,13 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow
     homes += (i ? ", " : "") + f.names[(roll.first + i) % players];
     ships += (i ? ", " : "") + f.names[(roll.first + players - 1 - i) % players];
   }
-  const float bottom = f.height - 40 * k;
-  overlay.textCentred(f.width / 2, bottom, f.names[roll.first] + " goes first",
+  // (up from the screen's bottom edge)
+  const auto [firstLine, homesLine, shipsLine] =
+      Scene::stackUp(f.height - 3 * k, std::array{1.5f * k, k, k}, k);
+  overlay.textCentred(f.width / 2, firstLine.middle(), f.names[roll.first] + " goes first",
                       Palette::player(roll.first), 1.5f * k);
-  overlay.textCentred(f.width / 2, bottom + 15 * k, homes, Palette::kWords, k);
-  overlay.textCentred(f.width / 2, bottom + 27 * k, ships + " (back again)", Palette::kSoftWords,
+  overlay.textCentred(f.width / 2, homesLine.middle(), homes, Palette::kWords, k);
+  overlay.textCentred(f.width / 2, shipsLine.middle(), ships + " (back again)", Palette::kSoftWords,
                       k);
 }
 
@@ -843,7 +877,15 @@ void drawPick(const TopFrame &f, const PickShow &show, std::string_view title,
                                      {"Station", settings.stationCost, 1},
                                      {"Colony", settings.colonyCost, 2},
                                      {"Card", settings.contractCost, 3}}};
-  const float rowY = midY + h / 2 + 26 * k, gap = 52 * k;
+  // The row of them, their names under them and how to take it under
+  // those: under the card, lifted where they'd run off the bottom (the
+  // 3DS's screen is shorter for its width)
+  const std::array wordScales{k, k};
+  const float namesDown = 8 * k; // (from the row's middle to its names' top)
+  const float rowY = std::min(midY + h / 2 + 26 * k,
+                              f.height - 3 * k - Scene::stackHeight(wordScales, 2 * k) - namesDown);
+  const auto [namesLine, hintLine] = Scene::stackDown(rowY + namesDown, wordScales, 2 * k);
+  const float gap = 52 * k;
   for (std::size_t i = 0; i < things.size(); ++i) {
     const Thing &thing = things[i];
     const bool can = canAfford(thing.cost);
@@ -864,9 +906,9 @@ void drawPick(const TopFrame &f, const PickShow &show, std::string_view title,
       f.overlay.rectangle(tx - 4 * k, ty - 6 * k, 8 * k, 12 * k, can ? Palette::kWords : kDim);
       break;
     }
-    f.overlay.textCentred(tx, ty + 14 * k, thing.name, can ? Palette::kWords : kDim, k);
+    f.overlay.textCentred(tx, namesLine.middle(), thing.name, can ? Palette::kWords : kDim, k);
   }
-  f.overlay.textCentred(f.width / 2, rowY + 30 * k, "A takes it", Palette::kDimWords, k);
+  f.overlay.textCentred(f.width / 2, hintLine.middle(), "A takes it", Palette::kDimWords, k);
 }
 
 // ---------------------------------------------------------------- Home pay

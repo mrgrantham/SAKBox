@@ -47,3 +47,13 @@ filegroup(
         "@gtest//:gtest_main",
     ],
 ) for suffix in ["", "_fixed_point"]]
+
+cc_test(
+    name = "LineStack_test",
+    size = "small",
+    srcs = ["tests/LineStack_test.cpp"],
+    deps = [
+        ":scene",
+        "@gtest//:gtest_main",
+    ],
+)

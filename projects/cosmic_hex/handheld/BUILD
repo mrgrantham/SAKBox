@@ -404,6 +404,20 @@ cc_test(
     ],
 )
 
+# The discovery's words and tile laid out on each handheld's screen in its
+# font (no window needed): nothing overlaps
+cc_test(
+    name = "DiscoveryLayout_test",
+    size = "small",
+    srcs = ["tests/DiscoveryLayout_test.cpp"],
+    deps = [
+        ":handheld",
+        "//projects/scratchpadd/scene/desktop",  # (links a renderer; draws nothing)
+        "//projects/scratchpadd/scene/overlay_text",
+        "@gtest//:gtest_main",
+    ],
+)
+
 # The views over the board drawn through their timelines on a desktop's
 # renderer (it needs a window): none may crash at any moment
 cc_test(

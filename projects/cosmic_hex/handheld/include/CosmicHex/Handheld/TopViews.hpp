@@ -20,6 +20,7 @@
 #include <CosmicHex/Handheld/TopShows.hpp>
 
 #include <ScratchPadd/PictureSlot/PictureSlot.hpp>
+#include <ScratchPadd/Scene/LineStack.hpp>
 #include <ScratchPadd/Scene/Overlay.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
@@ -57,9 +58,24 @@ struct TopFrame {
   float k() const { return width / 256; } // (sizes are for a DS's screen, scaled)
 };
 
+// Where a discovery's words and its tile go on a screen `width` x `height`
+// (points), in the font `lineHeight` measures: who discovered it and the
+// tile's name stacked down from the top, the tile facing you in the middle
+// as tall as fits under them (55% of the screen at most), and what it
+// gives just under the tile
+struct DiscoveryLayout {
+  float headingScale = 1, titleScale = 2, givesScale = 1.5f;
+  ScratchPadd::Scene::LineBox heading, title, gives;
+  float tileHeight = 0; // (from its top corner to its bottom one, facing you)
+};
+DiscoveryLayout discoveryLayout(
+    float width, float height,
+    ScratchPadd::Scene::LineHeight lineHeight = ScratchPadd::Scene::Overlay::lineHeight);
+
 // A discovered tile flying up from the board, turned over and set back
 // (its face from `closeUp` when that holds it, and its back from
-// `closeUpBack`: PictureSlot ids, the faces)
+// `closeUpBack`: PictureSlot ids, the faces), its words placed by
+// discoveryLayout
 void drawDiscovery(const TopFrame &frame, const DiscoveryShow &show,
                    const ScratchPadd::PictureSlot &closeUp,
                    const ScratchPadd::PictureSlot &closeUpBack);

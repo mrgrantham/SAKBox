@@ -289,7 +289,11 @@ Each tile shows its face, and a turned-over planet its number on a round chip ([
 
 ### Animation
 
-Each thing shown over the board for a while is a show: its state, timing and whether it's moving in `TopShows.hpp`, tested on its own; its drawing in `TopViews.hpp` (`TopViews_test` draws each through its whole timeline). Their motion follows [`docs/research/animation-whimsy.md`](../../docs/research/animation-whimsy.md): arcs, a wind-up before, a settle after.
+Each thing shown over the board for a while is a show: its state, timing and whether it's moving in `TopShows.hpp`, tested on its own; its drawing in `TopViews.hpp` (`TopViews_test` draws each through its whole timeline). Their motion follows [`docs/research/animation-whimsy.md`](../../docs/research/animation-whimsy.md): arcs, a wind-up before, a settle after. Their lines of words are stacked with ScratchPadd's `LineStack.hpp` (each as tall as the screen's font draws it), not placed at fixed offsets, so none overlap on either screen:
+
+- **A discovery** (`discoveryLayout`): who found it and the tile's name down from the top, the tile as tall as the room left (55% of the screen at most: about 44% on the 3DS), what it gives just under the tile.
+- **Who goes first:** its title, the names, the numbers, the order and a tie's call down from the top; who goes first and the order of homes and ships up from the bottom.
+- **Choosing a resource:** the names under the row of things to build and the hint under them, lifted to stay on the 3DS's screen.
 
 On the board (`BoardMotion`: what moved between two moves, part way):
 
@@ -440,7 +444,7 @@ bazel test //projects/cosmic_hex/...
 - the text of the starting state and of every action;
 - two bots playing a whole game to a winner, whose action log replays exactly.
 
-`handheld/`'s tests check what the app plays and draws, each part on its own (`BoardPicture_test`, `BottomScreen_test`, `TopViews_test` and the rest).
+`handheld/`'s tests check what the app plays and draws, each part on its own (`BoardPicture_test`, `BottomScreen_test`, `TopViews_test` and the rest; `DiscoveryLayout_test` lays out a discovery on the DS's screen in Silkscreen and the 3DS's in Orbitron, and checks its words and tile don't overlap or leave the screen).
 
 ## Dice
 
