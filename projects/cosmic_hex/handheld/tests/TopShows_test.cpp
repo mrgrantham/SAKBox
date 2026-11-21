@@ -109,6 +109,23 @@ TEST(TopShowsTest, APanelSlidesDownAndBackUp) {
   EXPECT_FALSE(panel.showing(5.31));
 }
 
+// Another chosen while it's open: the last one lifts away, then the next
+// comes down
+TEST(TopShowsTest, ChoosingAnotherLiftsTheLastAwayThenBringsItDown) {
+  PanelShow panel(0.3f);
+  panel.open(2, 0);
+  panel.choose(3, 1);
+  EXPECT_EQ(panel.which(), 3);
+  EXPECT_EQ(panel.drawn(1).which, 2);
+  EXPECT_FLOAT_EQ(panel.drawn(1).down, 1);
+  EXPECT_EQ(panel.drawn(1.1).which, 2);
+  EXPECT_LT(panel.drawn(1.1).down, 1);
+  EXPECT_EQ(panel.drawn(1.2).which, 3);
+  EXPECT_LT(panel.drawn(1.2).down, 1);
+  EXPECT_EQ(panel.drawn(1.31).which, 3);
+  EXPECT_FLOAT_EQ(panel.drawn(1.31).down, 1);
+}
+
 // Who goes first: each player's die thrown in turn, landing on their
 // number; the ties again; A hurries; then time to read the order
 TEST(TopShowsTest, TheFirstRollThrowsInTurn) {
@@ -331,4 +348,29 @@ TEST(TopShowsTest, CardsGainedDropIntoTheHand) {
   EXPECT_FLOAT_EQ(hand.card(Resource::Food, 1, first + 2), 1);
   EXPECT_TRUE(hand.showing(first + 1));
   EXPECT_FALSE(hand.showing(20));
+}
+
+// The board's pointer: fades in at its corner, glides to the next, fades
+// away when there's nothing to choose, and comes back at its new corner
+TEST(TopShowsTest, ThePointerFadesInGlidesAndFadesAway) {
+  const Corner a = CosmicHex::boardCorners()[0], b = CosmicHex::boardCorners()[1],
+               c = CosmicHex::boardCorners()[2];
+  CornerPointer pointer;
+  EXPECT_FALSE(pointer.at(0).has_value());
+  pointer.aim(a, 1);
+  ASSERT_TRUE(pointer.at(1.1).has_value());
+  EXPECT_LT(pointer.at(1.1)->shown, 1);
+  EXPECT_EQ(pointer.at(1.1)->to, a);
+  EXPECT_FLOAT_EQ(pointer.at(1.5)->shown, 1);
+  pointer.aim(b, 2);
+  EXPECT_EQ(pointer.at(2.1)->from, a);
+  EXPECT_EQ(pointer.at(2.1)->to, b);
+  EXPECT_LT(pointer.at(2.1)->along, 1);
+  EXPECT_FLOAT_EQ(pointer.at(2.3)->along, 1);
+  pointer.aim(std::nullopt, 3);
+  EXPECT_LT(pointer.at(3.1)->shown, 1);
+  EXPECT_FALSE(pointer.at(3.4).has_value());
+  pointer.aim(c, 5); // (back, at its new corner: no glide from the last)
+  EXPECT_EQ(pointer.at(5.1)->from, c);
+  EXPECT_FALSE(pointer.moving(6));
 }

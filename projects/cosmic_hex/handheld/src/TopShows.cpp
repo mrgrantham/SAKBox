@@ -139,6 +139,27 @@ void PanelShow::open(int which, double now) {
   closing_.stop();
 }
 
+void PanelShow::choose(int which, double now) {
+  if (which == which_)
+    return;
+  // (in place: the last one lifts away; still coming down, it's a cut)
+  last_ = inPlace(now) ? which_ : -1;
+  which_ = which;
+  switched_.start(now);
+}
+
+PanelShow::Drawn PanelShow::drawn(double now) const {
+  if (last_ < 0 || !switched_.on() || closing_.on())
+    return {which_, down(now)};
+  // (the first half the last one going up, the second the next coming down)
+  const float t = static_cast<float>(switched_.seconds(now)) / kSecondsSwitch;
+  if (t >= 1)
+    return {which_, down(now)};
+  if (t < 0.5f)
+    return {last_, 1 - Motion::along(Motion::Curve::Gentle, t * 2)};
+  return {which_, Motion::along(Motion::Curve::Gentle, t * 2 - 1)};
+}
+
 void PanelShow::close(double now) {
   if (opened_.on() && !closing_.on())
     closing_.start(now);
@@ -641,7 +662,10 @@ std::optional<PickShow::Moment> PickShow::at(double now) const {
                 words, direction_};
 }
 
-bool PickShow::moving(double now) const { return shown_ && now - since_ < kSecondsSlide; }
+// (until its name has faded in: the screen's drawn again till then)
+bool PickShow::moving(double now) const {
+  return shown_ && now - since_ < kSecondsSlide + kSecondsWordsIn;
+}
 
 // ------------------------------------------------------------- Cards gained
 
@@ -695,6 +719,48 @@ float HandShow::card(Resource r, int index, double now) const {
   const auto t =
       static_cast<float>(now - *startedAt_) - kSecondsPiles - kStagger * static_cast<float>(order);
   return Motion::along(Motion::Curve::Settle, std::clamp(t / kSecondsCard, 0.0f, 1.0f));
+}
+
+// ------------------------------------------------------------ Corner pointer
+
+float CornerPointer::shownAt(double now) const {
+  const float t = std::clamp(static_cast<float>(now - fadedAt_) / kSecondsFade, 0.0f, 1.0f);
+  const float target = on_ ? 1.0f : 0.0f;
+  return fadeFrom_ + (target - fadeFrom_) * Motion::along(Motion::Curve::Gentle, t);
+}
+
+void CornerPointer::aim(std::optional<Corner> corner, double now) {
+  // (fading in or away: from wherever the last fade had got to)
+  if (corner.has_value() != on_) {
+    fadeFrom_ = shownAt(now);
+    fadedAt_ = now;
+    on_ = corner.has_value();
+  }
+  if (!corner)
+    return;
+  if (!to_ || shownAt(now) == 0) { // (appearing: at its corner, no glide)
+    from_ = to_ = corner;
+    glidedAt_ = now - kSecondsGlide;
+    return;
+  }
+  if (*corner != *to_) {
+    // (from where it is now: the glide's end, close enough mid-glide)
+    from_ = to_;
+    to_ = corner;
+    glidedAt_ = now;
+  }
+}
+
+std::optional<CornerPointer::Look> CornerPointer::at(double now) const {
+  const float shown = shownAt(now);
+  if (!from_ || !to_ || shown <= 0) // (both set together, by aim)
+    return std::nullopt;
+  const float t = std::clamp(static_cast<float>(now - glidedAt_) / kSecondsGlide, 0.0f, 1.0f);
+  return Look{*from_, *to_, Motion::along(Motion::Curve::EaseOut, t), shown};
+}
+
+bool CornerPointer::moving(double now) const {
+  return now - fadedAt_ < kSecondsFade || now - glidedAt_ < kSecondsGlide;
 }
 
 } // namespace CosmicHex::Handheld

@@ -68,7 +68,8 @@ void BottomScreen::follow(const State &state, const std::vector<Action> &legal, 
   }
   // A choice of resources the rules ask for now: the picker, by itself
   if (auto choice = Pickers::resourceChoiceOf(state, legal)) {
-    if (mode_ != Mode::Resources || !resources_ || resources_->title != choice->title)
+    // (each choice its own: the next of two in a row opens afresh)
+    if (mode_ != Mode::Resources || !resources_ || !resources_->sameAs(*choice))
       openPicker(std::move(*choice), false);
     return;
   }

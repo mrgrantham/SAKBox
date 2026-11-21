@@ -187,7 +187,11 @@ void drawResources(Canvas &canvas, const Pickers::ResourceChoice &choice,
   const float k = scaleOf(canvas);
   canvas.clear(kBackground);
   canvas.text(8 * k, 8 * k, choice.title, kWords);
-  canvas.text(8 * k, 21 * k, choice.note, kDim);
+  canvas.text(8 * k, 21 * k,
+              choice.left > 1
+                  ? std::string(choice.note) + " (" + std::to_string(choice.left) + " to choose)"
+                  : std::string(choice.note),
+              kDim);
   for (int r = 0; r < kResources; ++r) {
     const auto resource = static_cast<Resource>(r);
     const Box box = resourceBox(canvas.width(), r, cards.width(), cards.height());

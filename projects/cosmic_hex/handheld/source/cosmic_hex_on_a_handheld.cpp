@@ -609,7 +609,7 @@ private:
     }
     // (another player chosen while the panel's open: their view)
     if (bottomScreen_ && shownInfo_ == BottomScreen::Info::Player)
-      others_.choose(bottomScreen_->infoPlayer());
+      others_.choose(bottomScreen_->infoPlayer(), showsNow());
     if (bottomScreen_ && bottomScreen_->showingFeedback()) {
       if (!feedbackSince_) {
         feedbackSince_ = Clock::now();
@@ -642,6 +642,7 @@ private:
     updateCardPlay();
     updatePick();
     updateHand();
+    updatePointer();
     updateCelebration();
     // The two cards dealt, drawn sharp before they're thrown in (on a DS
     // about a quarter of a second, while the screen is still)
@@ -881,9 +882,10 @@ private:
                     cards_);
     if (firstRoll_.on() && latest_)
       drawFirstRoll(frame, latest_->firstRoll, firstRoll_);
-    else if (others_.showing(showsNow()) && latest_ && others_.which() >= 0)
-      drawOtherPlayer(frame, viewOf(latest_->state, others_.which()), others_.down(showsNow()));
-    else if (discovery_.moving(showsNow()))
+    else if (others_.showing(showsNow()) && latest_ && others_.which() >= 0) {
+      const PanelShow::Drawn drawn = others_.drawn(showsNow());
+      drawOtherPlayer(frame, viewOf(latest_->state, drawn.which), drawn.down);
+    } else if (discovery_.moving(showsNow()))
       drawDiscovery(frame, discovery_, closeUps_.face, closeUps_.back);
     else if (pick_.at(showsNow()) && latest_ && bottomScreen_ && bottomScreen_->resourceChoice()) {
       drawPick(frame, pick_, bottomScreen_->resourceChoice()->title,
@@ -1197,7 +1199,24 @@ private:
     if (mode_ == Mode::Playing && latest_->yourMove && shownInfo_ == BottomScreen::Info::None &&
         !cards_.showing(showsNow()) && bottomScreen_ && bottomScreen_->showingMoveList())
       drawMoves(overlay);
+    drawHeldTag(overlay);
     drawBanner(overlay);
+  }
+
+  // While a view you opened holds the game (Show resources, another
+  // player's panel), a grey tag at the top says so (the user's: a turn
+  // ended under it did nothing, with no sign why)
+  void drawHeldTag(Scene::Overlay &overlay) const {
+    if ((holds_ & static_cast<std::uint8_t>(Hold::Info)) == 0 ||
+        flow_.screen() != ScreenFlow::Screen::Game)
+      return;
+    const float k = static_cast<float>(kTopWidth) / 256;
+    static constexpr std::string_view kTag = "PAUSED - close to go on";
+    const float w = Scene::Overlay::textWidth(kTag, k) + 12 * k, h = 13 * k;
+    const float x = (static_cast<float>(kTopWidth) - w) / 2, y = 3 * k;
+    overlay.rectangle(x, y, w, h, {40, 44, 54});
+    overlay.rectangle(x, y + h - 1, w, 1, {140, 146, 158});
+    overlay.textCentred(static_cast<float>(kTopWidth) / 2, y + h / 2, kTag, {200, 204, 212}, k);
   }
 
   // Whose cards an info view shows: yours when playing, the turn's when
@@ -1326,6 +1345,28 @@ private:
     case ScreenFlow::Screen::Game:
       break;
     }
+    // The bottom screen's buttons (BottomScreen::press: the D-pad moves, A
+    // picks then confirms, B goes back): a choosing screen's on your move,
+    // a screen to look at's (the other players, your cards) any time
+    using Key = BottomScreen::Key;
+    std::optional<Key> key;
+    if (pressed.pressed(Button::Up))
+      key = Key::Up;
+    else if (pressed.pressed(Button::Down))
+      key = Key::Down;
+    else if (pressed.pressed(Button::Left) || (!zooming && pressed.pressed(Button::L)))
+      key = Key::Left;
+    else if (pressed.pressed(Button::Right) || (!zooming && pressed.pressed(Button::R)))
+      key = Key::Right;
+    else if (pressed.pressed(confirm))
+      key = Key::Confirm;
+    else if (pressed.pressed(back))
+      key = Key::Back;
+    if (key && bottomScreen_ && bottomScreen_->looking()) {
+      bottomScreen_->press(*key);
+      bottomDirty_ = true;
+      return;
+    }
     if (mode_ == Mode::Watching) {
       if (pressed.pressed(confirm)) {
         youPaused_ = !youPaused_;
@@ -1340,34 +1381,16 @@ private:
     }
     if (!latest_ || !latest_->yourMove)
       return;
-    // A choosing screen open on the bottom: its buttons (BottomScreen::press:
-    // the D-pad moves, A picks then confirms, B goes back)
-    if (bottomScreen_) {
-      using Key = BottomScreen::Key;
-      std::optional<Key> key;
-      if (pressed.pressed(Button::Up))
-        key = Key::Up;
-      else if (pressed.pressed(Button::Down))
-        key = Key::Down;
-      else if (pressed.pressed(Button::Left) || (!zooming && pressed.pressed(Button::L)))
-        key = Key::Left;
-      else if (pressed.pressed(Button::Right) || (!zooming && pressed.pressed(Button::R)))
-        key = Key::Right;
-      else if (pressed.pressed(confirm))
-        key = Key::Confirm;
-      else if (pressed.pressed(back))
-        key = Key::Back;
-      if (key) {
-        const BottomScreen::Outcome outcome = bottomScreen_->press(*key);
-        if (outcome.play) {
-          send(PlayMove{*outcome.play});
-          latest_->yourMove = false;
-          selected_.reset();
-        }
-        if (outcome.used) {
-          bottomDirty_ = true;
-          return;
-        }
+    if (bottomScreen_ && key) {
+      const BottomScreen::Outcome outcome = bottomScreen_->press(*key);
+      if (outcome.play) {
+        send(PlayMove{*outcome.play});
+        latest_->yourMove = false;
+        selected_.reset();
+      }
+      if (outcome.used) {
+        bottomDirty_ = true;
+        return;
       }
     }
     // The list of moves' keys, only while it shows (debug builds)
@@ -1745,17 +1768,30 @@ private:
   // Each frame: the home's pay held over the game; its card drawn sharp
   // (into the first dealt card's slot: the two never show together, and
   // the DS has no texture memory for another)
-  // Each frame: while you choose a resource on the picker, the card in
-  // focus shown big on top (PickShow), the banner as the choice opens
+  // Each frame: while you choose a resource on the picker, the banner as
+  // each choice opens (two in a row: one each), then, once it's gone, the
+  // card in focus shown big on top (PickShow; the user's: not behind it)
   void updatePick() {
     const bool choosing = mode_ == Mode::Playing && latest_ && latest_->yourMove && bottomScreen_ &&
-                          bottomScreen_->mode() == BottomScreen::Mode::Resources;
-    const auto focus = choosing ? bottomScreen_->resourceInFocus() : std::nullopt;
-    if (focus && !pick_.at(showsNow()) && bottomScreen_->resourceChoice())
-      banner_.start(gameClock_.seconds(), "CHOOSE A RESOURCE",
-                    std::string(bottomScreen_->resourceChoice()->title), Palette::kHighlight);
-    pick_.show(focus, showsNow());
+                          bottomScreen_->mode() == BottomScreen::Mode::Resources &&
+                          bottomScreen_->resourceChoice();
+    if (!choosing) {
+      bannerFor_.reset();
+      pick_.show(std::nullopt, showsNow());
+      return;
+    }
+    const Pickers::ResourceChoice &choice = *bottomScreen_->resourceChoice();
+    if (!bannerFor_ || !bannerFor_->sameAs(choice)) {
+      bannerFor_ = choice;
+      pick_.show(std::nullopt, showsNow()); // (the last choice's card gone)
+      banner_.start(gameClock_.seconds(), "CHOOSE A RESOURCE", std::string(choice.title),
+                    Palette::kHighlight);
+    }
+    pick_.show(banner_.showing(gameClock_.seconds()) ? std::nullopt
+                                                     : bottomScreen_->resourceInFocus(),
+               showsNow());
   }
+  std::optional<Pickers::ResourceChoice> bannerFor_; // (the choice its banner was for)
   // Each frame: your cards gained shown once nothing that brings them is
   // still showing (the roll's pay, the home's, choosing one, a discovery)
   void updateHand() {
@@ -1764,8 +1800,8 @@ private:
     // stopped)
     const bool busy = !roll_.idle() || rollPay_.moving(t) || rollPay_.waiting() ||
                       gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving ||
-                      homePay_.moving(t) || pick_.at(t) || discovery_.moving(t) || dealt_.on() ||
-                      cardPlay_.moving(t) || cards_.showing(t) || firstRoll_.on();
+                      homePay_.moving(t) || pick_.at(t) || bannerFor_ || discovery_.moving(t) ||
+                      dealt_.on() || cardPlay_.moving(t) || cards_.showing(t) || firstRoll_.on();
     if (hand_.waiting() && !busy)
       hand_.start(t);
   }
@@ -1830,9 +1866,9 @@ private:
     if (latest_)
       startPlacingBanner(latest_->state);
   }
-  // A ship touched (the user's): a white chevron over it, turning and
-  // bobbing, and a ring at each corner it can reach, fuel's orange where
-  // the move takes a fuel; where a build may go is ringed the same way
+  // Where you may choose on the board: a ring at each corner a touched ship
+  // can reach, fuel's orange where the move takes a fuel, or where a build
+  // may go; and the board's pointer (the user's: a white chevron)
   void drawSelectedShip() {
     if (!bottomScreen_ || !latest_)
       return;
@@ -1843,21 +1879,68 @@ private:
                       {.shading = Scene::Material::Shading::Unlit,
                        .colour = withFuel ? kFuelOrange : Palette::kHighlight});
     }
-    const std::optional<int> ship = bottomScreen_->selectedShip();
-    const auto &ships = latest_->state.ships;
-    if (!ship || *ship < 0 || *ship >= static_cast<int>(ships.size()))
+    // The pointer (CornerPointer): turning and bobbing over the corner in
+    // focus, as shown as it's faded in, gliding between corners
+    const auto look = pointer_.at(showsNow());
+    if (!look)
       return;
     const auto t = static_cast<float>(showsNow());
     constexpr float kTurn = 6.2831853f; // (a whole turn, radians)
     const float bob = 0.06f * std::sin(t * kTurn * 0.8f);
-    renderer_->draw(chevron_,
-                    BoardPieces::onCorner(ships[static_cast<std::size_t>(*ship)].corner) *
-                        Scene::Transform::translation({0, 0.8f + bob, 0}) *
-                        Scene::Transform::rotation({0, 1, 0}, t * 2.2f),
-                    {.shading = Scene::Material::Shading::Unlit,
-                     .colour = {255, 255, 255},
-                     .doubleSided = true});
+    const Scene::Transform from = BoardPieces::onCorner(look->from),
+                           to = BoardPieces::onCorner(look->to);
+    const auto between = [&](int axis) {
+      return from.m[static_cast<std::size_t>(axis)][3] +
+             (to.m[static_cast<std::size_t>(axis)][3] - from.m[static_cast<std::size_t>(axis)][3]) *
+                 look->along;
+    };
+    renderer_->draw(
+        chevron_,
+        Scene::Transform::translation({between(0), between(1) + 0.8f + bob, between(2)}) *
+            Scene::Transform::rotation({0, 1, 0}, t * 2.2f),
+        {.shading = Scene::Material::Shading::Unlit,
+         .colour = {255, 255, 255},
+         .alpha = static_cast<std::uint8_t>(std::lround(31 * look->shown)),
+         .doubleSided = true});
   }
+  // Each frame: what the pointer points at. While the game wants you to
+  // choose on the board (your move: placing at the start, where a build
+  // goes, a ship's moves) and nothing on the top screen is moving (pieces,
+  // a banner, a show, a view over the board): the ship touched, else what's
+  // been touched, else the place nearest the middle; otherwise nothing, and
+  // it fades away (the user's)
+  void updatePointer() { pointer_.aim(pointerCorner(), showsNow()); }
+  std::optional<CosmicHex::Corner> pointerCorner() const {
+    if (mode_ != Mode::Playing || !latest_ || !latest_->yourMove || !bottomScreen_ ||
+        flow_.screen() != ScreenFlow::Screen::Game)
+      return std::nullopt;
+    const std::vector<CosmicHex::Corner> places = bottomScreen_->placingCorners();
+    const std::optional<int> ship = bottomScreen_->selectedShip();
+    if (places.empty() && !ship)
+      return std::nullopt; // (nothing to choose on the board)
+    const double t = showsNow();
+    const bool busy = gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving ||
+                      banner_.showing(gameClock_.seconds()) || !roll_.idle() ||
+                      shownInfo_ != BottomScreen::Info::None || cards_.showing(t) ||
+                      discovery_.moving(t) || homePay_.moving(t) || rollPay_.moving(t) ||
+                      cardPlay_.moving(t) || hand_.moving(t) || dealt_.on() || pick_.at(t);
+    if (busy)
+      return std::nullopt;
+    const auto &ships = latest_->state.ships;
+    if (ship && *ship >= 0 && *ship < static_cast<int>(ships.size()))
+      return ships[static_cast<std::size_t>(*ship)].corner;
+    if (const std::optional<CosmicHex::Action> chosen = bottomScreen_->startPlacement())
+      return CosmicHex::boardCorners()[static_cast<std::size_t>(chosen->a)];
+    if (selected_ && std::ranges::find(places, selected_->corner) != places.end())
+      return selected_->corner;
+    // (nothing touched yet: the place nearest the board's middle, in view)
+    const auto fromMiddle = [](const CosmicHex::Corner &corner) {
+      const Scene::Transform at = BoardPieces::onCorner(corner);
+      return at.m[0][3] * at.m[0][3] + at.m[2][3] * at.m[2][3];
+    };
+    return *std::ranges::min_element(places, {}, fromMiddle);
+  }
+  CornerPointer pointer_;
   static constexpr Scene::Colour kFuelOrange{235, 150, 80}; // (fuel's, as its card's band)
 
   // Whether anything on the top screen moves now
@@ -1867,8 +1950,8 @@ private:
       return true;
     if (gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving)
       return true; // (pieces still moving, or a number chip dropping)
-    if (bottomScreen_ && bottomScreen_->selectedShip())
-      return true; // (the selected ship's chevron turning)
+    if (pointer_.at(showsNow()))
+      return true; // (the board's pointer turning, fading or gliding)
     if (banner_.showing(gameClock_.seconds()))
       return true; // (the turn's banner moving)
     if (shownInfo_ != BottomScreen::Info::None || cards_.moving(showsNow()) || outlineMovedAt_)

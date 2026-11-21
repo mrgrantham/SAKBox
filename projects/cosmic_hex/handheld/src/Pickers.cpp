@@ -41,7 +41,8 @@ std::optional<ResourceChoice> resourceChoiceOf(const State &state,
   if (state.phase == Phase::HomeIncome) {
     auto actions = ofKind(legal, Kind::ChooseHome);
     if (!actions.empty())
-      return ResourceChoice{"Your home pays 1", "Choose which resource", 1, std::move(actions)};
+      return ResourceChoice{"Your home pays 1", "Choose which resource", 1, std::move(actions),
+                            std::max(1, state.homeIncomeLeft)};
   }
   if (state.phase == Phase::Salvage) {
     auto actions = ofKind(legal, Kind::TakeSalvage);

@@ -122,6 +122,9 @@ public:
   bool pressing() const { return buttons_.pressing(now_); }
   void clearFeedback();
 
+  // Whether a screen to look at is open (your cards, the other players):
+  // its buttons work whoever's move it is
+  bool looking() const { return mode_ == Mode::Cards || mode_ == Mode::Others; }
   // Whether a choosing screen covers the board (else the board shows, with
   // the buttons over it)
   bool coversBoard() const {

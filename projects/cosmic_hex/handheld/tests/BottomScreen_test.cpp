@@ -49,6 +49,28 @@ TEST(BottomScreenTest, TheHomesPayIsPickedByTouch) {
   EXPECT_EQ(screen.mode(), Mode::Board);
 }
 
+// A home paying 2: two choices in a row, the second opened afresh (the
+// first's pick not carried over), each saying how many are left
+TEST(BottomScreenTest, TheNextOfTwoHomeChoicesOpensAfresh) {
+  State state = playUntil([](const State &s) {
+    return s.phase == Phase::HomeIncome && Game::currentPlayer(s) != GameBots::kDealer;
+  });
+  ASSERT_EQ(state.phase, Phase::HomeIncome);
+  state.homeIncomeLeft = 2;
+  BottomScreen screen(kWidth, kHeight);
+  screen.update(state, Game::legalActions(state), true);
+  ASSERT_TRUE(screen.resourceChoice().has_value());
+  EXPECT_EQ(screen.resourceChoice()->left, 2);
+  screen.tap(6 + 49 * 2 + 20, 60, std::nullopt); // (Fuel, picked)
+  // The second: the picker afresh, its focus back on the first card
+  state.homeIncomeLeft = 1;
+  screen.update(state, Game::legalActions(state), true);
+  EXPECT_EQ(screen.mode(), Mode::Resources);
+  ASSERT_TRUE(screen.resourceChoice().has_value());
+  EXPECT_EQ(screen.resourceChoice()->left, 1);
+  EXPECT_NE(screen.resourceInFocus(), std::optional<Resource>(Resource::Fuel));
+}
+
 TEST(BottomScreenTest, BuildThenChooseWhereOnTheBoard) {
   State state = playUntil([](const State &s) { return s.phase == Phase::Main; });
   ASSERT_EQ(state.phase, Phase::Main);

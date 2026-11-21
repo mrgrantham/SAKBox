@@ -206,13 +206,16 @@ The bottom screen (`BottomScreen`) is the board with its buttons (`BoardButtons`
 On the board:
 
 - **Touch a corner** to select it (a small ring on both screens; the hex, outlined, when moving the blockade). A touch picks the corner nearest it.
-- **Move a ship:** touch it, and it shows as selected (a white chevron turning over it on the top screen), and where it can go is marked on both screens, the moves that take a fuel told apart (orange rings on the top screen, outlined squares on the map; the rest highlight-coloured rings and filled dots). Touch a marked corner to move it. After the roll the turn's offers to players are open (the trading phase), and a ship can still be moved: choosing where ends the offers first, as building does. A ship that can't move says why (roll first, or it has moved this turn).
+- **The board's pointer** (`CornerPointer`): a white chevron, turning and bobbing over the corner in focus on the top screen. It fades in gently when the game wants you to choose on the board (placing at the start, where a build goes, a ship's moves) and fades away while pieces move, banners and shows play and turns end; it glides from corner to corner as the focus moves. It points at the ship touched, else what you've touched, else the place nearest the board's middle.
+- **Move a ship:** touch it, and the pointer goes over it, and where it can go is marked on both screens, the moves that take a fuel told apart (orange rings on the top screen, outlined squares on the map; the rest highlight-coloured rings and filled dots). Touch a marked corner to move it. After the roll the turn's offers to players are open (the trading phase), and a ship can still be moved: choosing where ends the offers first, as building does. A ship that can't move says why (roll first, or it has moved this turn).
 - **Drag** to move the board when zoomed in; **X held with R and L** zooms in and out (L and R alone are left and right on a choosing screen).
 - **B** takes whatever is animating straight to its end ([Animation](#animation)).
 
 The choosing screens (`ChoiceScreens`, drawn on a `Canvas`) take the board's place when needed:
 
-- **The resource picker** (`Pickers`): the home's pay and salvage open it by themselves; the Cartel and the Supply drop open it from the cards screen. The card in focus is the pick, and Take always shows (A takes it at once). The CHOOSE A RESOURCE banner shows as it opens, and the top screen shows the card in focus big, sliding in from the side you moved to, with what you could build with it, dimmed if even with it you couldn't (`PickShow`, `drawPick`).
+- **The resource picker** (`Pickers`): the home's pay and salvage open it by themselves; the Cartel and the Supply drop open it from the cards screen. The card in focus is the pick, and Take always shows (A takes it at once).
+  - **Each choice opens afresh:** a home paying 2 is two choices in a row, each opened anew (nothing carried over) and saying how many are left ("(2 to choose)"; `ResourceChoice::left`, `sameAs`).
+  - **The top screen:** the CHOOSE A RESOURCE banner first, for each choice; once it's gone, the card in focus big, sliding in from the side you moved to, its name fading in, with what you could build with it, dimmed if even with it you couldn't (`PickShow`, `drawPick`).
 - **The player picker:** whom to steal from, when the blockade stands by more than one player.
 - **Keeping a card:** after buying, the two cards dealt are thrown onto the top screen and turned over one after the other, their words on them, and the choice opens by itself.
 - **Shipyard Surplus** is played by touching a colony.
@@ -243,7 +246,11 @@ The board in 3D (stereo with the 3D slider on a 3DS), with the HUD over it (`Hud
 
 Each tile shows its face, and a turned-over planet its number on a round chip ([Art](#art)). Players have names (`PlayerNames`): yours is your console's owner name ("You" when it has none), the bots' are stars, a different few each game; banners, tabs and the trade room say names. The game's names for its things are in one table (`GameWords`).
 
-**Another player's panel** (`OtherPlayers`): points, cards face down, badges, ships, stations and colonies (drawn as the board's pieces), the planets their stations touch with their numbers, revealed Charters. It slides down and back up (0.45 s, the Gentle curve); on a DS the board under it holds frames near 20 a second while it moves, and once it covers the screen the board isn't drawn.
+**Another player's panel** (`OtherPlayers`): points, cards face down, badges, ships, stations and colonies (drawn as the board's pieces), the planets their stations touch with their numbers, revealed Charters.
+
+- **Opening and closing:** it slides down and back up (0.45 s, the Gentle curve); on a DS the board under it holds frames near 20 a second while it moves, and once it covers the screen the board isn't drawn.
+- **Another player:** chosen with the tabs, or left and right (whoever's turn it is: a screen to look at takes the D-pad any time), the last one lifts away and the next comes down (0.3 s; `PanelShow::drawn`).
+- **Paused while open:** Show resources and this panel hold the game, and a grey PAUSED tag at the top says so ("close to go on").
 
 ### Animation
 

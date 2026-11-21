@@ -11,6 +11,12 @@ What was chosen. **Why:** the reasons. **Not:** the alternatives turned down, an
 
 ## Cosmic Hex: the game
 
+**DS memory is checked on the Mac: textures and heap** (2026-11-21)
+The DS's texture memory is modelled (`TextureMemory`) and a desktop renderer can be held to it (`Renderer::setTextureBudget`); `GamePictures_test` loads every picture under it. Heap-hungry drawing is held to budgets too (`CloseUpBandsStayWithinTheirMemory`). **Why:** two silent failures on hardware (the title's rocket grey and the cards gone when textures ran out; a crash zoomed in when a picture's band asked for 147 KB in one piece) were found only on the console. **Not:** a log on the card for out-of-memory, as the DS stops before it could be written.
+
+**The board's pointer is general** (2026-11-21)
+One chevron over the corner in focus, fading in whenever you choose on the board and away while things move (`CornerPointer`). **Why:** the user's: a selected ship's chevron looked right, but it should say "your turn to choose here" everywhere. **Not:** a chevron only for ships.
+
 **Animations: Full, Quick or Off, and B skips** (2026-11-20)
 B (Back) takes every animation running straight to its end frame (a second B does B's usual job); the Settings' Animations is Full, Quick (twice as fast) or Off (skipped every frame), kept on the card. **Why:** someone playing through quickly shouldn't wait on flourishes (the user's). One clock for the shows (`showClock_`) and the game's clock run at the setting's rate, and skipping moves the shows' clock on past any end, so each show needs no skip code of its own; the dice are stepped on to where they land at once, so the roll is still the physics'. **Not:** a skip method on every show (more code, easy to miss one).
 

@@ -23,6 +23,13 @@ struct ResourceChoice {
   std::string_view note;  // "Choose which resource"
   int howMany = 1;        // 1, or 2 (the Supply drop)
   std::vector<Action> actions;
+  // How many such choices are left, this one included (a home paying 2:
+  // two in a row, each its own; the screen says so)
+  int left = 1;
+  // The same choice, or the next (a new one opens the picker afresh)
+  bool sameAs(const ResourceChoice &other) const {
+    return title == other.title && left == other.left;
+  }
   // The move for the resources picked (one, or two in either order); none
   // if the rules have no such move
   std::optional<Action> actionFor(const std::vector<Resource> &picked) const;
