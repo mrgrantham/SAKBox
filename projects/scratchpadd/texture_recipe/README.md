@@ -126,6 +126,17 @@ Drawing is fixed point (16.16) throughout, and arranged for a DS:
 - Each row looks only at the edges spanning it (an active edge list), and each edge's crossing is stepped from row to row rather than divided anew.
 - The divisions left go through flexmath's `IntegerDivide.hpp`, on the DS's hardware divider; outlines are read straight from their lines.
 
+## Memory on small devices
+
+A band of rows (`Rows`) is drawn to save memory, so its own lists stay small too:
+
+- **Only the band's edges:** a band keeps only the edges that reach its rows. A card's top band, its 1,360-point outline kept whole, asked a DS for 147 KB in one piece while Cosmic Hex was zoomed in, and the game stopped.
+- **Small edges:** each edge is 20 bytes (32-bit coordinates); the stepping state is kept only for the few edges a row crosses.
+- **Taken once:** the edges are counted, then the list is taken at that size, never grown by doubling (which held the old and the new at once).
+- **A size limit:** pictures are drawn up to `kMostPixels` (4,096) a side, which the 32-bit coordinates have room for; bigger draws nothing.
+
+A Cosmic Hex close-up's band now fits in 40 KB (`BoardPicture_test`, `CloseUpBandsStayWithinTheirMemory`), down from 80 KB to 160 KB for a card.
+
 On a DS (melonDS) the slowest recipe went from about 195 ms to 60 (20 to read, 39 to draw), with every drawing the same, bit for bit, as before the changes on all platforms.
 
 ## The recipe format

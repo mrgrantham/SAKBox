@@ -103,6 +103,10 @@ struct Rows {
   int first = 0, count = -1;
 };
 
+// The most pixels a side a recipe is drawn (its outlines are kept in 32
+// bits, to be small on a DS); bigger, or none, draws nothing
+inline constexpr int kMostPixels = 4096;
+
 // The recipe drawn into a width x height image, the drawing stretched to fill
 // it. `name` is for the log, if its colours have to be reduced. With `rows`,
 // only those rows (Rgba8 only): the image is that band of the picture, each

@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <charconv>
 #include <cstdlib>
+#include <optional>
 
 namespace ScratchPadd::TextureRecipe {
 
@@ -42,22 +43,33 @@ template <typename Int> bool number(std::string_view text, Int &out) {
   return error == std::errc{} && end == text.data() + text.size();
 }
 
+// An outline's edge, as drawn: kept small, as a recipe has 1,500 points or
+// more and the DS's heap little room in one piece (a zoomed map's face
+// needed 147 KB for these at 80 bytes each, and the DS stopped)
+// (32 bits: sample space within kMostPixels a side, 16.16, has room)
 struct Edge {
-  std::int64_t x0, y0, x1, y1; // sample space, 16.16, y0 < y1
-  int direction;               // +1 drawn downwards, -1 upwards
-  // Where it crosses the current row's centre, stepped a row at a time
-  // (no division a row; the DS's ARM9 has no divide instruction):
-  // the crossing is x0 + |x1 - x0| x (centre - y0) / (y1 - y0), its quotient
-  // and remainder kept and stepped by a row's share, signed as x1 - x0
+  std::int32_t x0, y0, x1, y1; // sample space, 16.16, y0 < y1
+  std::int32_t direction;      // +1 drawn downwards, -1 upwards
+};
+
+// An edge the rows have reached: where it crosses the current row's centre,
+// stepped a row at a time (no division a row; the DS's ARM9 has no divide
+// instruction): the crossing is x0 + |x1 - x0| x (centre - y0) / (y1 - y0),
+// its quotient and remainder kept and stepped by a row's share, signed as
+// x1 - x0
+struct ActiveEdge {
+  const Edge *edge;
   bool started = false;
   std::int64_t quotient = 0, remainder = 0, stepQuotient = 0, stepRemainder = 0;
 
   std::int64_t crossingAt(std::int64_t centre) {
-    const std::int64_t dx = x1 - x0, dy = y1 - y0, across = dx < 0 ? -dx : dx;
+    const Edge &e = *edge;
+    const std::int64_t dx = std::int64_t{e.x1} - e.x0, dy = std::int64_t{e.y1} - e.y0,
+                       across = dx < 0 ? -dx : dx;
     if (!started) {
       started = true;
       // (on the DS's hardware divider: Flex::Math's IntegerDivide.hpp)
-      const auto start = Flex::Math::divide64(across * (centre - y0), dy);
+      const auto start = Flex::Math::divide64(across * (centre - e.y0), dy);
       quotient = start.quotient;
       remainder = start.remainder;
       const auto step = Flex::Math::divide64(across << 16, dy); // (rows are 1 << 16 apart)
@@ -72,7 +84,7 @@ struct Edge {
       }
     }
     // (the same as x0 + dx x (centre - y0) / dy, which rounds towards 0)
-    return x0 + (dx < 0 ? -quotient : quotient);
+    return e.x0 + (dx < 0 ? -quotient : quotient);
   }
 };
 
@@ -350,6 +362,8 @@ Colour Image::at(int x, int y) const {
 
 Image draw(const Recipe &recipe, int width, int height, Format format, std::string_view name,
            Smoothing smoothing, Rows rows) {
+  if (width <= 0 || height <= 0 || width > kMostPixels || height > kMostPixels)
+    return {};
   const bool rgba = format == Format::Rgba8;
   // The band drawn: its first row and how many (all of them for a palette)
   const int firstRow = rgba ? std::clamp(rows.first, 0, height) : 0;
@@ -380,34 +394,61 @@ Image draw(const Recipe &recipe, int width, int height, Format format, std::stri
   };
 
   std::vector<std::uint16_t> coverage(pixelCount);
+  // The band's rows' centres, in sample space (16.16): only edges reaching
+  // them are kept (a band is drawn to save memory, and a card's 1,360-point
+  // outline kept whole took more than the band itself; the DS stopped)
+  const std::int64_t bandTop = (std::int64_t{firstRow} * samples << 16) + (1 << 15);
+  const std::int64_t bandBottom = (std::int64_t{firstRow + bandRows} * samples << 16) - (1 << 15);
   std::vector<Edge> edges;
   std::vector<Crossing> crossings;
-  std::vector<Edge *> active;
-  std::vector<std::pair<std::int64_t, std::int64_t>> placed; // (a contour's points, sample space)
-  constexpr std::int64_t kQuarterSample = 1 << 14;           // (16.16)
-  for (const Fill &fill : recipe.fills) {
-    edges.clear();
+  std::vector<ActiveEdge> active;
+  constexpr std::int64_t kQuarterSample = 1 << 14; // (16.16)
+  // Each edge of a fill's outlines that reaches the band, to `use`. The
+  // points in sample space, each once, leaving out any within a quarter of
+  // a sample of the last one kept: detail finer than the picture can show,
+  // which only costs time (a number chip has 1,600 points, drawn 15 pixels
+  // across on the DS); each kept point ends an edge from the last, and the
+  // first closes the outline
+  const auto eachBandEdge = [&](const Fill &fill, auto &&use) {
     for (const std::vector<Point> &contour : fill.contours) {
-      // The contour's points in sample space, each once, leaving out any
-      // within a quarter of a sample of the last one kept: detail finer
-      // than the picture can show, which only costs time (a
-      // number chip has 1,600 points, drawn 15 pixels across on the DS)
-      placed.clear();
+      std::optional<std::pair<std::int64_t, std::int64_t>> first, last;
+      const auto edgeTo = [&](std::int64_t bx, std::int64_t by) {
+        const auto [ax, ay] = *last;
+        if (ay == by)
+          return; // flat: never crossed by a row's centre
+        const auto at = [](std::int64_t v) { return static_cast<std::int32_t>(v); };
+        const Edge edge = ay < by ? Edge{at(ax), at(ay), at(bx), at(by), 1}
+                                  : Edge{at(bx), at(by), at(ax), at(ay), -1};
+        if (edge.y1 > bandTop && edge.y0 <= bandBottom) // (it reaches the band)
+          use(edge);
+      };
       for (const Point &point : contour) {
         const std::int64_t x = sampleX(point.x), y = sampleY(point.y);
-        if (!placed.empty() && std::abs(x - placed.back().first) < kQuarterSample &&
-            std::abs(y - placed.back().second) < kQuarterSample)
+        if (last && std::abs(x - last->first) < kQuarterSample &&
+            std::abs(y - last->second) < kQuarterSample)
           continue;
-        placed.emplace_back(x, y);
+        if (last)
+          edgeTo(x, y);
+        else
+          first = {x, y};
+        last = {x, y};
       }
-      for (std::size_t i = 0; i < placed.size(); ++i) {
-        const auto [ax, ay] = placed[i];
-        const auto [bx, by] = placed[(i + 1) % placed.size()];
-        if (ay == by)
-          continue; // flat: never crossed by a row's centre
-        edges.push_back(ay < by ? Edge{ax, ay, bx, by, 1} : Edge{bx, by, ax, ay, -1});
-      }
+      if (first && last != first)
+        edgeTo(first->first, first->second);
     }
+  };
+  for (const Fill &fill : recipe.fills) {
+    // (counted, then kept: the list taken once, its size exact; grown by
+    // doubling, the old and the new were held at once. A bigger list than
+    // the last fill's: the last let go first)
+    std::size_t count = 0;
+    eachBandEdge(fill, [&](const Edge &) { ++count; });
+    edges.clear();
+    if (count > edges.capacity()) {
+      edges = {};
+      edges.reserve(count);
+    }
+    eachBandEdge(fill, [&](const Edge &edge) { edges.push_back(edge); });
     std::fill(coverage.begin(), coverage.end(), 0);
     // Only the edges spanning a row are looked at (an active edge list,
     // Foley et al. 3.6; a recipe has 1,500 points or more, and
@@ -422,11 +463,11 @@ Image draw(const Recipe &recipe, int width, int height, Format format, std::stri
       const std::int64_t centre = (std::int64_t{row} << 16) + (1 << 15);
       for (; nextEdge < edges.size() && edges[nextEdge].y0 <= centre; ++nextEdge)
         if (centre < edges[nextEdge].y1) // (one between two rows' centres is never crossed)
-          active.push_back(&edges[nextEdge]);
-      std::erase_if(active, [centre](const Edge *e) { return centre >= e->y1; });
+          active.push_back({&edges[nextEdge]});
+      std::erase_if(active, [centre](const ActiveEdge &e) { return centre >= e.edge->y1; });
       crossings.clear();
-      for (Edge *e : active)
-        crossings.push_back({e->crossingAt(centre), e->direction});
+      for (ActiveEdge &e : active)
+        crossings.push_back({e.crossingAt(centre), e.edge->direction});
       std::sort(crossings.begin(), crossings.end(),
                 [](const Crossing &a, const Crossing &b) { return a.x < b.x; });
       int winding = 0;

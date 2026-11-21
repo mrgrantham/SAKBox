@@ -4,7 +4,9 @@
 #include <CosmicHex/Handheld/BoardPicture.hpp>
 #include <CosmicHex/Handheld/BoardPieces.hpp>
 #include <CosmicHex/Handheld/PlatformProfile.hpp>
+#include <CosmicHex/Handheld/RecipePixels.hpp>
 #include <GameBots/Bots.hpp>
+#include <ScratchPadd/TextureRecipe/TextureRecipe.hpp>
 #include <SeededRandom/Generator.hpp>
 
 #include <ScratchPadd/MemoryStats.hpp>
@@ -384,8 +386,9 @@ TEST(BoardPictureTest, ZoomedInItStaysWithinItsMemory) {
     }
   };
   // (its pieces' lists, and drawing a face from its recipe for a moment:
-  // 48 KB measured, on a desktop)
-  constexpr std::size_t kForItsPieces = 56 * 1024;
+  // 48 KB measured on a desktop, most of it the recipe's outlines, before
+  // they were made small; 1 KB since)
+  constexpr std::size_t kForItsPieces = 16 * 1024;
   BoardPicture ds(256, 192, kDsProfile.recipeSmoothing);
   ds.setZoomBudget(kDsProfile.boardZoomBytes);
   ds.draw(state); // (the whole board's faces, kept: before the budget)
@@ -393,12 +396,47 @@ TEST(BoardPictureTest, ZoomedInItStaysWithinItsMemory) {
     ScratchPadd::MemoryStats::HeapBudget budget(kDsProfile.boardZoomBytes + kForItsPieces);
     EXPECT_NO_THROW(panAround(ds));
   }
-  // (and the heap budget catches it: with half the memory it runs out)
+  // (and the heap budget catches it: with a quarter of the memory it runs out)
   BoardPicture again(256, 192, kDsProfile.recipeSmoothing);
   again.setZoomBudget(kDsProfile.boardZoomBytes);
   again.draw(state);
   {
-    ScratchPadd::MemoryStats::HeapBudget budget((kDsProfile.boardZoomBytes + kForItsPieces) / 2);
+    ScratchPadd::MemoryStats::HeapBudget budget((kDsProfile.boardZoomBytes + kForItsPieces) / 4);
     EXPECT_THROW(panAround(again), std::bad_alloc);
+  }
+}
+
+// Close-ups drawn a band at a time, as the DS draws them (PictureSlot), each
+// band within a small share of the heap: a card's band, its outlines all
+// kept as it was drawn, asked the DS for 147 KB in one piece while zoomed
+// in, and the DS stopped
+TEST(BoardPictureTest, CloseUpBandsStayWithinTheirMemory) {
+  ASSERT_TRUE(ScratchPadd::MemoryStats::linked());
+  constexpr std::size_t kBandBudget = 40 * 1024;
+  const int size = kDsProfile.closeUpSize, rows = kDsProfile.closeUpBandRows;
+  const auto bandsFit = [&](std::string_view text, int width, int height) {
+    const auto recipe = ScratchPadd::TextureRecipe::read(text);
+    if (!recipe)
+      return false;
+    for (int first = 0; first < height; first += rows) {
+      try {
+        ScratchPadd::MemoryStats::HeapBudget budget(kBandBudget);
+        if (recipePixels(*recipe, width, height, kDsProfile.recipeSmoothing, {first, rows}).empty())
+          return false;
+      } catch (const std::bad_alloc &) {
+        return false;
+      }
+    }
+    return true;
+  };
+  for (int f = 0; f < CosmicHex::Art::kFaces; ++f) {
+    EXPECT_TRUE(
+        bandsFit(CosmicHex::Art::recipeOf(static_cast<CosmicHex::Art::Face>(f)), size, size))
+        << "face " << f;
+  }
+  for (int c = 0; c < CosmicHex::Art::kCards; ++c) {
+    EXPECT_TRUE(bandsFit(CosmicHex::Art::cardRecipeOf(static_cast<CosmicHex::Art::Card>(c)), size,
+                         size * 88 / 63))
+        << "card " << c;
   }
 }
