@@ -72,6 +72,12 @@ inline void run() {
   State middle = fresh;
   for (int i = 0; i < 120; ++i)
     step(middle, random, fresh);
+  // (then on to a player's real choice: the dealer's turns have no moves to
+  // list, and a single move isn't searched; either timed as zero)
+  for (int guard = 0; guard < 500 && (Game::currentPlayer(middle) == GameBots::kDealer ||
+                                      Game::legalActions(middle).size() < 2);
+       ++guard)
+    step(middle, random, fresh);
   // A copy of the state (each simulated game starts with one)
   {
     const Clock::time_point start = Clock::now();
