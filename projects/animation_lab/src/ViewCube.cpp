@@ -77,6 +77,25 @@ std::optional<ScreenPoint> ViewCube::faceMiddle(const OrbitView &view, ScreenPoi
   return onScreen(view, centre, half, vectorOf(normal));
 }
 
+ViewCube::FaceAxes ViewCube::faceAxes(const OrbitView &view, ScreenPoint centre, float half,
+                                      int face) {
+  std::array<float, 3> normal{};
+  normal[axisOf(face)] = static_cast<float>(signOf(face));
+  const Scene::Vector3 n = vectorOf(normal);
+  // (the side faces read upright under the world's up; the top and bottom
+  // read as they do seen from the front, tipped over)
+  const bool side = axisOf(face) != 1;
+  const Scene::Vector3 right = side ? Scene::Vector3{0, 1, 0}.cross(n) : Scene::Vector3{1, 0, 0};
+  const Scene::Vector3 down =
+      side ? Scene::Vector3{0, -1, 0} : Scene::Vector3{0, 0, static_cast<float>(signOf(face))};
+  // (a direction's length on the screen: the orthographic view's x and y)
+  const auto across = [&](const Scene::Vector3 &d) {
+    const Scene::Vector3 seen = view.inView(d);
+    return ScreenPoint{seen.x * half, -seen.y * half};
+  };
+  return {onScreen(view, centre, half, n), across(right), across(down)};
+}
+
 std::optional<ViewCube::Way> ViewCube::pick(const std::vector<Cell> &cells, ScreenPoint at) {
   for (const Cell &cell : cells) {
     // (inside a convex quad: on the same side of all four of its sides)

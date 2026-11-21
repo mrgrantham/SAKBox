@@ -56,6 +56,15 @@ public:
   // Where a face's name goes (its middle), and whether it faces you
   static std::optional<ScreenPoint> faceMiddle(const OrbitView &view, ScreenPoint centre,
                                                float half, int face);
+  // A face's own directions on the screen, for writing its name on it in
+  // 3D: its middle, and how far across the screen one of the cube's units
+  // goes along the face's right and its down (as you'd read it, upright:
+  // the side faces' up is the world's; the top's down is toward the front,
+  // the bottom's toward the back)
+  struct FaceAxes {
+    ScreenPoint middle, right, down;
+  };
+  static FaceAxes faceAxes(const OrbitView &view, ScreenPoint centre, float half, int face);
   // The cell under `at`, if any
   static std::optional<Way> pick(const std::vector<Cell> &cells, ScreenPoint at);
 

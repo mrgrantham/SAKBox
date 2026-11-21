@@ -22,13 +22,15 @@ namespace AnimationLab {
 namespace {
 
 // Sizes (points)
-constexpr float kCubeHalf = 34;     // (the cube's middle to a face)
-constexpr float kFaceNameSize = 11; // (the faces' names: smaller than the window's text)
-constexpr float kAxesRadius = 36;   // (the gizmo's arms)
-constexpr float kBallRadius = 9;    // (its balls)
-constexpr float kCornerInset = 85;  // (the widget's middle from the view's top-right corner)
-constexpr float kDragStart = 3;     // (a press moving this far is a drag, not a click)
-constexpr float kStripInset = 70;   // (the strip's ends from the view's sides)
+constexpr float kCubeHalf = 34; // (the cube's middle to a face)
+// The faces' names: drawn at this size, then laid onto the face at most
+// this wide and high (in the cube's units: a face is 2 across)
+constexpr float kFaceNameSize = 26, kFaceNameWide = 1.3f, kFaceNameHigh = 0.5f;
+constexpr float kAxesRadius = 36;  // (the gizmo's arms)
+constexpr float kBallRadius = 9;   // (its balls)
+constexpr float kCornerInset = 85; // (the widget's middle from the view's top-right corner)
+constexpr float kDragStart = 3;    // (a press moving this far is a drag, not a click)
+constexpr float kStripInset = 70;  // (the strip's ends from the view's sides)
 constexpr float kStripFromBottom = 22;
 constexpr float kStripHalfHigh = 7;
 constexpr float kButtonRadius = 9; // (back and forward, at the strip's ends)
@@ -72,6 +74,43 @@ void textCentred(ImDrawList *draw, ScreenPoint at, const char *text, ImU32 colou
     fontSize = ImGui::GetFontSize();
   const ImVec2 size = font->CalcTextSizeA(fontSize, 1e6f, 0, text);
   draw->AddText(font, fontSize, {at.x - size.x / 2, at.y - size.y / 2}, colour, text);
+}
+
+// One letter centred on `at` by its own outline (its glyph's box), not its
+// line's: a capital sits in the middle of a ball, not above it
+void letterCentred(ImDrawList *draw, ScreenPoint at, char letter, ImU32 colour) {
+  ImFont *font = ImGui::GetFont();
+  const float size = ImGui::GetFontSize();
+  const ImFontGlyph *glyph = ImGui::GetFontBaked()->FindGlyph(static_cast<ImWchar>(letter));
+  const char text[2] = {letter, 0};
+  if (!glyph) {
+    textCentred(draw, at, text, colour);
+    return;
+  }
+  draw->AddText(font, size,
+                {at.x - (glyph->X0 + glyph->X1) / 2, at.y - (glyph->Y0 + glyph->Y1) / 2}, colour,
+                text);
+}
+
+// A face's name written onto it in 3D: drawn flat, then each of its
+// vertices moved onto the face (the view is orthographic, so a face is a
+// flat, sheared copy of the text: a 2 x 2 map does it). It's drawn round
+// the face's middle, on the screen: ImGui leaves out letters drawn outside
+// the window, as they would be about (0, 0)
+void nameOnFace(ImDrawList *draw, const ViewCube::FaceAxes &face, const char *name, ImU32 colour) {
+  ImFont *font = ImGui::GetFont();
+  const ImVec2 size = font->CalcTextSizeA(kFaceNameSize, 1e6f, 0, name);
+  // (cube units a text pixel: as wide as allowed, unless that's too high)
+  const float scale = std::min(kFaceNameWide / size.x, kFaceNameHigh / size.y);
+  const int first = draw->VtxBuffer.Size;
+  const ImVec2 origin{face.middle.x - size.x / 2, face.middle.y - size.y / 2};
+  draw->AddText(font, kFaceNameSize, origin, colour, name);
+  for (int i = first; i < draw->VtxBuffer.Size; ++i) {
+    ImVec2 &p = draw->VtxBuffer[i].pos;
+    const float x = (p.x - face.middle.x) * scale, y = (p.y - face.middle.y) * scale;
+    p = {face.middle.x + face.right.x * x + face.down.x * y,
+         face.middle.y + face.right.y * x + face.down.y * y};
+  }
 }
 
 } // namespace
@@ -153,10 +192,9 @@ bool LabWindowPadd::navigateCube(const float area[4]) {
                                im(cells[i + 8].corners[2]), im(cells[i + 2].corners[3])};
     draw->AddPolyline(outline, 4, IM_COL32(20, 22, 28, 200), ImDrawFlags_Closed, 1.5f);
     const int face = cells[i].face;
-    if (cells[i].facing > 0.35f) // (names only on faces turned enough to read)
-      if (const auto middle = ViewCube::faceMiddle(view_, centre, kCubeHalf, face))
-        textCentred(draw, *middle, ViewCube::kFaceNames[static_cast<std::size_t>(face)], kText,
-                    kFaceNameSize);
+    if (cells[i].facing > 0.15f) // (edge-on, a name would be a smear)
+      nameOnFace(draw, ViewCube::faceAxes(view_, centre, kCubeHalf, face),
+                 ViewCube::kFaceNames[static_cast<std::size_t>(face)], kText);
   }
 
   // The home button: a little house
@@ -203,13 +241,13 @@ bool LabWindowPadd::navigateAxes(const float area[4]) {
   // hollow
   if (over || cornerPress_)
     draw->AddCircleFilled(im(centre), kAxesRadius + kBallRadius + 2, IM_COL32(255, 255, 255, 30));
-  const char *names[3] = {"X", "Y", "Z"};
+  const char names[3] = {'X', 'Y', 'Z'};
   for (const auto &ball : balls) {
     const bool lit = hovered && hovered->axis == ball.axis && hovered->sign == ball.sign;
     if (ball.sign > 0) {
       draw->AddLine(im(centre), im(ball.at), axisColour(ball.axis), 2.5f);
       draw->AddCircleFilled(im(ball.at), kBallRadius, axisColour(ball.axis));
-      textCentred(draw, ball.at, names[ball.axis], IM_COL32(255, 255, 255, 255));
+      letterCentred(draw, ball.at, names[ball.axis], IM_COL32(255, 255, 255, 255));
     } else {
       draw->AddLine(im(centre), im(ball.at), axisColour(ball.axis, 110), 1);
       draw->AddCircleFilled(im(ball.at), kBallRadius - 1, IM_COL32(30, 32, 40, 200));

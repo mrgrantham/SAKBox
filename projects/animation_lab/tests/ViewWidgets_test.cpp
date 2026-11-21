@@ -45,6 +45,27 @@ TEST(ViewCubeTest, AtAnAngleThreeFacesShow) {
     EXPECT_FALSE(cell.way[0] == 0 && cell.way[1] == 0 && cell.way[2] == 0);
 }
 
+// A face's name is written on it in 3D: square on to the front, its right
+// is the screen's right and its down the screen's down, a unit of the cube
+// `half` pixels; from the right, the right face's right is the screen's;
+// the top seen from straight above reads with the front at the bottom
+TEST(ViewCubeTest, FaceNamesLieOnTheirFaces) {
+  OrbitView view;
+  view.pose = view.looking(OrbitView::Side::Front);
+  const auto front = ViewCube::faceAxes(view, kCentre, kHalf, 4);
+  EXPECT_NEAR(front.middle.x, kCentre.x, 1e-3f);
+  EXPECT_NEAR(front.right.x, kHalf, 1e-3f);
+  EXPECT_NEAR(front.right.y, 0, 1e-3f);
+  EXPECT_NEAR(front.down.y, kHalf, 1e-3f);
+  view.pose = view.looking(OrbitView::Side::Right);
+  const auto right = ViewCube::faceAxes(view, kCentre, kHalf, 0);
+  EXPECT_NEAR(right.right.x, kHalf, 1e-3f);
+  view.pose = view.looking(OrbitView::Side::Top);
+  const auto top = ViewCube::faceAxes(view, kCentre, kHalf, 2);
+  EXPECT_NEAR(top.right.x, kHalf, 1e-2f);
+  EXPECT_NEAR(top.down.y, kHalf, 1e-2f); // (toward the front: down the screen)
+}
+
 // Clicking a cell and facing its way looks from there: picking the
 // front-right edge turns the view to 45 degrees between them
 TEST(ViewCubeTest, ACellsWayIsItsView) {
