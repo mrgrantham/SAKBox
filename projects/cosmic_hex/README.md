@@ -206,7 +206,7 @@ The top screen shows the chosen board from straight above, lit flat like the map
    - the number slides up into place under the name and settles (clipped to a window, `Overlay::clipText`);
    - those tied throw again in a fresh glass;
    - then each player hops into their place in the order (a wind-up, a hop, an overshoot, one after another; those already in their place hop where they are, so the order is always shown), 1st to 4th under them.
-4. **The start's placing:** in turn order each player chooses a home not yet taken and puts their home colony on one of its corners; then, back again, their ship on a corner in open space. On your turn the places are marked, a touch shows the piece there, and End Turn (or A) places it (B, or touching it again, takes it back).
+4. **The start's placing:** in turn order each player chooses a home not yet taken and puts their home colony on one of its corners; then, back again, their ship on a corner in open space. On your turn the places are marked, a touch shows the piece there, and Confirm (or A) places it (B, or touching it again, takes it back).
 
 ### Playing a turn
 
@@ -219,14 +219,17 @@ The bottom screen (`BottomScreen`) is the board with its buttons (`BoardButtons`
 | Build | top right | The build screen: each row buildable, or red with why (`BuildMenu`, from the rules' own legal moves) |
 | Trade | top right | The trade room ([below](#trading)) |
 | Cards | top right | Your action cards and Charters, what each does and why one can't be used now (`CardChoices`): Play plays one, Reveal shows a Charter |
-| Roll | bottom left | Throws the dice |
-| End turn | bottom right | Ends the turn |
+| Roll | bottom left | Throws the dice; once thrown it fades away as End Turn fades in in its place |
+| End turn | bottom left | Ends the turn: an arrow round to itself, in its own colour |
+| Confirm | bottom right | While placing (the start's pieces, a build, a ship's move): the green check puts down what you've chosen, as A does. Kept apart from End Turn, so a double tap can't end your turn |
 
 On the board:
 
-- **Touch a corner** to select it (a small ring on both screens; the hex, outlined, when moving the blockade). A touch picks the corner nearest it.
+- **Touch a corner** to select it: the pointer goes there (the hex, outlined, when moving the blockade); touching the same place again puts the pointer away. A touch picks the corner nearest it. The game's camera follows it, sliding the board to centre the corner without zooming (`CameraFollow`), and back when nothing's chosen.
 - **The board's pointer** (`CornerPointer`): a white chevron, turning and bobbing over the corner in focus on the top screen. It fades in gently when the game wants you to choose on the board (placing at the start, where a build goes, a ship's moves) and fades away while pieces move, banners and shows play and turns end; it glides from corner to corner as the focus moves. It points at the ship touched, else what you've touched, else the place nearest the board's middle.
-- **Move a ship:** touch it, and the pointer goes over it, and where it can go is marked on both screens, the moves that take a fuel told apart (orange rings on the top screen, outlined squares on the map; the rest highlight-coloured rings and filled dots). Touch a marked corner to move it. After the roll the turn's offers to players are open (the trading phase), and a ship can still be moved: choosing where ends the offers first, as building does. A ship that can't move says why (roll first, or it has moved this turn).
+  - **It taps what you choose:** a small lift first, a quick drop onto whatever stands on the corner (a ship, a station, or the board itself), the dust a new building raises where it touches, and a settle back up (`CornerPointer::tap`).
+  - **On the flat map** it's a still, flat chevron over the same corner (`BoardPicture::Marks::pointer`).
+- **Move a ship:** touch it, and the pointer goes over it, and where it can go is marked on both screens, the moves that take a fuel told apart (orange rings on the top screen, outlined squares on the map; the rest highlight-coloured rings and filled dots). Touch a marked corner to choose it (again to put it down), then Confirm or A to move it there; touch anywhere else and the ship is put down and the pointer goes there. After the roll the turn's offers to players are open (the trading phase), and a ship can still be moved: choosing where ends the offers first, as building does. A ship that can't move says why (roll first, or it has moved this turn).
 - **Drag** to move the board when zoomed in; **X held with R and L** zooms in and out (L and R alone are left and right on a choosing screen).
 - **B** takes whatever is animating straight to its end ([Animation](#animation)).
 
@@ -268,7 +271,8 @@ Each tile shows its face, and a turned-over planet its number on a round chip ([
 **Another player's panel** (`OtherPlayers`): points, cards face down, badges, ships, stations and colonies (drawn as the board's pieces), the planets their stations touch with their numbers, revealed Charters.
 
 - **Opening and closing:** it slides down and back up (0.45 s, the Gentle curve); on a DS the board under it holds frames near 20 a second while it moves, and once it covers the screen the board isn't drawn.
-- **Another player:** chosen with the tabs, or left and right (whoever's turn it is: a screen to look at takes the D-pad any time), the last one lifts away and the next comes down (0.3 s; `PanelShow::drawn`).
+- **Another player:** chosen with the tabs, or left and right (whoever's turn it is: a screen to look at takes the D-pad any time), the views slide sideways like a carousel, the next player's in from the right and the one before from the left (0.3 s, slow in and out; `PanelShow::drawn`).
+- **Badges:** the ones held (0 to 2); every 3 become a point at once, counted in the points.
 - **Paused while open:** Show resources and this panel hold the game, and a grey PAUSED tag at the top says so ("close to go on").
 
 ### Animation
@@ -451,7 +455,7 @@ It throws them many times and checks each face comes up a sixth of the time and 
 | Files | What they are |
 | --- | --- |
 | `art/*.svg` | The tiles' faces |
-| `art/make_number_chips.py` | Writes the number chips' SVGs: a planet's number on a round chip, with a dot for each way two dice make it |
+| `art/make_number_chips.py` | Writes the number chips' SVGs: a planet's number on a round chip, with a dot for each way two dice make it (big enough to stay apart on a DS's small chip; close up, the top screen draws the dots sharp over it) |
 | `art/icons/*.svg` | The board screen's button icons |
 | `art/cards/*.svg` | The cards' drawings |
 | `art/cards/back_rings.svg`, `back_planets.svg` | The cards' backs: rings of hexagons for action cards, the six kinds of planet on a starfield for resource cards |
