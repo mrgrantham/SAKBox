@@ -45,6 +45,7 @@
 #include <CosmicHex/Handheld/ScreenFlow.hpp>
 #include <CosmicHex/Handheld/TopShows.hpp>
 #include <CosmicHex/Handheld/TopViews.hpp>
+#include <CosmicHex/Handheld/TradeArrival.hpp>
 #include <CosmicHex/Handheld/WinCelebration.hpp>
 #include <ScratchPadd/Banner/Banner.hpp>
 #include <ScratchPadd/Canvas/Canvas.hpp>
@@ -153,6 +154,7 @@ private:
   void startShows(const TableSnapshot &snapshot);
   void showGains(const TableSnapshot &snapshot);
   void followOnTouchPanel(const TableSnapshot &snapshot);
+  void announceTradeAnswer();
   void apply(const ScreenFlow::Step &step);
   void startGame();
   void startPlacingBanner(const State &state);
@@ -227,6 +229,8 @@ private:
   std::optional<std::span<const Scene::Colour>> drawTouchPicture(bool &showingMap);
   void drawMapWithButtons();
   void presentTouchPanel(std::span<const Scene::Colour> drawn, bool showingMap);
+  bool tradeArriving() const;
+  void presentTradeArriving(std::span<const Scene::Colour> trade);
 
   // The stage: its display and renderer, and what it draws with
   std::optional<Scene::Display> display_;
@@ -303,6 +307,9 @@ private:
   std::optional<Pickers::ResourceChoice> bannerFor_; // (the choice its banner was for)
   // (the start's placing: its banner waits for the starting hands' deal)
   bool placingBannerAfterDeal_ = false;
+  // An offer to you (or a counter to yours) arriving: its banner, then the
+  // trade screen coming down the touch panel (on the banner's clock)
+  TradeArrival tradeArrival_;
   // The info views (Show resources): which is shown, since when, and
   // whether it holds the game; the cards' pictures for them
   BottomScreen::Info shownInfo_ = BottomScreen::Info::None;

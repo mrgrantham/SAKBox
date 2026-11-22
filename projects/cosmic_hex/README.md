@@ -268,7 +268,11 @@ The trade room (`TradeRoom`):
 - your cards to give and get (a touch adds one, a minus takes one back), your own on the lower row, as a hand is held;
 - the deal in words, and why not;
 - Trade with the bank (ending the turn's offers to players first), or Offer to a player;
-- an offer to you, or a counter to yours, opens it by itself, with Accept and Decline, a counter's changes in amber.
+- an offer to you, or a counter to yours, opens it by itself, with Accept and Decline, a counter's changes in amber;
+- its arrival is announced: a banner on the top screen in the offering player's colour ("VEGA OFFERS A TRADE", or "VEGA COUNTERS", with the deal: "2 Fuel for your 1 Water"), as the turn banners look; the trade screen slides down over the board once the banner's words have settled, and is in place before they leave (`TradeArrival`);
+- B skips the banner and puts the screen in place at once; Quick runs both twice as fast; with Animations Off there's no banner and the screen is there at once; a touch or key while the screen is still coming puts it in place and does nothing else (nothing on it is pressed unseen);
+- an offer to you can be countered (Counter, in Back's place; touch only): the trade room's own cards, headed "Your counter to Vega", start from the offer turned round, Counter sends it and Back returns to the offer; the offerer then accepts or declines (the rules allow one counter an offer, and a counter to yours can only be accepted or declined);
+- a bot may counter your offer when it won't take it as it is (one of what it's short of for one of what it can spare: `counterOffer`); bots never counter each other, so the simulations play as measured.
 
 Choices are marked in the palette's highlight colour.
 
@@ -325,7 +329,7 @@ Words over a card or tile (its name, a token's number, a card's words) wait for 
 
 Pictures shown big for a moment (a discovered tile, both its back as it flies up face down and its face, the cards dealt, played or paid) are drawn again at `PlatformProfile::closeUpSize` (128 on both consoles) just before they're shown, while nothing moves, into textures kept for them. On a DS they're drawn 16 rows at a time (`closeUpBandRows`), as a picture drawn whole needs more main memory than a game has free.
 
-Moves animate and the dice roll on the game's own clock (ScratchPadd's `GameClock`), which stops while a watched game is paused; the shows run on a clock of their own at the Animations setting's pace. B (Back) takes whatever is animating (the dice, who goes first, pieces moving, the turn's banner, a turned-over tile, a pay, the cards dealt coming in) straight to its end.
+Moves animate and the dice roll on the game's own clock (ScratchPadd's `GameClock`), which stops while a watched game is paused; the shows run on a clock of their own at the Animations setting's pace. B (Back) takes whatever is animating (the dice, who goes first, pieces moving, the turn's banner, the trade screen coming in, a turned-over tile, a pay, the cards dealt coming in) straight to its end.
 
 ### Settings
 

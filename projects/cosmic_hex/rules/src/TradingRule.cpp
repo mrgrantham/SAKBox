@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <numeric>
+#include <optional>
 
 namespace CosmicHex {
 
@@ -60,7 +61,38 @@ bool offeredAlready(const State &state, int give, int get) {
       [&](const std::array<int, 2> &made) { return made[0] == give && made[1] == get; });
 }
 
+// The kind there's most of
+int most(const Resources &r) {
+  return static_cast<int>(std::max_element(r.begin(), r.end()) - r.begin());
+}
+
 } // namespace
+
+// A counter to an offer `me` won't take as it is: one of what they're
+// shortest of for their next build (if the offerer holds one), for one of
+// what the offer asked of them (if they can spare it; else one of what
+// they hold most beyond the build); none if there's no such deal, or it's
+// the offer itself turned round
+std::optional<Action> counterOffer(const State &state, int me) {
+  const TradeNeeds needs = tradeNeedsOf(state, me);
+  if (!needs.wantsSomething)
+    return std::nullopt;
+  const auto want = static_cast<std::size_t>(most(needs.shortfall));
+  if (state.player[static_cast<std::size_t>(state.turn)].resources[want] == 0)
+    return std::nullopt;
+  const Resources asked = resourcesOf(state.offer.get);
+  auto give = static_cast<std::size_t>(most(asked));
+  if (needs.spare[give] == 0)
+    give = static_cast<std::size_t>(most(needs.spare));
+  if (needs.spare[give] == 0 || give == want)
+    return std::nullopt;
+  Resources gives{}, gets{};
+  gives[give] = 1;
+  gets[want] = 1;
+  if (bundleOf(gives) == state.offer.get && bundleOf(gets) == state.offer.give)
+    return std::nullopt;
+  return Action{Kind::CounterTrade, bundleOf(gives), bundleOf(gets)};
+}
 
 TradeNeeds tradeNeedsOf(const State &state, int player) {
   const Settings &settings = state.settings;
@@ -90,7 +122,7 @@ TradeNeeds tradeNeedsOf(const State &state, int player) {
   return needs;
 }
 
-Action tradingRuleMove(const State &state) {
+Action tradingRuleMove(const State &state, bool mayCounter) {
   const int me = Game::currentPlayer(state);
   switch (state.phase) {
   case Phase::Trading: {
@@ -98,9 +130,6 @@ Action tradingRuleMove(const State &state) {
     if (!needs.wantsSomething)
       return {Kind::EndTrading};
     // What they're shortest of, and what they hold most beyond the build
-    const auto most = [](const Resources &r) {
-      return static_cast<int>(std::max_element(r.begin(), r.end()) - r.begin());
-    };
     const int want = most(needs.shortfall), spare = most(needs.spare);
     for (int giving = 1; giving <= 2; ++giving) {
       if (needs.spare[static_cast<std::size_t>(spare)] < giving)
@@ -116,10 +145,14 @@ Action tradingRuleMove(const State &state) {
   }
   case Phase::TradeReply: {
     // They'd get the offerer's give, and give the offerer's get
-    const bool take =
-        !nearlyWon(state, state.turn) &&
-        worthIt(state, me, resourcesOf(state.offer.give), resourcesOf(state.offer.get));
-    return {take ? Kind::AcceptTrade : Kind::DeclineTrade};
+    if (nearlyWon(state, state.turn))
+      return {Kind::DeclineTrade};
+    if (worthIt(state, me, resourcesOf(state.offer.give), resourcesOf(state.offer.get)))
+      return {Kind::AcceptTrade};
+    if (mayCounter)
+      if (const std::optional<Action> counter = counterOffer(state, me))
+        return *counter;
+    return {Kind::DeclineTrade};
   }
   case Phase::TradeCounter: {
     // (the offerer, answering a person's counter: they'd get its give)

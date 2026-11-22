@@ -292,8 +292,9 @@ void ScreenPadd::paceAnimations() {
 }
 
 // Whether something is animating that B (Back) can skip to its end: the
-// dice, who goes first, the board's pieces moving, the turn's banner, a
-// tile turned over, a home's or a roll's pay, the cards dealt coming in
+// dice, who goes first, the board's pieces moving, the turn's banner, the
+// trade screen coming in, a tile turned over, a home's or a roll's pay,
+// the cards dealt coming in
 bool ScreenPadd::skippable() const {
   if (flow_.screen() != ScreenFlow::Screen::Game || !latest_)
     return false;
@@ -301,7 +302,8 @@ bool ScreenPadd::skippable() const {
     return true;
   if (gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving)
     return true;
-  if (banner_.moving(gameClock_.seconds())) // (not a prompt waiting for you)
+  if (banner_.moving(gameClock_.seconds()) || // (not a prompt waiting for you)
+      tradeArrival_.moving(gameClock_.seconds()))
     return true;
   const double t = showsNow();
   const bool dealing =
@@ -326,6 +328,7 @@ void ScreenPadd::skipAnimations() {
   // The board's pieces where they were going, the turn's banner gone
   motionStarted_ = std::min(motionStarted_, gameClock_.seconds() - kSecondsBoardMoving);
   banner_.hurry(gameClock_.seconds()); // (a prompt waiting for you stays)
+  tradeArrival_.skip();                // (the trade screen in place)
   roll_.skip(gameClock_.seconds());
 }
 

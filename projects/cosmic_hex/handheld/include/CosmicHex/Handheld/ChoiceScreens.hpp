@@ -132,10 +132,13 @@ std::optional<Touch> othersTouch(int width, const std::vector<PlayerView> &other
 // minus under it takes one back; "of 4" is what you hold), the cards to get
 // below, Back, the deal in words, and Trade (the bank) or Offer (a
 // player) when it can be made. Answering an offer: what they give and
-// want, a counter's changes outlined in amber, Decline and Accept
+// want, a counter's changes outlined in amber, Decline and Accept, and
+// Counter (in Back's place) for an offer to you. Countering: the same
+// screen as an offer, headed with whose offer, no tabs, its go button
+// Counter
 void drawTrade(Canvas &canvas, const TradeRoom &room, CardSprites &cards, const Press &press = {});
 struct TradeTouch {
-  enum class What { Partner, Add, Remove, Back, Confirm, Decline } what;
+  enum class What { Partner, Add, Remove, Back, Confirm, Decline, Counter } what;
   int partner = 0;                              // (Partner)
   TradeRoom::Side side = TradeRoom::Side::Give; // (Add, Remove)
   Resource resource = Resource::Minerals;       // (Add, Remove)

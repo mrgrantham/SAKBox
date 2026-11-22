@@ -28,6 +28,7 @@ void ScreenPadd::onSnapshot(const TableSnapshot &snapshot) {
   ++snapshots_; // (the stage has something new to show)
   touchDirty_ = true;
   followOnTouchPanel(snapshot);
+  announceTradeAnswer();
   // Someone won: their ships fly round above the board, then the
   // title again, with who (ScreenFlow's Won)
   if (snapshot.state.winner >= 0 && !celebration_ && flow_.screen() == ScreenFlow::Screen::Game)
@@ -145,6 +146,19 @@ void ScreenPadd::followOnTouchPanel(const TableSnapshot &snapshot) {
       send(PlayMove{*next});
       latest_->yourMove = false;
     }
+}
+
+// An offer to you, or a counter to yours, just arrived (the user's: it
+// used to just appear): a banner says who offers, in their colour, with the
+// deal, and the trade screen comes down the touch panel once its words have
+// settled (TradeArrival; presentTradeArriving)
+void ScreenPadd::announceTradeAnswer() {
+  if (!bottomScreen_)
+    return;
+  const TradeRoom &room = bottomScreen_->trade();
+  if (tradeArrival_.saw(room.answering(), gameClock_.seconds()))
+    banner_.start(gameClock_.seconds(), room.headline(), room.offerWords(),
+                  BoardColours::ofPlayer(room.from()));
 }
 
 // What a step of the flow asks for: stop the game, start one (as the setup

@@ -77,6 +77,10 @@ Buttons::Button goButton(int width, std::string_view words, bool ready = true) {
           .face = ready ? std::optional(kConfirm) : std::nullopt,
           .edge = ready ? std::optional(kConfirmEdge) : std::nullopt};
 }
+// (in Back's place: an offer to you has no Back, being yours to answer)
+Buttons::Button counterButton(int width) {
+  return {.id = idOf(ActionButton::Back), .area = areaOf(backBox(width)), .label = "Counter"};
+}
 Buttons::Button declineButton(int width) {
   return {.id = idOf(ActionButton::Decline),
           .area = areaOf(declineBox(width)),
@@ -541,16 +545,19 @@ void drawTrade(Canvas &canvas, const TradeRoom &room, CardSprites &cards, const 
   const float k = scaleOf(canvas);
   canvas.clear(kBackground);
   const int width = canvas.width();
-  const bool answering = room.answering();
-  if (!answering)
+  const bool answering = room.showingOffer();
+  if (room.countering())
+    canvas.textCentred(static_cast<float>(width) / 2, 11 * k,
+                       "Your counter to " + room.names()[room.from()], kChosen);
+  else if (!answering)
     tradeTabs(width, room)
         .draw(canvas,
               {.face = kRow, .edge = kEdge, .words = kWords, .labelScale = 1, .dimmed = 0.45f});
   else
     canvas.textCentred(static_cast<float>(width) / 2, 11 * k,
-                       room.names()[room.from()] + (room.changed().empty()
-                                                        ? " offers you a trade"
-                                                        : " answers with a counter"),
+                       room.names()[room.from()] + (room.counterToYours()
+                                                        ? " answers with a counter"
+                                                        : " offers you a trade"),
                        kChosen);
   // (each card's minus, a small button under it, gathered as the rows are
   // drawn and drawn together after them)
@@ -588,6 +595,8 @@ void drawTrade(Canvas &canvas, const TradeRoom &room, CardSprites &cards, const 
     row(giveRow(width), room.theyGive(), "THEY GIVE YOU", false, false);
     row(getRow(width), room.theyWant(), "THEY WANT FROM YOU", false, false);
     std::vector<Buttons::Button> actions{declineButton(width)};
+    if (room.canCounter())
+      actions.push_back(counterButton(width));
     if (room.accept())
       actions.push_back(goButton(width, "Accept"));
     else
@@ -609,21 +618,24 @@ void drawTrade(Canvas &canvas, const TradeRoom &room, CardSprites &cards, const 
   if (!why.empty())
     canvas.textCentred(static_cast<float>(width) / 2, 180 * k, why, kCannot);
   else
-    actions.push_back(goButton(width, bank ? "Trade" : "Offer"));
+    actions.push_back(goButton(width, bank ? "Trade" : room.countering() ? "Counter" : "Offer"));
   drawActions(canvas, std::move(actions), press);
 }
 
 std::optional<TradeTouch> tradeTouch(int width, const TradeRoom &room, int x, int y) {
   using What = TradeTouch::What;
-  if (room.answering()) {
+  if (room.showingOffer()) {
     if (declineBox(width).contains(x, y))
       return TradeTouch{What::Decline};
     if (confirmBox(width).contains(x, y))
       return TradeTouch{What::Confirm};
+    if (room.canCounter() && backBox(width).contains(x, y))
+      return TradeTouch{What::Counter};
     return std::nullopt;
   }
-  if (const std::optional<int> partner = tradeTabs(width, room).at(x, y))
-    return TradeTouch{What::Partner, *partner};
+  if (!room.countering())
+    if (const std::optional<int> partner = tradeTabs(width, room).at(x, y))
+      return TradeTouch{What::Partner, *partner};
   if (backBox(width).contains(x, y))
     return TradeTouch{What::Back};
   if (confirmBox(width).contains(x, y))

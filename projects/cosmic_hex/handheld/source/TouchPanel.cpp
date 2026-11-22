@@ -126,6 +126,12 @@ void ScreenPadd::pressInGame(const Input::Edges &pressed, bool zooming, Input::B
   }
   if (!latest_ || !latest_->yourMove)
     return;
+  // (the trade screen still coming in: in place at once, as a tap does)
+  if (key && tradeArriving()) {
+    skipAnimations();
+    touchDirty_ = true;
+    return;
+  }
   if (bottomScreen_ && key) {
     const BottomScreen::Outcome outcome = bottomScreen_->press(*key);
     if (outcome.play) {
@@ -222,6 +228,13 @@ void ScreenPadd::handleTouch(const Input::Touch &touch) {
 // (its buttons, its choosing screens, a place for what's being built);
 // what it doesn't use selects a corner
 void ScreenPadd::tapBoard() {
+  // (the trade screen still coming in: in place at once, and the tap used
+  // for nothing else, so nothing on it is touched unseen)
+  if (tradeArriving()) {
+    skipAnimations();
+    touchDirty_ = true;
+    return;
+  }
   const auto spot = picture_->at(touchStart_[0], touchStart_[1]);
   const BottomScreen::Outcome outcome =
       bottomScreen_
@@ -359,6 +372,31 @@ void ScreenPadd::drawMapWithButtons() {
   bottomScreen_->drawOverBoard(board);
 }
 
+// Whether the trade screen is coming in over the board (an offer to you
+// arriving: TradeArrival), rather than shown as it is
+bool ScreenPadd::tradeArriving() const {
+  return !menus_.showing() && bottomScreen_ && bottomScreen_->mode() == BottomScreen::Mode::Trade &&
+         tradeArrival_.moving(gameClock_.seconds());
+}
+
+// The trade screen coming down over the board (the board as the screen
+// showed it, left there): nothing until the banner's words have settled,
+// then the screen's bottom rows at the top, more of it each frame (a slide
+// rather than a fade: it reads as coming from the banner above, stays
+// sharp throughout, and is a plain copy of rows on a DS, where a fade
+// mixes every pixel)
+void ScreenPadd::presentTradeArriving(std::span<const Scene::Colour> trade) {
+  touchDirty_ = true;      // (and again next frame, until it's in place)
+  screenShowsMap_ = false; // (the map shown again in full once it's gone)
+  const float down = tradeArrival_.down(gameClock_.seconds());
+  const int rows = static_cast<int>(down * static_cast<float>(kTouchHeight) + 0.5f);
+  if (rows > 0)
+    touchScreen_->present(kTouchWidth, kTouchHeight,
+                          trade.data() + static_cast<std::size_t>(kTouchHeight - rows) *
+                                             static_cast<std::size_t>(kTouchWidth),
+                          0, rows);
+}
+
 // The touch panel's picture to the bottom screen (a column at a time on a
 // 3DS, whose screen is turned on its side). Fading from the menu to the
 // map as the board comes down: the setup menu's picture (not drawn again
@@ -366,6 +404,10 @@ void ScreenPadd::drawMapWithButtons() {
 // (no floating point and no buffers of their own: the DS has neither the
 // hardware nor the memory); or the title fading in from black
 void ScreenPadd::presentTouchPanel(std::span<const Scene::Colour> drawn, bool showingMap) {
+  if (!showingMap && tradeArriving()) {
+    presentTradeArriving(drawn);
+    return;
+  }
   const float down = descent();
   std::optional<std::span<const Scene::Colour>> from;
   int weight = 256; // (of the map, out of 256)

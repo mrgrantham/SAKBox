@@ -10,11 +10,16 @@
 // left to make. Another player accepts an offer that brings their own next
 // build closer and costs only what they hold beyond it, unless the
 // offerer's within two points of winning (Characteristics of Games: trading
-// in a game of three or more invites kingmaking). The bots don't make
-// counter-offers; they answer a person's by the same rule.
+// in a game of three or more invites kingmaking). An offer from a person
+// they won't take may get a counter-offer instead (one of what they're
+// short of for one of what they can spare: counterOffer); between bots
+// there are none, so the simulations play as measured. They answer a
+// person's counter-offer by the same rule as an offer.
 #pragma once
 
 #include <CosmicHex/Rules.hpp>
+
+#include <optional>
 
 namespace CosmicHex {
 
@@ -26,7 +31,15 @@ struct TradeNeeds {
 TradeNeeds tradeNeedsOf(const State &state, int player);
 
 // The bot's move in a trading step (Phase::Trading, TradeReply or
-// TradeCounter): an offer or the end of trading; accepting or declining
-Action tradingRuleMove(const State &state);
+// TradeCounter): an offer or the end of trading; accepting or declining,
+// or, answering an offer when `mayCounter` (TableGame: a person's), a
+// counter-offer
+Action tradingRuleMove(const State &state, bool mayCounter = false);
+
+// The answerer's counter to the offer in `state` (Phase::TradeReply), if
+// there's one they'd make: CounterTrade, one of what they're shortest of
+// for their next build (the offerer holding one) for one of what the offer
+// asked (else of what they hold most beyond the build)
+std::optional<Action> counterOffer(const State &state, int me);
 
 } // namespace CosmicHex

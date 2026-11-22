@@ -38,6 +38,7 @@ cc_library(
         "src/TableGame.cpp",
         "src/TopShows.cpp",
         "src/TopViews.cpp",
+        "src/TradeArrival.cpp",
         "src/TradeRoom.cpp",
         "src/WinCelebration.cpp",
     ],
@@ -77,6 +78,7 @@ cc_library(
         "include/CosmicHex/Handheld/TableGame.hpp",
         "include/CosmicHex/Handheld/TopShows.hpp",
         "include/CosmicHex/Handheld/TopViews.hpp",
+        "include/CosmicHex/Handheld/TradeArrival.hpp",
         "include/CosmicHex/Handheld/TradeRoom.hpp",
         "include/CosmicHex/Handheld/WinCelebration.hpp",
     ],
@@ -394,6 +396,19 @@ cc_test(
     srcs = ["tests/TradeRoom_test.cpp"],
     deps = [
         ":handheld",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "TradeArrival_test",
+    size = "small",
+    srcs = ["tests/TradeArrival_test.cpp"],
+    deps = [
+        ":handheld",
+        "//projects/scratchpadd/scene/desktop",  # (links a renderer; draws nothing)
+        "//projects/scratchpadd/scene/overlay_text",
+        "//projects/scratchpadd/utilities",  # (GameClock: Animations Quick)
         "@gtest//:gtest_main",
     ],
 )

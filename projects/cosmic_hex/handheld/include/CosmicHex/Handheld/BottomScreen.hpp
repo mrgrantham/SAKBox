@@ -216,7 +216,8 @@ private:
   void follow(const State &state, const std::vector<Action> &legal, bool yourMove,
               bool yourRollWaits);
   void closeOthers();     // (the other players' Back: the board again)
-  Outcome confirmTrade(); // (the trade room's Trade, Offer or Accept)
+  Outcome confirmTrade(); // (the trade room's Trade, Offer, Accept or Counter)
+  void backFromTrade();   // (its Back: from countering, the offer again)
   CardSprites cards_;
   CardSprites bigCards_; // (the cards screens': bigger, four a row)
   std::array<std::vector<Canvas::Colour>, Art::kIcons> icons_;

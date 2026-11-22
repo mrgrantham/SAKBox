@@ -58,6 +58,13 @@ FirstRoll firstRollOf(const TableSettings &settings) {
 }
 } // namespace
 
+// Whether the offer being answered is a person's (a bot may counter it:
+// tradingRuleMove)
+bool TableGame::offeredByAPerson(const State &state) const {
+  return state.phase == Phase::TradeReply &&
+         settings_.seats[static_cast<std::size_t>(state.turn)] == Seat::Person;
+}
+
 TableGame::TableGame(const TableSettings &settings)
     : settings_(settings), firstRoll_(firstRollOf(settings)),
       play_(newGame(settings.players, rulesFor(settings), firstRoll_.first)),
@@ -110,7 +117,7 @@ std::optional<Action> TableGame::step() {
     budget.outOfTime = [until] { return std::chrono::steady_clock::now() >= until; };
   }
   const Action move = dealer         ? Game::dealerAction(now, dealer_)
-                      : trading(now) ? tradingRuleMove(now)
+                      : trading(now) ? tradingRuleMove(now, offeredByAPerson(now))
                                      : ismcts_.choose(now, bots_, budget);
   const State before = now;
   if (!play_.play(move))

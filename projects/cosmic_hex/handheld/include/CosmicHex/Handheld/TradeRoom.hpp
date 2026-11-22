@@ -3,8 +3,11 @@
 // players is open), the cards you give and get, the deal in words and why
 // it can't be made, and the moves that make it. When a player offers you a
 // trade, or answers yours with a counter-offer, it's that answer instead:
-// what they give and want, what changed, and Accept or Decline. The screen
-// (ChoiceScreens::drawTrade) shows it; the rules check every move.
+// what they give and want, what changed, and Accept or Decline; and an
+// offer to you can be countered: the same cards picked as for an offer,
+// starting from theirs turned round, sent back as a counter-offer for them
+// to accept or decline. The screen (ChoiceScreens::drawTrade) shows it;
+// the rules check every move.
 //
 //   room.update(state, legal, yourMove);
 //   room.choosePartner(TradeRoom::kBank);
@@ -54,19 +57,37 @@ public:
   std::string deal() const;
   std::string whyNot() const;
   // What makes it, in order: with the bank, ending the turn's offers to
-  // players first if they're still open; with a player, the offer
+  // players first if they're still open; with a player, the offer (or,
+  // countering, the counter-offer)
   std::vector<Action> moves() const;
 
   // Answering: an offer to you, or a counter to yours (the screen opens by
   // itself). Who from; what they'd give you and want from you; the kinds
   // that changed from your offer (a counter); Accept and Decline
   bool answering() const { return answering_; }
+  bool counterToYours() const { return counterToYours_; } // (not an offer to you)
   int from() const { return from_; }
+  // What's being answered, for its banner: "VEGA OFFERS A TRADE" (or
+  // "VEGA COUNTERS"), and the deal: "2 Fuel for your 1 Water"
+  std::string headline() const;
+  std::string offerWords() const;
   const Resources &theyGive() const { return theyGive_; }
   const Resources &theyWant() const { return theyWant_; }
   const std::vector<Resource> &changed() const { return changed_; }
   std::optional<Action> accept() const;
   std::optional<Action> decline() const;
+
+  // Countering an offer to you (the rules let its answerer counter it once;
+  // a counter to yours can only be accepted or declined): the cards picked
+  // as for an offer, starting from theirs turned round (you give what they
+  // want, and get what they give); moves() then makes the counter-offer.
+  // Back to the offer as it was with stopCountering()
+  bool canCounter() const { return answering_ && !counterToYours_; }
+  void startCountering();
+  void stopCountering() { countering_ = false; }
+  bool countering() const { return countering_; }
+  // The offer to answer showing (answering, and not countering it)
+  bool showingOffer() const { return answering_ && !countering_; }
 
 private:
   PlayerNames names_;
@@ -75,7 +96,7 @@ private:
   bool yourMove_ = false;
   int partner_ = kBank;
   Resources give_{}, get_{};
-  bool answering_ = false;
+  bool answering_ = false, counterToYours_ = false, countering_ = false;
   int from_ = -1;
   Resources theyGive_{}, theyWant_{};
   std::vector<Resource> changed_;

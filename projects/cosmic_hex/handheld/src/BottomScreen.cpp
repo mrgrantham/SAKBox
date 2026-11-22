@@ -31,7 +31,8 @@ void rememberActionTouch(ChoiceScreens::Press &press,
 void rememberActionTouch(ChoiceScreens::Press &press,
                          const std::optional<ChoiceScreens::TradeTouch> &touch, double now) {
   using What = ChoiceScreens::TradeTouch::What;
-  if (touch && touch->what == What::Back)
+  // (Counter is in Back's place, and glows as it does)
+  if (touch && (touch->what == What::Back || touch->what == What::Counter))
     press = {ChoiceScreens::ActionButton::Back, now};
   else if (touch && touch->what == What::Confirm)
     press = {ChoiceScreens::ActionButton::Confirm, now};
@@ -437,13 +438,16 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
       trade_.remove(touch->side, touch->resource);
       break;
     case TradeWhat::Back:
-      mode_ = Mode::Board;
+      backFromTrade();
       break;
     case TradeWhat::Confirm:
       return confirmTrade();
     case TradeWhat::Decline:
       if (const auto decline = trade_.decline())
         return {decline, true};
+      break;
+    case TradeWhat::Counter:
+      trade_.startCountering();
       break;
     }
     return {std::nullopt, true};
@@ -506,8 +510,16 @@ void BottomScreen::placeOnBoard(std::vector<Action> places, bool endsTrading) {
   mode_ = Mode::Placing;
 }
 
+// The trade room's Back: from countering, the offer again; else the board
+void BottomScreen::backFromTrade() {
+  if (trade_.countering())
+    trade_.stopCountering();
+  else if (!trade_.answering())
+    mode_ = Mode::Board;
+}
+
 BottomScreen::Outcome BottomScreen::confirmTrade() {
-  if (trade_.answering()) {
+  if (trade_.showingOffer()) {
     if (const auto accept = trade_.accept())
       return {accept, true};
     return {std::nullopt, true};
@@ -721,11 +733,12 @@ BottomScreen::Outcome BottomScreen::press(Key key) {
     return {std::nullopt, true};
   }
   case Mode::Trade: {
-    // (left and right through the open tabs; A trades or accepts; B back)
+    // (left and right through the open tabs; A trades, accepts or counters;
+    // B back, from countering to the offer)
     if (key == Key::Confirm)
       return confirmTrade();
-    if (key == Key::Back && !trade_.answering()) {
-      mode_ = Mode::Board;
+    if (key == Key::Back) {
+      backFromTrade();
     } else if ((key == Key::Left || key == Key::Right) && !trade_.answering()) {
       std::vector<int> open;
       for (const int p : trade_.partners())

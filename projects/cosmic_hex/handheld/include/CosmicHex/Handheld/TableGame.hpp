@@ -117,6 +117,7 @@ public:
 
 private:
   void record(const State &before, const Action &move);
+  bool offeredByAPerson(const State &state) const;
 
   TableSettings settings_;
   FirstRoll firstRoll_; // (before play_: it says who goes first)

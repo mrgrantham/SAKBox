@@ -42,7 +42,7 @@ void TradeRoom::update(const State &state, const std::vector<Action> &legal, boo
   for (std::size_t r = 0; r < give_.size(); ++r)
     give_[r] = std::min(give_[r], held()[r]);
   // Answering: a player's offer to you, or their counter to yours
-  answering_ = false;
+  answering_ = counterToYours_ = false;
   changed_.clear();
   const TradeOffer &offer = state.offer;
   if (yourMove && state.phase == Phase::TradeReply && offer.replier == kYou) {
@@ -51,7 +51,7 @@ void TradeRoom::update(const State &state, const std::vector<Action> &legal, boo
     theyGive_ = resourcesOf(offer.give);
     theyWant_ = resourcesOf(offer.get);
   } else if (yourMove && state.phase == Phase::TradeCounter && state.turn == kYou) {
-    answering_ = true;
+    answering_ = counterToYours_ = true;
     from_ = offer.replier;
     theyGive_ = resourcesOf(offer.counterGive);
     theyWant_ = resourcesOf(offer.counterGet);
@@ -64,6 +64,8 @@ void TradeRoom::update(const State &state, const std::vector<Action> &legal, boo
         changed_.push_back(static_cast<Resource>(r));
     }
   }
+  // (a counter only while there's an offer to you to counter)
+  countering_ = countering_ && canCounter();
 }
 
 std::vector<int> TradeRoom::partners() const {
@@ -74,6 +76,8 @@ std::vector<int> TradeRoom::partners() const {
 }
 
 std::string TradeRoom::whyClosed(int partner) const {
+  if (countering_)
+    return ""; // (the one you're countering)
   if (!yourMove_)
     return "Trading: on your turn";
   if (partner == kBank)
@@ -133,7 +137,17 @@ std::string TradeRoom::deal() const {
                ? "The bank: " + std::to_string(rate()) + " of one kind for 1 of another"
                : "Offer P" + std::to_string(partner_ + 1) + " some cards for some of theirs";
   return words(give_) + " for " + words(get_) +
-         (partner_ == kBank ? ", from the bank" : ", offered to " + names_[partner_]);
+         (partner_ == kBank ? ", from the bank"
+          : countering_     ? ", back to " + names_[partner_]
+                            : ", offered to " + names_[partner_]);
+}
+
+std::string TradeRoom::headline() const {
+  return names_.upperOf(from_) + (counterToYours_ ? " COUNTERS" : " OFFERS A TRADE");
+}
+
+std::string TradeRoom::offerWords() const {
+  return words(theyGive_) + " for your " + words(theyWant_);
 }
 
 std::string TradeRoom::whyNot() const {
@@ -166,7 +180,21 @@ std::vector<Action> TradeRoom::moves() const {
     out.push_back({Kind::Trade, give, get});
     return out;
   }
+  if (countering_)
+    return {{Kind::CounterTrade, bundleOf(give_), bundleOf(get_)}};
   return {{Kind::OfferTrade, bundleOf(give_), bundleOf(get_), partner_}};
+}
+
+void TradeRoom::startCountering() {
+  if (!canCounter())
+    return;
+  countering_ = true;
+  partner_ = from_;
+  get_ = theyGive_;
+  give_ = theyWant_;
+  // (what's picked can't be more than you hold)
+  for (std::size_t r = 0; r < give_.size(); ++r)
+    give_[r] = std::min(give_[r], held()[r]);
 }
 
 std::optional<Action> TradeRoom::accept() const {

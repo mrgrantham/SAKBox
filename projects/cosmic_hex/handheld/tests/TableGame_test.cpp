@@ -1,6 +1,8 @@
 // The game at the table: bots and the dealer play a whole game; a person's
 // move waits for them, and only a legal one is taken
+#include <CosmicHex/Handheld/BottomScreen.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
+#include <CosmicHex/Handheld/TradeArrival.hpp>
 
 #include <gtest/gtest.h>
 
@@ -184,4 +186,117 @@ TEST(TableGameTest, MovesAreKeptAsMade) {
     EXPECT_GE(move.player, 0);
     EXPECT_LT(move.player, settings.players);
   }
+}
+
+namespace {
+// A person against three bots, their moves at random from `choose`, but
+// `trading` looked at first on each of theirs (it may play one): true once
+// `trading` says it's done, false if the game ends or stalls first
+template <typename Trading>
+bool playUntil(TableGame &game, SeededRandom::Generator &choose, Trading trading) {
+  for (int steps = 0; steps < 40000 && !game.over(); ++steps) {
+    if (game.waitingForPerson()) {
+      if (trading())
+        return true;
+      if (!game.waitingForPerson())
+        continue; // (`trading` played their move)
+      const std::vector<Action> legal = game.personMoves();
+      if (!game.play(legal[choose.below(static_cast<std::uint32_t>(legal.size()))]))
+        return false;
+    } else if (!game.step()) {
+      return false;
+    }
+  }
+  return false;
+}
+} // namespace
+
+// A person counters a bot's offer on the touch panel (Counter, then the
+// builder's Counter with the offer turned round), the rules take it, and the
+// bot answers it; the game goes on
+TEST(TableGameTest, APersonCountersABotsOffer) {
+  bool countered = false;
+  for (std::uint64_t seed = 1; seed <= 12 && !countered; ++seed) {
+    TableGame game({.seats = {Seat::Person, Seat::Bot, Seat::Bot, Seat::Bot},
+                    .botIterations = 6,
+                    .seed = seed});
+    SeededRandom::Generator choose(seed);
+    BottomScreen screen(256, 192);
+    const auto counter = [&] {
+      if (game.state().phase != Phase::TradeReply)
+        return false;
+      screen.update(game.state(), game.personMoves(), true);
+      if (screen.mode() != BottomScreen::Mode::Trade || !screen.trade().showingOffer())
+        return false;
+      screen.tap(30, 178, std::nullopt); // (Counter, in Back's place)
+      EXPECT_TRUE(screen.trade().countering());
+      // (holding none of what they asked for, there's nothing to give back:
+      // Back to the offer, and on to the next)
+      if (!screen.trade().whyNot().empty()) {
+        screen.press(BottomScreen::Key::Back);
+        EXPECT_TRUE(screen.trade().showingOffer());
+        return false;
+      }
+      const BottomScreen::Outcome sent = screen.press(BottomScreen::Key::Confirm);
+      EXPECT_TRUE(sent.play && sent.play->kind == Action::Kind::CounterTrade);
+      return sent.play && game.play(*sent.play);
+    };
+    if (!playUntil(game, choose, counter))
+      continue;
+    countered = true;
+    EXPECT_EQ(game.state().phase, Phase::TradeCounter);
+    const std::optional<Action> answer = game.step(); // (the bot's)
+    ASSERT_TRUE(answer.has_value());
+    EXPECT_TRUE(answer->kind == Action::Kind::AcceptTrade ||
+                answer->kind == Action::Kind::DeclineTrade);
+    EXPECT_NE(game.state().phase, Phase::TradeCounter);
+  }
+  EXPECT_TRUE(countered) << "no offer to the person to counter";
+}
+
+// A bot counters a person's offer it won't take; the person is shown it to
+// answer, announced as a counter (its banner, the screen arriving), and
+// can't counter it again
+TEST(TableGameTest, ABotCountersAPersonsOffer) {
+  bool countered = false;
+  for (std::uint64_t seed = 1; seed <= 12 && !countered; ++seed) {
+    TableGame game({.seats = {Seat::Person, Seat::Bot, Seat::Bot, Seat::Bot},
+                    .botIterations = 6,
+                    .seed = seed});
+    SeededRandom::Generator choose(seed);
+    const auto offerUntilCountered = [&] {
+      if (game.state().phase == Phase::TradeCounter)
+        return true;
+      if (game.state().phase != Phase::Trading)
+        return false;
+      // (each of the plain offers in turn: the first not yet made; then on)
+      const std::vector<Action> moves = game.personMoves();
+      const auto offer = std::find_if(moves.begin(), moves.end(), [&](const Action &move) {
+        return move.kind == Action::Kind::OfferTrade &&
+               std::none_of(game.state().offersMade.begin(), game.state().offersMade.end(),
+                            [&](const std::array<int, 2> &made) {
+                              return made[0] == move.a && made[1] == move.b;
+                            });
+      });
+      EXPECT_TRUE(game.play(offer != moves.end() ? *offer : Action{Action::Kind::EndTrading}));
+      return false;
+    };
+    if (!playUntil(game, choose, offerUntilCountered))
+      continue;
+    countered = true;
+    ASSERT_EQ(game.state().phase, Phase::TradeCounter);
+    ASSERT_TRUE(game.waitingForPerson());
+    TradeRoom room;
+    room.setNames(PlayerNames::forGame(4, 0, "James", seed));
+    room.update(game.state(), game.personMoves(), true);
+    ASSERT_TRUE(room.answering());
+    EXPECT_TRUE(room.counterToYours());
+    EXPECT_FALSE(room.canCounter());
+    EXPECT_NE(room.headline().find(" COUNTERS"), std::string::npos);
+    TradeArrival arrival;
+    EXPECT_TRUE(arrival.saw(room.answering(), 0)); // (it arrives as an offer does)
+    ASSERT_TRUE(room.decline().has_value());
+    EXPECT_TRUE(game.play(*room.decline()));
+  }
+  EXPECT_TRUE(countered) << "no bot countered the person";
 }

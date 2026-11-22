@@ -64,6 +64,41 @@ TEST(TradingRuleTest, AcceptsWhatHelpsButNotTheNearlyWon) {
   EXPECT_EQ(tradingRuleMove(state).kind, Kind::DeclineTrade);
 }
 
+// An offer from a person that doesn't help: countered with one of what
+// they're short of for one of what the offer asked (between bots, declined);
+// the counter is one the rules take, and the offerer's answer to it legal
+TEST(TradingRuleTest, CountersAPersonsOfferItWontTake) {
+  State state = trading();
+  state.player[0].resources = {0, 0, 1, 1, 0}; // a fuel and a water
+  state.player[1].resources = {1, 0, 0, 0, 3}; // a mineral, short of fuel; crystals spare
+  // (a water, which doesn't help, for a crystal)
+  ASSERT_TRUE(Game::apply(
+      state, {Kind::OfferTrade, bundleOf({0, 0, 0, 1, 0}), bundleOf({0, 0, 0, 0, 1}), 1}));
+  EXPECT_EQ(tradingRuleMove(state).kind, Kind::DeclineTrade); // (between bots)
+  const Action counter = tradingRuleMove(state, true);
+  ASSERT_EQ(counter.kind, Kind::CounterTrade);
+  EXPECT_EQ(resourcesOf(counter.a), (Resources{0, 0, 0, 0, 1})); // a crystal from them
+  EXPECT_EQ(resourcesOf(counter.b), (Resources{0, 0, 1, 0, 0})); // for a fuel
+  ASSERT_TRUE(Game::apply(state, counter));
+  EXPECT_EQ(state.phase, Phase::TradeCounter);
+  EXPECT_FALSE(Game::legalActions(state).empty());
+}
+
+// No counter when there's nothing to ask for that the offerer holds, nor
+// for someone within two points of winning
+TEST(TradingRuleTest, NoCounterWithoutADealToMake) {
+  State state = trading();
+  state.player[0].resources = {0, 0, 0, 1, 0}; // no fuel to give
+  state.player[1].resources = {1, 0, 0, 0, 3};
+  ASSERT_TRUE(Game::apply(
+      state, {Kind::OfferTrade, bundleOf({0, 0, 0, 1, 0}), bundleOf({0, 0, 0, 0, 1}), 1}));
+  EXPECT_EQ(tradingRuleMove(state, true).kind, Kind::DeclineTrade);
+  state.player[0].resources = {0, 0, 1, 1, 0};
+  ASSERT_EQ(tradingRuleMove(state, true).kind, Kind::CounterTrade);
+  state.settings.winPoints = points(state, 0) + 1;
+  EXPECT_EQ(tradingRuleMove(state, true).kind, Kind::DeclineTrade);
+}
+
 // A free build is nothing to trade for: the next
 // build the rule looks at is one that costs something
 TEST(TradingRuleTest, AFreeBuildIsNothingToTradeFor) {
