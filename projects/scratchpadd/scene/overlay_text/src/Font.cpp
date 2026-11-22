@@ -50,6 +50,14 @@ int Font::pixelSize(float scale) const {
   return pixels_ ? std::max(1, static_cast<int>(std::floor(scale + kLeeway))) : 1;
 }
 
+float Font::tracking(float scale) const {
+  if (pixels_)
+    return 0;
+  // (a point up to the 3DS's top screen's scale, none from titles' 2.5 up)
+  constexpr float kFullUpTo = 1.5625f, kNoneFrom = 2.5f, kMost = 1;
+  return kMost * std::clamp((kNoneFrom - scale) / (kNoneFrom - kFullUpTo), 0.0f, 1.0f);
+}
+
 float Font::lineHeight(float scale) const {
   if (pixels_)
     return static_cast<float>(pixels_->lineHeight * pixelSize(scale));
@@ -57,15 +65,20 @@ float Font::lineHeight(float scale) const {
 }
 
 float Font::width(std::string_view text, float scale) const {
+  const float size = pixels_ ? static_cast<float>(pixelSize(scale)) : scale;
+  const float between = tracking(scale);
   float widest = 0;
   forEachLine(text, [&](std::string_view line) {
     float pen = 0;
     for (const char c : line)
-      pen += pixels_ ? static_cast<float>(pixels_->glyphs[glyphIndex(c)].advance)
-                     : smooth_->advances[glyphIndex(c)];
+      pen += size * (pixels_ ? static_cast<float>(pixels_->glyphs[glyphIndex(c)].advance)
+                             : smooth_->advances[glyphIndex(c)]);
+    // (the room between letters: none after the last)
+    if (!line.empty())
+      pen += between * static_cast<float>(line.size() - 1);
     widest = std::max(widest, pen);
   });
-  return widest * (pixels_ ? static_cast<float>(pixelSize(scale)) : scale);
+  return widest;
 }
 
 Overlay::Ink Font::ink(std::string_view text, float scale) const {
@@ -131,6 +144,7 @@ const BakedSize &Font::sizeFor(float scale) const {
 void Font::layOutSmooth(std::string_view text, float scale, std::vector<TextPiece> &out) const {
   const BakedSize &size = sizeFor(scale);
   const float toPoints = scale / size.scale; // (the size's pixels to points)
+  const float between = tracking(scale);
   float pen = 0, top = 0;
   for (const char c : text) {
     if (c == '\n') {
@@ -145,7 +159,7 @@ void Font::layOutSmooth(std::string_view text, float scale, std::vector<TextPiec
                      top + static_cast<float>(g.top) * toPoints,
                      static_cast<float>(g.width) * toPoints,
                      static_cast<float>(g.height) * toPoints, g.x, g.y, g.width, g.height});
-    pen += smooth_->advances[i] * scale;
+    pen += smooth_->advances[i] * scale + between;
   }
 }
 

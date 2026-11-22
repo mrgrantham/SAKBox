@@ -1,5 +1,6 @@
 // The discovery's words and tile, laid out on each handheld's top screen in
 // its own font: no two may overlap, and all stay on the screen
+#include <CosmicHex/Handheld/BoardView.hpp>
 #include <CosmicHex/Handheld/TopViews.hpp>
 
 #include <ScratchPadd/Scene/Font.hpp>
@@ -73,6 +74,24 @@ TEST_P(DiscoveryLayoutTest, TheTileTakesMostOfWhatsLeft) {
   const DiscoveryLayout layout = discoveryLayout(screen.width, screen.height, screen.lineHeight);
   EXPECT_GE(layout.tileHeight, 0.4f * screen.height);
   EXPECT_LE(layout.tileHeight, 0.55f * screen.height + 0.01f);
+}
+
+// The dim backdrop behind the tile, on every screen, even as it turns over:
+// it once sat at a fixed distance, cutting through the DS's tile as it
+// turned and in front of the 3DS's (smaller, under its font's taller lines),
+// dimming it (the user's: the tile darkened as its name came in); and in
+// front of the board, which it dims, past the camera's near plane
+TEST_P(DiscoveryLayoutTest, TheBackdropIsBehindTheTileAndInFrontOfTheBoard) {
+  const Screen &screen = GetParam();
+  const DiscoveryLayout layout = discoveryLayout(screen.width, screen.height, screen.lineHeight);
+  const Scene::Camera camera = gameCamera(0);
+  const DiscoveryDepths depths =
+      discoveryDepths(layout.tileHeight / screen.height, camera.fieldOfView);
+  EXPECT_GT(depths.tile, camera.nearPlane);
+  // (the tile's corners swing a radius (1) back as it turns over)
+  EXPECT_GT(depths.backdrop, depths.tile + 1);
+  constexpr float kBoardNearest = 9; // (BoardView.hpp: the board is nearer nowhere)
+  EXPECT_LT(depths.backdrop, kBoardNearest);
 }
 
 INSTANTIATE_TEST_SUITE_P(OnEachHandheld, DiscoveryLayoutTest, testing::Values(kDs, k3ds),

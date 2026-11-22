@@ -86,12 +86,17 @@ TEST(ArtTest, EveryCardDrawsInItsAreas) {
 
 // Every card's words (cards/cards.txt) are there and fit, in each console's
 // font (the DS's Silkscreen, the 3DS's Orbitron): the short title on a
-// small card (46 pixels), the words on the cards screen's big card
+// small card (46 of a DS's pixels; on the 3DS, as small as its 320-wide
+// bottom screen draws it, 1.25 times as wide: Orbitron's letters spaced
+// apart, Font::tracking, need it), the words on the cards screen's big card
 TEST(ArtTest, EveryCardsWordsFit) {
   namespace Scene = ScratchPadd::Scene;
   constexpr float kBigCard = 160, kMargin = 4;
   const float wordsWidth = Art::kCardWords.width * kBigCard / Art::kCardHeight - kMargin;
+  constexpr float kSmallCardTitle = 46;
   for (const Scene::Font *font : {&Scene::Font::silkscreen(), &Scene::Font::orbitron()}) {
+    const float titleRoom =
+        font == &Scene::Font::silkscreen() ? kSmallCardTitle : kSmallCardTitle * 320 / 256;
     const auto width = [font](std::string_view text) { return font->width(text); };
     for (int i = 0; i < Art::kCards; ++i) {
       const auto card = static_cast<Art::Card>(i);
@@ -100,7 +105,7 @@ TEST(ArtTest, EveryCardsWordsFit) {
       EXPECT_FALSE(words.words.empty()) << Art::fileOf(card);
       // (its letters' own pixels: Silkscreen's advance counts a clear
       // column each side)
-      EXPECT_LE(font->ink(words.shortTitle).width, 46) << Art::fileOf(card);
+      EXPECT_LE(font->ink(words.shortTitle).width, titleRoom) << Art::fileOf(card);
       EXPECT_LE(Scene::wrapText(words.words, wordsWidth, width).size(), 7u) << Art::fileOf(card);
     }
   }

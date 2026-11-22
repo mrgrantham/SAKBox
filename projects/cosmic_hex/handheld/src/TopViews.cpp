@@ -2,11 +2,12 @@
 
 #include <CosmicHex/Dice/DiceTray.hpp>
 #include <CosmicHex/Handheld/BoardPieces.hpp>
+#include <CosmicHex/Handheld/CardPlaces.hpp>
 #include <CosmicHex/Handheld/CardsHeld.hpp>
 #include <CosmicHex/Handheld/DicePieces.hpp>
 #include <CosmicHex/Handheld/GameWords.hpp>
+#include <CosmicHex/Handheld/Hud.hpp>
 #include <CosmicHex/Handheld/Palette.hpp>
-#include <CosmicHex/Handheld/PointsBars.hpp>
 #include <CosmicHex/Handheld/ScreenPictures.hpp>
 
 #include <ScratchPadd/Motion/Motion.hpp>
@@ -17,7 +18,8 @@
 #include <cmath>
 #include <functional>
 #include <string>
-#include <tuple>
+#include <string_view>
+#include <utility>
 
 namespace CosmicHex::Handheld {
 
@@ -38,6 +40,17 @@ Scene::Colour fadedIn(Scene::Colour colour, float amount, Scene::Colour under = 
 
 constexpr float kPi = 3.14159265f;
 
+// The largest scale from `largest` down to `smallest`, in four steps, that
+// `text` fits `width` at as drawn (its letters' spacing included);
+// `smallest` if none does
+float scaleToFit(std::string_view text, float width, float largest, float smallest) {
+  const float step = (largest - smallest) / 4;
+  float scale = largest;
+  while (scale > smallest && Scene::Overlay::textWidth(text, scale) > width)
+    scale = std::max(smallest, scale - step);
+  return scale;
+}
+
 // A flat picture covering screen pixels (x, y) to (x + w, y + h)
 void picture(const TopFrame &f, Scene::Mesh square, Scene::Texture texture, float x, float y,
              float w, float h, float distance = kPictureDistance) {
@@ -46,13 +59,13 @@ void picture(const TopFrame &f, Scene::Mesh square, Scene::Texture texture, floa
 }
 // A dark, see-through backdrop over the whole screen (in 3D, behind the
 // pictures: the overlay's shapes would cover them), `top` down
-void backdrop(const TopFrame &f, float top, Scene::Colour colour, float alpha) {
-  f.renderer.draw(
-      f.pictures.pictureSquare,
-      onScreenAt(f.camera, f.width, f.height, 0, top, f.width, f.height, kPictureDistance * 1.2f),
-      {.shading = Scene::Material::Shading::Unlit,
-       .colour = colour,
-       .alpha = static_cast<std::uint8_t>(alpha)});
+void backdrop(const TopFrame &f, float top, Scene::Colour colour, float alpha,
+              float distance = kPictureDistance * 1.2f) {
+  f.renderer.draw(f.pictures.pictureSquare,
+                  onScreenAt(f.camera, f.width, f.height, 0, top, f.width, f.height, distance),
+                  {.shading = Scene::Material::Shading::Unlit,
+                   .colour = colour,
+                   .alpha = static_cast<std::uint8_t>(alpha)});
 }
 } // namespace
 
@@ -124,6 +137,18 @@ DiscoveryLayout discoveryLayout(float width, float height, Scene::LineHeight lin
   return layout;
 }
 
+DiscoveryDepths discoveryDepths(float tileShare, float fieldOfView, float tileRadius) {
+  // (its corners 2 * tileRadius apart, `tileShare` of the view's height)
+  const float tile = 2 * tileRadius / (tileShare * 2 * std::tan(fieldOfView * kPi / 360));
+  // The backdrop behind it, clear of the tile as it turns over (its top and
+  // bottom corners swing a radius towards and away from you) whatever size
+  // the words leave the tile, and well in front of the board. At a fixed
+  // distance it cut through the DS's tile as it turned, and was in front of
+  // the 3DS's (smaller: its font's taller lines), dimming them
+  constexpr float kClearOfItsTurn = 1.5f; // (radii)
+  return {.tile = tile, .backdrop = tile + kClearOfItsTurn * tileRadius};
+}
+
 void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
                    const ScratchPadd::PictureSlot &closeUp,
                    const ScratchPadd::PictureSlot &closeUpBack) {
@@ -133,11 +158,6 @@ void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
     return;
   const DiscoveryLayout layout = discoveryLayout(f.width, f.height);
   const float lifted = moment->lifted();
-  // A dim backdrop while it faces you: in as it turns over, gone early on
-  // its way back (the tile passes through its plane on the way up and down)
-  const float dim = moment->turn * std::max(0.0f, 1 - 4 * moment->down);
-  if (dim > 0)
-    backdrop(f, 0, {8, 12, 22}, 24 * dim);
   // On the board: where it lies, flat (its axes the world's)
   const Scene::Vector3 onBoard = BoardPieces::centre(found->hex);
   const float radius = (BoardPieces::at({found->hex, 0}) - onBoard).length();
@@ -145,14 +165,18 @@ void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
   // for (its corners `radius` from its middle), its face towards you, its
   // top up the screen
   const Scene::Camera &camera = f.camera;
+  const DiscoveryDepths depths =
+      discoveryDepths(layout.tileHeight / f.height, camera.fieldOfView, radius);
+  // A dim backdrop while it faces you, behind it: in as it turns over, gone
+  // early on its way back (the tile passes through its plane on the way up
+  // and down)
+  const float dim = moment->turn * std::max(0.0f, 1 - 4 * moment->down);
+  if (dim > 0)
+    backdrop(f, 0, {8, 12, 22}, 24 * dim, depths.backdrop);
   const Scene::Vector3 forward = (camera.target - camera.eye).normalised();
   const Scene::Vector3 right = forward.cross(camera.up).normalised();
   const Scene::Vector3 screenUp = right.cross(forward);
-  const float share = layout.tileHeight / f.height;
-  const float distance = 2 * radius / (share * 2 * std::tan(camera.fieldOfView * kPi / 360));
-  const Scene::Vector3 facing = camera.eye + forward * distance;
-  // Between: its position and axes carried from one to the other (the axes
-  // made square again: Gram-Schmidt)
+  const Scene::Vector3 facing = camera.eye + forward * depths.tile;
   // Between: its axes carried from one to the other (made square again:
   // Gram-Schmidt; flat while it dips or settles: it stays rigid), its
   // place along an arc bowing up the screen (not a straight line)
@@ -246,11 +270,8 @@ void actionCardFace(const TopFrame &f, Art::Card card, float x, float y, float w
   const Art::CardWords words = Art::wordsOf(card);
   // (the title in its band's ink, centred on the label band, 3 to 19 of
   // the card's 88 units, as large as fits its width: the user's)
-  float titleScale = 2 * k;
-  while (titleScale > k && Scene::Overlay::textWidth(words.shortTitle, titleScale) > w * 54 / 63)
-    titleScale -= 0.25f * k;
   f.overlay.textCentred(x + w / 2, y + w * 11 / 63, words.shortTitle, titleInk(f, card, shown),
-                        titleScale);
+                        scaleToFit(words.shortTitle, w * 54 / 63, 2 * k, k));
   // (wrapped by the width the letters take as drawn, spacing included)
   const auto lines = Scene::wrapText(words.words, w - 8 * k, [k](std::string_view line) {
     return Scene::Overlay::textWidth(line, k);
@@ -314,11 +335,7 @@ void drawCardPlay(const TopFrame &f, const CardPlayShow &show, const State &stat
   // From its player (your hand below, or their row of the points bars) up
   // to the middle, face down until it turns; then off up and away
   const float w = 90 * k, cardH = w * 88 / 63;
-  const float fromX = play->player == you ? f.width * 0.7f : f.width - 20 * k;
-  const float fromY = play->player == you
-                          ? f.height + cardH
-                          : PointsBars::kTop + static_cast<float>(play->player) *
-                                                   (PointsBars::kRowHeight + PointsBars::kRowGap);
+  const auto [fromX, fromY] = CardPlaces::at(f, state, play->player, you);
   const float midX = f.width / 2, midY = f.height / 2 + 6 * k;
   const float cx =
       Motion::arc(Motion::arc(fromX, midX, -10 * k, m->up), f.width + w, 0.0f, m->away);
@@ -572,7 +589,7 @@ void drawOtherPlayer(const TopFrame &f, const PlayerView &view, float down, floa
     overlay.text(x, y + 8 * k, name, Palette::kDimWords, k);
   };
   pieces(10 * k, view.badges, "badges",
-         [&](float x, float y) { overlay.hexagon(x, y, 4.5f * k, Palette::kHighlight, true); });
+         [&](float x, float y) { drawBadge(overlay, x, y, 5.5f * k, true); });
   pieces(72 * k, view.ships, "ships", [&](float x, float y) {
     overlay.triangle(x, y - 5 * k, x - 4.5f * k, y + 4 * k, x + 4.5f * k, y + 4 * k, colour);
   });
@@ -760,8 +777,10 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow
   overlay.textCentred(f.width / 2, firstLine.middle(), f.names[roll.first] + " goes first",
                       Palette::player(roll.first), 1.5f * k);
   overlay.textCentred(f.width / 2, homesLine.middle(), homes, Palette::kWords, k);
-  overlay.textCentred(f.width / 2, shipsLine.middle(), ships + " (back again)", Palette::kSoftWords,
-                      k);
+  // (the longest line: a long name of yours could take it off the screen)
+  const std::string shipsWords = ships + " (back again)";
+  overlay.textCentred(f.width / 2, shipsLine.middle(), shipsWords, Palette::kSoftWords,
+                      scaleToFit(shipsWords, f.width - 4 * k, k, 0.75f * k));
 }
 
 // ---------------------------------------------------------------- Roll pay
@@ -808,36 +827,19 @@ void drawRollPay(const TopFrame &f, const RollPayShow &show, const State &state,
     if (!m)
       continue;
     const RollPayShow::Card &card = show.cards()[i];
-    // A player's place: your hand below, or their row of the points bars
-    const float barsRight = f.width / 2 + (static_cast<float>(state.settings.winPoints) *
-                                           (PointsBars::kDashWidth + PointsBars::kDashGap)) /
-                                              2;
-    const auto placeOf = [&](int player) {
-      if (player == RollPayShow::kBank) // (the bank: behind the ROUND hexagon, top left)
-        return std::pair{22 * k, 19 * k};
-      return player == you
-                 ? std::pair{f.width * 0.7f, f.height + 24 * k}
-                 : std::pair{barsRight + 6 * k,
-                             PointsBars::kTop + static_cast<float>(player) *
-                                                    (PointsBars::kRowHeight + PointsBars::kRowGap)};
-    };
-    // Where it comes from: its planet, or the player (or bank) it's from
-    float fromX = f.width / 2, fromY = f.height / 2;
-    if (card.planet >= 0)
-      f.renderer.toScreen(
-          BoardPieces::centre(state.planets[static_cast<std::size_t>(card.planet)].hex), fromX,
-          fromY);
-    else
-      std::tie(fromX, fromY) = placeOf(card.from);
+    const CardPlaces::Point from = CardPlaces::flightStart(f, state, card, you);
+    const CardPlaces::Point to = CardPlaces::at(f, state, card.player, you);
+    const float x = Motion::arc(from.x, to.x, 0.0f, m->fly);
+    const float y = Motion::arc(from.y, to.y, cardPathBow(from.y, to.y, k), m->fly);
+    // Popping out (of a planet, a home), then shrinking as it goes into a
+    // bot's row of the points bars, small enough to read as landing in it
+    // (yours stays its size, off to your hand; to the bank: shrinking away
+    // into the ROUND hexagon)
     const bool yours = card.player == you;
-    const auto [toX, toY] = placeOf(card.player);
-    const float x = Motion::arc(fromX, toX, 0.0f, m->fly);
-    const float y = Motion::arc(fromY, toY, cardPathBow(fromY, toY, k), m->fly);
-    // Popping out of the planet (a settle), then shrinking as it goes to a
-    // bot's bar (yours stays its size, off to your hand)
-    // (to the bank: shrinking away into the ROUND hexagon)
-    const float shrink = card.player == RollPayShow::kBank ? 1 - m->fly : 1;
-    const float size = 20 * k * m->pop * (yours ? 1 : 1 - 0.6f * m->fly) * shrink;
+    const float landing = card.player == RollPayShow::kBank ? 1 - m->fly
+                          : yours                           ? 1
+                                                            : 1 - 0.75f * m->fly;
+    const float size = 20 * k * m->pop * landing;
     if (size < 1)
       continue;
     // (a card stolen between two others, or dealt to another: face down, as
@@ -947,14 +949,8 @@ void drawHomePay(const TopFrame &f, const HomePayShow &show, const State &state,
   Scene::Overlay &overlay = f.overlay;
   // Where the die starts: the home on the board, on the screen
   float homeX = f.width / 2, homeY = f.height * 0.7f;
-  for (const Planet &planet : state.planets)
-    if (planet.homeOf == pay->player || planet.formerHomeOf == pay->player) {
-      float x = 0, y = 0;
-      if (f.renderer.toScreen(BoardPieces::centre(planet.hex), x, y)) {
-        homeX = x;
-        homeY = y;
-      }
-    }
+  if (const std::optional<Hex> home = CardPlaces::homeOf(state, pay->player))
+    f.renderer.toScreen(BoardPieces::centre(*home), homeX, homeY);
   backdrop(f, 0, {8, 12, 22}, 12 * std::min(1.0f, m.up * 2) * (1 - m.away));
   // The die: out of the home along an arc, winding up first (Anticipate:
   // it dips into the home before it leaps), growing as it comes
@@ -1005,8 +1001,9 @@ void drawHomePay(const TopFrame &f, const HomePayShow &show, const State &state,
   const float w = bigW * grown * (1 - 0.8f * std::max(0.0f, leave));
   const float h = w * 52 / 63;
   const float heldX = f.width / 2, heldY = topY + 22 * k + bigH / 2;
-  const float toX = yours ? f.width - 30 * k : f.width / 2;
-  const float toY = yours ? f.height + 40 * k : -40 * k;
+  // (to your hand, or into the player's row of the points bars)
+  const auto [toX, toY] = yours ? CardPlaces::yourHand(f.width, f.height)
+                                : CardPlaces::playerRow(state, f.width, pay->player);
   const float cx = Motion::arc(heldX, toX, yours ? 18 * k : -24 * k, leave);
   const float cy = Motion::arc(heldY, toY, yours ? -30 * k : 0, leave);
   const bool sharp = closeUp.showing(static_cast<int>(*pay->resource));

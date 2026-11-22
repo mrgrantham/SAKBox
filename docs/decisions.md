@@ -134,3 +134,32 @@ Cosmic Hex and Infinifly are their own projects, using ScratchPadd as a library.
 - **Not chosen:** putting the helpers back in one file (the split was for readability); `-flto` everywhere (slower links for every program, for code that isn't hot); Bazel's `thin_lto` toolchain feature (the Mac toolchain doesn't offer it).
 - **The DS: left off** (measured on a DS Lite, the -bench build with and without GCC's `-flto`, 2026-11-21): pictures drawn from recipes about 5% quicker (a 64-pixel card 103 ms against 109), a state copy 6% quicker, but the bots' rollout steps about 3% slower (213 µs against 207) and moves listed 2% slower; a simulated game 6–7 ms either way. The bots are what the player waits on, so no gain worth a different build. melonDS had shown the same mix (it doesn't model the caches).
 - **The 3DS:** not tried (no bench there yet).
+
+## Cosmic Hex: the discovery's backdrop behind its tile (2026-11-21)
+
+- **Decided:** the dim backdrop is drawn a radius and a half behind the tile, wherever the tile has to be to fit its words (`discoveryDepths`).
+- **Why:** at its old fixed distance (4.08 units) it was in front of the 3DS's tile (4.87 units away: Orbitron's taller lines leave it 44% of the screen) and cut through the DS's (3.90) as it turned over, dimming the tile as its name came in.
+- **Not chosen:** drawing the tile with the depth test off (its chip and its own faces need depth); no backdrop (the board behind competes with the words).
+
+## Cosmic Hex: where cards fly, in one place (2026-11-21)
+
+- **Decided:** `CardPlaces` says where every flying card starts and lands: your hand, another player's row of the points bars (the row's middle, from `PointsBars::rowOf`, which the bars and their pops use too), the bank behind the ROUND hexagon; a payment to the bank leaves from the payer's home planet (or their exhausted one), projected each frame.
+- **Why:** each show worked out a player's place itself; a roll's pay aimed six pixels right of the bars' end (empty space, further out on the 3DS's wider screen), a played card rose from the screen's right edge, and a home's pay flew off the top.
+- **Not chosen:** names beside the rows to aim at (the HUD has none, and the rows are 5 pixels apart).
+
+## Cosmic Hex: every build placed on the board (2026-11-21)
+
+- **Decided:** a build chosen on the build screen always goes to the board's placing: its places marked, a single place chosen already with the pointer on it, Confirm or A to build. A card, with no place on the board, is still bought at once.
+- **Why:** the owner pressed Build with one possible place and the ship was built with no sign of where.
+- **Not chosen:** a confirmation dialog on the build screen (it can't show where).
+
+## Overlay text: tracking for Orbitron's small letters (2026-11-21)
+
+- **Decided:** `Font::tracking` adds a point between Orbitron's letters up to scale 1.5625, tapering to none at 2.5; measuring and layout both add it. The glyph data is unchanged (no regeneration).
+- **Why:** the owner found the small text crowded on the 3DS. One function, used by `width` and `layOut`, keeps measured and drawn text in step.
+- **Not chosen:** Silkscreen tracking (its letters have their own one-pixel gap; a second made the DS's words a fifth wider); baking wider advances into the font data (one number to tune in code rather than regenerated data).
+
+## Cosmic Hex: explorer badges as the mockup drew them (2026-11-21)
+
+- **Decided:** an earned badge is a yellow star inside a yellow hexagon's outline (`drawBadge`, shared by the HUD and another player's panel); the HUD's hexagons a pixel larger (radius 6) and 13 apart so the star reads on a DS.
+- **Why:** the star was in the mockup but never built; both places drew a plain filled hexagon.

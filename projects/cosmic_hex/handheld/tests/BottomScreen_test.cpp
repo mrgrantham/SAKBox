@@ -80,43 +80,57 @@ TEST(BottomScreenTest, TheNextOfTwoHomeChoicesOpensAfresh) {
   EXPECT_NE(screen.resourceInFocus(), std::optional<Resource>(Resource::Fuel));
 }
 
+// Every build that goes on the board is placed there, never played the
+// moment Build is pressed (the user's: a single place was chosen for you,
+// with no say and no sign of where): its places marked (a station's, the
+// corners of the ships that could settle), a single place chosen already
+// with the pointer on it, and Confirm or A building it. A card, with
+// nowhere on the board, is bought at once
 TEST(BottomScreenTest, BuildThenChooseWhereOnTheBoard) {
   State state = playUntil([](const State &s) { return s.phase == Phase::Main; });
   ASSERT_EQ(state.phase, Phase::Main);
   state.player[static_cast<std::size_t>(state.turn)].resources = {3, 3, 3, 3, 3};
-  BottomScreen screen(kWidth, kHeight);
-  screen.update(state, Game::legalActions(state), true);
-  EXPECT_EQ(screen.mode(), Mode::Board);
-  // Build, top right
-  EXPECT_TRUE(screen.tap(240, 10, std::nullopt).used);
-  ASSERT_EQ(screen.mode(), Mode::Build);
-  // The first row that can be built, then Build
   const auto rows = buildRows(state);
-  std::size_t row = 0;
-  while (row < rows.size() && !rows[row].canBuild)
-    ++row;
-  ASSERT_LT(row, rows.size());
-  screen.tap(128, static_cast<int>(6 + 39 * row + 10), std::nullopt);
-  const auto built = screen.tap(220, 178, std::nullopt);
-  if (rows[row].actions.size() == 1) {
-    ASSERT_TRUE(built.play.has_value());
-    EXPECT_EQ(*built.play, rows[row].actions.front());
-    return;
+  int placedOnTheBoard = 0;
+  for (std::size_t row = 0; row < rows.size(); ++row) {
+    if (!rows[row].canBuild)
+      continue;
+    BottomScreen screen(kWidth, kHeight);
+    screen.update(state, Game::legalActions(state), true);
+    // Build, top right; the row; then Build
+    EXPECT_TRUE(screen.tap(240, 10, std::nullopt).used);
+    ASSERT_EQ(screen.mode(), Mode::Build);
+    screen.tap(128, static_cast<int>(6 + 39 * row + 10), std::nullopt);
+    const auto pressed = screen.tap(220, 178, std::nullopt);
+    if (rows[row].what == Buildable::Card) {
+      ASSERT_TRUE(pressed.play.has_value());
+      EXPECT_EQ(*pressed.play, rows[row].actions.front());
+      continue;
+    }
+    ++placedOnTheBoard;
+    EXPECT_FALSE(pressed.play.has_value()) << nameOf(rows[row].what) << ": played at once";
+    ASSERT_EQ(screen.mode(), Mode::Placing) << nameOf(rows[row].what);
+    // (each place marked: where each of its moves would build)
+    const auto corners = screen.placingCorners();
+    ASSERT_EQ(corners.size(), rows[row].actions.size());
+    for (std::size_t i = 0; i < corners.size(); ++i)
+      EXPECT_EQ(corners[i], spotOf(state, rows[row].actions[i]).corners.back());
+    if (rows[row].actions.size() == 1) {
+      // One place: chosen already, A builds it there
+      EXPECT_EQ(screen.chosenPlacement(), std::optional(rows[row].actions.front()));
+    } else {
+      // More than one: nothing chosen till one's touched
+      EXPECT_FALSE(screen.chosenPlacement().has_value());
+      const BoardPicture::Spot there{corners.front().hex, corners.front()};
+      EXPECT_FALSE(screen.tap(128, 96, there).play.has_value());
+      EXPECT_EQ(screen.chosenPlacement(), std::optional(rows[row].actions.front()));
+    }
+    const auto placed = screen.press(BottomScreen::Key::Confirm);
+    ASSERT_TRUE(placed.play.has_value());
+    EXPECT_EQ(*placed.play, rows[row].actions.front());
+    EXPECT_EQ(screen.mode(), Mode::Board);
   }
-  // More than one place: back on the board with them marked; touching one
-  // chooses it, and Confirm makes that move
-  ASSERT_EQ(screen.mode(), Mode::Placing);
-  const auto corners = screen.placingCorners();
-  ASSERT_FALSE(corners.empty());
-  const BoardPicture::Spot there{corners.front().hex, corners.front()};
-  EXPECT_FALSE(screen.tap(128, 96, there).play.has_value());
-  EXPECT_TRUE(screen.chosenPlacement().has_value());
-  const auto placed = screen.press(BottomScreen::Key::Confirm);
-  ASSERT_TRUE(placed.play.has_value());
-  if (placed.play) {
-    EXPECT_TRUE(concerns(state, *placed.play, there));
-  }
-  EXPECT_EQ(screen.mode(), Mode::Board);
+  EXPECT_GT(placedOnTheBoard, 0) << "no build on the board to try";
 }
 
 TEST(BottomScreenTest, TheBoardsOwnTapsAndOthersTurns) {

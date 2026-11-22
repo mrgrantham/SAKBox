@@ -170,6 +170,13 @@ private:
   bool placingEndsTrading_ = false; // (and building ends the turn's offers first)
   // A build's move: at once, or after ending the turn's offers to players
   Outcome build(const Action &action, bool endsTrading);
+  // A row chosen on the build screen: placed on the board (placeOnBoard),
+  // or, with nowhere on the board (a card), bought at once
+  Outcome startBuilding(const BuildRow &row);
+  // Where to put something, chosen on the board: `places` marked, a touch
+  // choosing one (a single place chosen already, the pointer on it), Confirm
+  // or A placing it
+  void placeOnBoard(std::vector<Action> places, bool endsTrading);
   bool startPlacing_ = false;    // (Placing: the start's)
   bool blockadePlacing_ = false; // (Placing: the blockade's planet)
   bool blockadeSaid_ = false;    // (nowhere to go: said once, the move queued)

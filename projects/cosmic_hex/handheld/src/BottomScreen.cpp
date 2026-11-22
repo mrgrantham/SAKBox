@@ -360,16 +360,8 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
       buildChosen_ = touch->item;
     } else if (buildChosen_ >= 0 && buildChosen_ < static_cast<int>(rows_.size())) {
       const BuildRow &row = rows_[static_cast<std::size_t>(buildChosen_)];
-      if (row.canBuild && row.actions.size() == 1) {
-        mode_ = Mode::Board;
-        return build(row.actions.front(), row.endsTrading);
-      }
-      if (row.canBuild) {
-        placing_ = row.actions; // (more than one place: chosen on the board)
-        placingEndsTrading_ = row.endsTrading;
-        placingShip_ = -1; // (not a ship's moves)
-        mode_ = Mode::Placing;
-      }
+      if (row.canBuild)
+        return startBuilding(row);
     }
     return {std::nullopt, true};
   }
@@ -491,6 +483,29 @@ BottomScreen::Outcome BottomScreen::build(const Action &action, bool endsTrading
   return {Action{Action::Kind::EndTrading}, true};
 }
 
+BottomScreen::Outcome BottomScreen::startBuilding(const BuildRow &row) {
+  // (every place a build goes is on the board but a card's: the user's,
+  // a build played the moment Build was pressed gave no say in where)
+  const bool onTheBoard = std::ranges::all_of(
+      row.actions, [&](const Action &a) { return !spotOf(state_, a).corners.empty(); });
+  if (row.actions.empty() || !onTheBoard) {
+    mode_ = Mode::Board;
+    return row.actions.empty() ? Outcome{std::nullopt, true}
+                               : build(row.actions.front(), row.endsTrading);
+  }
+  placeOnBoard(row.actions, row.endsTrading);
+  return {std::nullopt, true};
+}
+
+void BottomScreen::placeOnBoard(std::vector<Action> places, bool endsTrading) {
+  placing_ = std::move(places);
+  placingEndsTrading_ = endsTrading;
+  placingShip_ = -1; // (not a ship's moves)
+  // (one place: chosen already, so Confirm or A builds it there)
+  chosen_ = placing_.size() == 1 ? std::optional(placing_.front()) : std::nullopt;
+  mode_ = Mode::Placing;
+}
+
 BottomScreen::Outcome BottomScreen::confirmTrade() {
   if (trade_.answering()) {
     if (const auto accept = trade_.accept())
@@ -533,12 +548,11 @@ BottomScreen::Outcome BottomScreen::useChosenCard() {
   }
   // Shipyard Surplus: your colonies marked, one touched for the ships
   if (held.kind == Kind::PlayShipyard) {
-    placing_.clear();
+    std::vector<Action> colonies;
     for (const Action &a : legal_)
       if (a.kind == Kind::PlayShipyard)
-        placing_.push_back(a);
-    placingShip_ = -1; // (not a ship's moves)
-    mode_ = Mode::Placing;
+        colonies.push_back(a);
+    placeOnBoard(std::move(colonies), false);
     return {std::nullopt, true};
   }
   // The Enforcer (then the blockade's moved on the board) or a Charter shown
@@ -886,7 +900,7 @@ void BottomScreen::drawOverBoard(Canvas &canvas) {
     // (between the bottom corners' buttons, Roll's and End Turn's)
     canvas.fillRect(28 * k, static_cast<float>(height_) - 16 * k,
                     static_cast<float>(width_) - 56 * k, 16 * k, kHintBand);
-    const char *hint = "Where to? Touch a marked corner";
+    const char *hint = chosen_ ? "Confirm or A: there" : "Where to? Touch a marked corner";
     if (startPlacing_ && state_.phase == Phase::PlaceColony)
       hint = chosen_ ? "End Turn: place your colony" : "Home colony: touch a corner";
     else if (startPlacing_)

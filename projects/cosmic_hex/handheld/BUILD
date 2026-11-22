@@ -18,6 +18,7 @@ cc_library(
         "src/BottomScreen.cpp",
         "src/BuildMenu.cpp",
         "src/CardChoices.cpp",
+        "src/CardPlaces.cpp",
         "src/CardsHeld.cpp",
         "src/ChoiceScreens.cpp",
         "src/ButtonMenu.cpp",
@@ -49,6 +50,7 @@ cc_library(
         "include/CosmicHex/Handheld/BoardView.hpp",
         "include/CosmicHex/Handheld/BuildMenu.hpp",
         "include/CosmicHex/Handheld/CardChoices.hpp",
+        "include/CosmicHex/Handheld/CardPlaces.hpp",
         "include/CosmicHex/Handheld/CardsHeld.hpp",
         "include/CosmicHex/Handheld/ChoiceScreens.hpp",
         "include/CosmicHex/Handheld/ButtonMenu.hpp",
@@ -283,6 +285,28 @@ cc_test(
         ":handheld",
         "//projects/game_bots",
         "//projects/seeded_random",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "CardPlaces_test",
+    size = "small",
+    srcs = ["tests/CardPlaces_test.cpp"],
+    deps = [
+        ":handheld",
+        "//projects/scratchpadd/scene/desktop",  # (links a renderer; draws nothing)
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "Hud_test",
+    size = "small",
+    srcs = ["tests/Hud_test.cpp"],
+    deps = [
+        ":handheld",
+        "//projects/scratchpadd/scene/desktop",  # (links a renderer; draws nothing)
         "@gtest//:gtest_main",
     ],
 )

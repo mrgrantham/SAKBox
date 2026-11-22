@@ -34,6 +34,22 @@ struct Bar {
   ScratchPadd::Scene::Colour colour;
 };
 
+// Where a player's row of dashes is, for a target of `target` points on a
+// screen `screenWidth` wide. Everything drawn on a row or flying to one
+// (its dashes, points popping in, cards to and from that player) is placed
+// by this, so they can't drift apart
+struct Row {
+  float left, top, width;
+  float middleX() const { return left + width / 2; }
+  float middleY() const { return top + kRowHeight / 2; }
+  // Where its dash for point `dash` (from 0) starts
+  float dashX(int dash) const { return left + static_cast<float>(dash) * (kDashWidth + kDashGap); }
+};
+Row rowOf(int player, float screenWidth, int target);
+// How far down a row is: a player's, or part way between two (the outline
+// moving)
+float rowTop(float row);
+
 // The rectangles for `state` on a screen `screenWidth` wide: the outline's
 // four sides first, then the dashes (a player past the target shows the
 // target's worth). The outline is round the turn's row, or at `outlineRow`

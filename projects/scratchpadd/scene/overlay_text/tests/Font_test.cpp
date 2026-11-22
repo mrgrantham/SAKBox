@@ -112,10 +112,13 @@ TEST(FontTest, SilkscreenScalesByWholePixels) {
   }
 }
 
-// Orbitron measures in proportion to the scale; at a baked size its
-// letters are their pictures' own size, at another the nearest scaled
+// Orbitron measures in proportion to the scale, past the room between its
+// letters (Font::tracking); at a baked size its letters are their
+// pictures' own size, at another the nearest scaled
 TEST(FontTest, OrbitronScalesSmoothly) {
-  EXPECT_FLOAT_EQ(kOrbitron.width("Build", 2), 2 * kOrbitron.width("Build"));
+  constexpr float kGaps = 4; // ("Build": five letters)
+  EXPECT_FLOAT_EQ(kOrbitron.width("Build", 2) - kGaps * kOrbitron.tracking(2),
+                  2 * (kOrbitron.width("Build") - kGaps * kOrbitron.tracking(1)));
   EXPECT_FLOAT_EQ(kOrbitron.lineHeight(1.5f), 1.5f * kOrbitron.lineHeight());
   std::vector<TextPiece> pieces;
   kOrbitron.layOut("H", 1.5625f, pieces);
@@ -127,6 +130,31 @@ TEST(FontTest, OrbitronScalesSmoothly) {
   kOrbitron.layOut("H", 1.6f, bigger);
   EXPECT_EQ(bigger[0].atlasX, pieces[0].atlasX); // (the same picture, scaled)
   EXPECT_GT(bigger[0].width, pieces[0].width);
+}
+
+// Orbitron's small letters spaced apart (the user's: they crowded): a
+// point between them at the 3DS's scales, less as they grow, none for
+// titles; measured as drawn: each letter that much further along.
+// Silkscreen keeps its own one-pixel gap
+TEST(FontTest, SmallLettersAreSpacedApart) {
+  EXPECT_FLOAT_EQ(kOrbitron.tracking(1), 1);
+  EXPECT_FLOAT_EQ(kOrbitron.tracking(1.5625f), 1);
+  EXPECT_GT(kOrbitron.tracking(2), 0);
+  EXPECT_LT(kOrbitron.tracking(2), 1);
+  EXPECT_FLOAT_EQ(kOrbitron.tracking(3.125f), 0);
+  for (const float scale : {1.0f, 1.25f, 1.5625f, 2.0f}) {
+    std::vector<TextPiece> one, two;
+    kOrbitron.layOut("H", scale, one);
+    kOrbitron.layOut("HH", scale, two);
+    ASSERT_EQ(two.size(), 2u);
+    EXPECT_FLOAT_EQ(two[1].x - two[0].x, kOrbitron.width("H", scale) + kOrbitron.tracking(scale))
+        << scale;
+    EXPECT_FLOAT_EQ(kOrbitron.width("HH", scale),
+                    2 * kOrbitron.width("H", scale) + kOrbitron.tracking(scale))
+        << scale;
+  }
+  for (const float scale : {1.0f, 2.0f})
+    EXPECT_FLOAT_EQ(kSilkscreen.tracking(scale), 0);
 }
 
 // Both fonts: a text's ink inside its width and lines, a new line a line

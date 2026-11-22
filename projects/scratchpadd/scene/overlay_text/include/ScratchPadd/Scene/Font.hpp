@@ -109,6 +109,12 @@ public:
   // `scale` ('\n' starts a line)
   float lineHeight(float scale = 1) const;
   float width(std::string_view text, float scale = 1) const;
+  // The room added between letters at `scale`, in points (tracking): a
+  // smooth font's letters crowd when small (the user's), so a point between
+  // them at the small scales, less as they grow, none for titles. Width and
+  // layout both add it, so what's measured is what's drawn. A pixel font's
+  // letters keep the font's own one-pixel gap
+  float tracking(float scale) const;
   // Where `text`'s letters' own pixels are, from its top left
   Overlay::Ink ink(std::string_view text, float scale = 1) const;
   // `text` as pieces into `out` (cleared first; kept by the caller, so no

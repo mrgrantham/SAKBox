@@ -52,6 +52,11 @@ struct TopPictures {
   }
 };
 
+// A point on the top screen, in points from its top left
+struct ScreenPoint {
+  float x = 0, y = 0;
+};
+
 // One frame's drawing
 struct TopFrame {
   ScratchPadd::Scene::Renderer &renderer;
@@ -77,6 +82,15 @@ struct DiscoveryLayout {
 DiscoveryLayout discoveryLayout(
     float width, float height,
     ScratchPadd::Scene::LineHeight lineHeight = ScratchPadd::Scene::Overlay::lineHeight);
+
+// How far in front of the camera a discovered tile faces you (its corners
+// `tileRadius` from its middle, `tileShare` of the screen's height, seen
+// through a vertical `fieldOfView` in degrees), and its dim backdrop: always
+// behind the tile, so it dims the board and never the tile
+struct DiscoveryDepths {
+  float tile = 0, backdrop = 0;
+};
+DiscoveryDepths discoveryDepths(float tileShare, float fieldOfView, float tileRadius = 1);
 
 // A discovered tile flying up from the board, turned over and set back
 // (its face from `closeUp` when that holds it, and its back from

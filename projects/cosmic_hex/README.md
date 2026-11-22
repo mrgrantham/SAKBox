@@ -236,6 +236,7 @@ On the board:
 - **The board's pointer** (`CornerPointer`): a white chevron, turning and bobbing over the corner in focus on the top screen. It fades in gently when the game wants you to choose on the board (placing at the start, where a build goes, a ship's moves) and fades away while pieces move, banners and shows play and turns end; it glides from corner to corner as the focus moves. It points at the ship touched, else what you've touched, else the place nearest the board's middle.
   - **It taps what you choose:** a small lift first, a quick drop onto whatever stands on the corner (a ship, a station, or the board itself), the dust a new building raises where it touches, and a settle back up (`CornerPointer::tap`).
   - **On the flat map** it's a still, flat chevron over the same corner (`BoardPicture::Marks::pointer`).
+- **Build:** choose a row on the build screen and press Build, and you're back on the board with where it can go marked (a station's: the ships that could settle; a ship's: your colonies); the only place, when there's one, is chosen already with the pointer on it. Touch a marked place to choose it (again to put it down), then Confirm or A builds it there. A card has nowhere on the board, so it's bought at once.
 - **Move a ship:** touch it, and the pointer goes over it, and where it can go is marked on both screens, the moves that take a fuel told apart (orange rings on the top screen, outlined squares on the map; the rest highlight-coloured rings and filled dots). Touch a marked corner to choose it (again to put it down), then Confirm or A to move it there; touch anywhere else and the ship is put down and the pointer goes there. After the roll the turn's offers to players are open (the trading phase), and a ship can still be moved: choosing where ends the offers first, as building does. A ship that can't move says why (roll first, or it has moved this turn).
 - **The blockade** (a 7, or an Enforcer): the planets it can go to are outlined on both screens and the pointer sits in the middle of the tile; touch one to choose it (again to put it down), then Confirm or A, and then whom to steal from if more than one player is there. With no planet turned over yet it has nowhere to go: the game says so and goes on by itself.
 - **Your roll:** when the dice wait for you, the banner says ROLL THE DICE (on the turn's band if it's still up) and stays until you roll, then goes the usual way; B skips the turn's banner straight to it.
@@ -275,7 +276,7 @@ The board in 3D (stereo with the 3D slider on a 3DS), with the HUD over it (`Hud
 
 - each player's points as a row of dashes (`PointsBars`: a dash a point in their colour, grey to the target); the turn's row outlined in turquoise, the outline easing from row to row as turns change;
 - a point or badge just won pops in, growing past its size in white and settling, several one after another (`ScorePops`);
-- the round and your badges in the corners;
+- the round and your badges in the corners (an explorer badge: a yellow star in a yellow hexagon, `drawBadge`, the same on another player's panel; an empty slot a dim outline);
 - the last move in words;
 - who won.
 
@@ -292,7 +293,8 @@ Each tile shows its face, and a turned-over planet its number on a round chip ([
 
 Each thing shown over the board for a while is a show: its state, timing and whether it's moving in `TopShows.hpp`, tested on its own; its drawing in `TopViews.hpp` (`TopViews_test` draws each through its whole timeline). Their motion follows [`docs/research/animation-whimsy.md`](../../docs/research/animation-whimsy.md): arcs, a wind-up before, a settle after. Their lines of words are stacked with ScratchPadd's `LineStack.hpp` (each as tall as the screen's font draws it), not placed at fixed offsets, so none overlap on either screen:
 
-- **A discovery** (`discoveryLayout`): who found it and the tile's name down from the top, the tile as tall as the room left (55% of the screen at most: about 44% on the 3DS), what it gives just under the tile.
+- **A discovery** (`discoveryLayout`): who found it and the tile's name down from the top, the tile as tall as the room left (55% of the screen at most: about 44% on the 3DS), what it gives just under the tile. Its dim backdrop is always behind the tile, however far the tile has to be to fit (`discoveryDepths`), so it dims the board and never the tile.
+- **Cards flying** (a roll's pay, the starting hand dealt, steals, trades, what's paid to the bank, a home's pay, a card played) start and land where `CardPlaces` says: your hand below the screen, another player's row of the points bars (on the row itself, from `PointsBars::rowOf`), the bank behind the ROUND hexagon; what's paid to the bank leaves from the payer's home planet, followed as the camera moves.
 - **Who goes first:** its title, the names, the numbers, the order and a tie's call down from the top; who goes first and the order of homes and ships up from the bottom.
 - **Choosing a resource:** the names under the row of things to build and the hint under them, lifted to stay on the 3DS's screen.
 
@@ -447,7 +449,7 @@ bazel test //projects/cosmic_hex/...
 - the text of the starting state and of every action;
 - two bots playing a whole game to a winner, whose action log replays exactly.
 
-`handheld/`'s tests check what the app plays and draws, each part on its own (`BoardPicture_test`, `BottomScreen_test`, `TopViews_test` and the rest; `DiscoveryLayout_test` lays out a discovery on the DS's screen in Silkscreen and the 3DS's in Orbitron, and checks its words and tile don't overlap or leave the screen).
+`handheld/`'s tests check what the app plays and draws, each part on its own (`BoardPicture_test`, `BottomScreen_test`, `TopViews_test` and the rest; `DiscoveryLayout_test` lays out a discovery on the DS's screen in Silkscreen and the 3DS's in Orbitron, and checks its words and tile don't overlap or leave the screen, and its backdrop stays behind the tile; `CardPlaces_test` checks every card flying to another player lands on their row of the points bars, for 2 to 4 players on both screens; `Hud_test` that a badge's star is inside its hexagon).
 
 ## Dice
 
