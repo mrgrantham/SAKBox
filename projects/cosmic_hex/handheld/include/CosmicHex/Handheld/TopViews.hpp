@@ -2,7 +2,8 @@
 // while (TopShows.hpp's shows): a discovered tile, the two cards dealt,
 // another player's panel, who goes first. Each draws into a TopFrame: the
 // renderer, its overlay and camera, the screen's size, the pictures loaded
-// once (TopPictures) and the players' names.
+// once (TopPictures) and the players' names. Every card is drawn one way
+// (TopViews.cpp's cardFace: CardFace's layers, its icon, its words).
 //
 //   TopFrame frame{renderer, overlay, camera, 256, 192, pictures, names, now};
 //   drawDiscovery(frame, discovery, closeUpFace);
@@ -36,28 +37,42 @@ struct TopPictures {
   ScratchPadd::Scene::Mesh hexTile, numberChip, column, hexRing; // (the board's own pieces)
   ScratchPadd::Scene::Mesh die, homeDie;                         // (the dice's, DicePieces)
   // Flat squares, each with its pictures' texture corners (ScreenPictures)
-  ScratchPadd::Scene::Mesh pictureSquare, backSquare, closeUpCardSquare;
+  ScratchPadd::Scene::Mesh pictureSquare, backSquare;
   std::array<ScratchPadd::Scene::Texture, Art::kFaces> faces{};
   std::array<ScratchPadd::Scene::Texture, Art::kHighestChip + 1> chips{}; // (by number)
-  std::array<ScratchPadd::Scene::Texture, Art::kCards> cards{};           // (action cards')
-  std::array<ScratchPadd::Scene::Texture, kResources> resources{};        // (resource cards')
-  ScratchPadd::Scene::Mesh resourceSquare;                                // (and their square)
-  std::array<ScratchPadd::Scene::Texture, 2> backs{};                     // (by Art::CardBack)
-  // The cards' pictures' widths (resource cards bigger: their titles), and
-  // each card's label band colour (by Art::Card: resources first)
+  // The cards, in layers (CardFace): each card's layers, one mesh; the
+  // rounded rectangles they're cut from, one small texture; and each card's
+  // icon, its only picture (all by Art::Card, resources first)
+  std::array<ScratchPadd::Scene::Mesh, Art::kCards> cardLayers{};
+  ScratchPadd::Scene::Texture cardShapes;
+  std::array<ScratchPadd::Scene::Texture, Art::kCards> cardIcons{};
+  std::array<ScratchPadd::Scene::Texture, 2> backs{}; // (by Art::CardBack)
+  // The piles' cards' widths (Show resources: resource cards bigger, their
+  // titles on them; action cards smaller, their titles under them)
   int resourceWidth = 44, cardWidth = 32;
-  std::array<ScratchPadd::Scene::Colour, Art::kCards> cardBands{};
-  // A card's title letters on its band (Palette::inkOnBand), for every
-  // view that writes a title over a card's picture
-  ScratchPadd::Scene::Colour titleInkOf(Art::Card card) const {
-    return Palette::inkOnBand(cardBands[static_cast<std::size_t>(card)]);
-  }
 };
 
 // A point on the top screen, in points from its top left
 struct ScreenPoint {
   float x = 0, y = 0;
 };
+
+// Where the views' big cards rest on a screen `width` x `height` (points,
+// sizes for a DS's scaled by width / 256): each a true card's shape
+// (CardFace, 2:3), as big as fits beside the words round it, whole on the
+// screen (the 3DS's is shorter for its width)
+struct CardBox {
+  float x = 0, y = 0, width = 0, height = 0;
+};
+// The cards dealt, card `i` of `count` side by side, over the hint
+CardBox dealtCardBox(float width, float height, std::size_t i, std::size_t count);
+// An action card played, held in the middle under its words
+CardBox playedCardBox(float width, float height);
+// The resource picker's card in focus, between its title and what you
+// could build
+CardBox pickCardBox(float width, float height);
+// A home's card, held under its die, over what it gives
+CardBox homePayCardBox(float width, float height);
 
 // One frame's drawing
 struct TopFrame {
@@ -102,9 +117,8 @@ void drawDiscovery(const TopFrame &frame, const DiscoveryShow &show,
                    const ScratchPadd::PictureSlot &closeUp,
                    const ScratchPadd::PictureSlot &closeUpBack);
 // The two cards dealt, thrown in and turned, the one `chosen` below
-// outlined (`closeUps`: the cards' pictures drawn sharp, in order)
-void drawDealtCards(const TopFrame &frame, const DealtShow &show, int chosen,
-                    const std::array<ScratchPadd::PictureSlot, 2> &closeUps);
+// outlined
+void drawDealtCards(const TopFrame &frame, const DealtShow &show, int chosen);
 // Show resources: `player`'s resources as piles along the bottom (a card
 // for each, five at most, a count past five), their action cards across
 // the top, each card coming in as `show` has it
@@ -199,12 +213,11 @@ void drawFirstRoll(const TopFrame &frame, const FirstRoll &roll, const FirstRoll
 // everyone's when watching: up to their row of the points bars)
 void drawRollPay(const TopFrame &frame, const RollPayShow &show, const State &state, int you);
 // A home's pay: its die, the home's tile on `state`'s board, pulled out
-// of its place (left empty space, rippling as it goes) to face you, spun to its side for each
-// pay; each card big (sharp from `closeUps`[its order % 2] when that holds
-// it: PictureSlot id, the card), then off to its player (CardPlaces: yours,
-// `yours`, down to the bottom screen; a bot's, to their row of the points
-// bars); then the die set back in its place, space rippling where it seats
-void drawHomePay(const TopFrame &frame, const HomePayShow &show, const State &state, bool yours,
-                 const std::array<ScratchPadd::PictureSlot, 2> &closeUps);
+// of its place (left empty space, rippling as it goes) to face you, spun
+// to its side for each pay; each card big, then off to its player
+// (CardPlaces: yours, `yours`, down to the bottom screen; a bot's, to
+// their row of the points bars); then the die set back in its place, space
+// rippling where it seats
+void drawHomePay(const TopFrame &frame, const HomePayShow &show, const State &state, bool yours);
 
 } // namespace CosmicHex::Handheld

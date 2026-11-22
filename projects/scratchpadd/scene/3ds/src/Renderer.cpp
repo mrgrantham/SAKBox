@@ -755,6 +755,10 @@ void Renderer::Backend::drawEye(C3D_RenderTarget *target, float separation) {
     } else {
       C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_ALL);
       C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+      // (a texel more than half see-through isn't drawn, as the DS's images
+      // have it, their alpha one bit: a card's rounded corners, an icon's
+      // ground; solid meshes' own alpha is whole, so it's the texel's)
+      C3D_AlphaTest(true, GPU_GEQUAL, 128);
     }
     if (s.meshes)
       for (const Draw &draw : solid)
@@ -765,6 +769,7 @@ void Renderer::Backend::drawEye(C3D_RenderTarget *target, float separation) {
 
     // Translucent ones, farthest first, blending over what's behind them
     // without hiding what's drawn after
+    C3D_AlphaTest(false, GPU_ALWAYS, 0);
     if (!overdraw) {
       C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_COLOR);
       C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,

@@ -121,6 +121,10 @@ void main() {
   outSurface = vec4(normalize(vNormal), draw.outlined > 0.5 ? vDistance : -vDistance);
 #endif
   vec4 texel = draw.textured != 0 && draw.outlinePass == 0 ? texture(image, vTexCoord) : vec4(1.0);
+  // (a texel more than half see-through isn't drawn, as the DS's images
+  // have it: their alpha one bit; a card's rounded corners, an icon's ground)
+  if (texel.a < 0.5)
+    discard;
   vec3 colour = draw.outlinePass != 0 ? draw.colour.rgb : vColour.rgb * draw.colour.rgb * texel.rgb;
   if (draw.lit != 0) {
     vec3 n = normalize(vNormal);

@@ -79,13 +79,11 @@ TEST(TopShowsTest, TwoTilesOneAfterTheOther) {
   EXPECT_TRUE(show.waitingAfterCurrent().empty());
 }
 
-// The cards dealt: their close-ups first, then thrown, then turned
+// The cards dealt: thrown from when they're dealt (no close-ups to wait
+// for: their icons are loaded sharp), then turned
 TEST(TopShowsTest, DealtCardsThrownThenTurned) {
   DealtShow dealt;
-  dealt.deal({Art::Card::Enforcer, Art::Card::SupplyDrop}, 10);
-  EXPECT_TRUE(dealt.needsCloseUp());
-  dealt.closeUpDrawn(11);
-  EXPECT_FALSE(dealt.needsCloseUp());
+  dealt.deal({Art::Card::Enforcer, Art::Card::SupplyDrop}, 11);
   EXPECT_FLOAT_EQ(dealt.thrown(0, 11), 0);
   EXPECT_FLOAT_EQ(dealt.thrown(0, 11 + DealtShow::kSecondsThrow), 1);
   EXPECT_FLOAT_EQ(dealt.turned(0, 11 + DealtShow::kSecondsThrow), 0);
@@ -247,11 +245,6 @@ TEST(TopShowsTest, AHomePayingTwoStaysOutForBoth) {
   show.saw({{1, Action{Action::Kind::RollHomeDie, 0}}, {1, Action{Action::Kind::RollHomeDie, 4}}},
            paid, 0);
   EXPECT_TRUE(show.update(0).hold);
-  // (both cards' close-ups wanted from the start, each in its own slot)
-  const auto ahead = show.cardsAhead(0);
-  ASSERT_EQ(ahead.size(), 2u);
-  EXPECT_EQ(ahead[0].order, 0);
-  EXPECT_EQ(ahead[1].resource, Resource::Crystals);
   // (out and facing you from the first spin to the second's card leaving)
   const double second = S::kSecondsOut + S::kSecondsPay;
   for (double t = S::kSecondsOut; t < second + S::kSecondsPay; t += 0.05) {
@@ -263,7 +256,7 @@ TEST(TopShowsTest, AHomePayingTwoStaysOutForBoth) {
   EXPECT_EQ(show.card(second + S::kSecondsSpin + 0.1)->order, 1);
   EXPECT_NEAR(std::remainder(show.die(second + S::kSecondsSpin)->turn - homeDieTurn(4), 6.2831853f),
               0, 1e-4);
-  EXPECT_EQ(show.cardsAhead(second + S::kSecondsSpin).size(), 1u);
+  EXPECT_EQ(show.card(second + S::kSecondsSpin + 0.1)->resource, Resource::Crystals);
   // (then back, once)
   EXPECT_LT(show.die(second + S::kSecondsPay + 0.1)->lifted, 1);
   EXPECT_TRUE(show.update(HomePayShow::seconds(2) + kJustAfter).letGo);

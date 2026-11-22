@@ -472,7 +472,7 @@ TEST(BoardPictureTest, ZoomedInItStaysWithinItsMemory) {
 // Close-ups drawn a band at a time, as the DS draws them (PictureSlot), each
 // band within a small share of the heap: a card's band, its outlines all
 // kept as it was drawn, asked the DS for 147 KB in one piece while zoomed
-// in, and the DS stopped
+// in, and the DS stopped; and the cards' icons, drawn whole
 TEST(BoardPictureTest, CloseUpBandsStayWithinTheirMemory) {
   ASSERT_TRUE(ScratchPadd::MemoryStats::linked());
   constexpr std::size_t kBandBudget = 40 * 1024;
@@ -497,9 +497,12 @@ TEST(BoardPictureTest, CloseUpBandsStayWithinTheirMemory) {
         bandsFit(CosmicHex::Art::recipeOf(static_cast<CosmicHex::Art::Face>(f)), size, size))
         << "face " << f;
   }
+  // (the cards' icons, drawn whole at the start: the only pictures on a
+  // card, so no card has a close-up of its own)
+  const int iconWidth = kDsProfile.cardIconWidth;
   for (int c = 0; c < CosmicHex::Art::kCards; ++c) {
-    EXPECT_TRUE(bandsFit(CosmicHex::Art::cardRecipeOf(static_cast<CosmicHex::Art::Card>(c)), size,
-                         size * 88 / 63))
+    EXPECT_TRUE(bandsFit(CosmicHex::Art::cardIconRecipeOf(static_cast<CosmicHex::Art::Card>(c)),
+                         iconWidth, iconWidth / 2))
         << "card " << c;
   }
 }

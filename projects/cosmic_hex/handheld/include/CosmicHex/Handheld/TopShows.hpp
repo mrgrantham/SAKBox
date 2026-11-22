@@ -104,10 +104,6 @@ public:
   bool on() const { return shown_.on(); }
   bool moving() const { return on(); }
   const std::vector<Art::Card> &cards() const { return cards_; }
-  // Before they're thrown: their close-ups drawn (a moment on a DS), then
-  // the throw starts over from `now`
-  bool needsCloseUp() const { return on() && !closeUpDrawn_; }
-  void closeUpDrawn(double now);
 
   // Card i: how far thrown in (0 to 1, eased) and turned over (0 to 1)
   float thrown(std::size_t i, double now) const;
@@ -118,7 +114,6 @@ public:
 private:
   ScratchPadd::Motion::Showing shown_;
   std::vector<Art::Card> cards_;
-  bool closeUpDrawn_ = false;
 };
 
 // ---------------------------------------------------------------------------
@@ -351,9 +346,6 @@ public:
     float grown = 0, away = 0, words = 0;
   };
   std::optional<Card> card(double now) const;
-  // The cards still to show or showing, the next two at most, so their
-  // close-ups can be drawn before they show (each in slot order % 2)
-  std::vector<Card> cardsAhead(double now) const;
   // The star landed and the player's choice not made yet
   bool waitingForChoice(double now) const;
 

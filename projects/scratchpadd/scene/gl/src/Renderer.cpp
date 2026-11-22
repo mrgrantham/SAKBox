@@ -86,6 +86,10 @@ layout(location = 1) out vec4 fragmentNormal;
 void main() {
   fragmentNormal = vec4(normalize(vNormal) * 0.5 + 0.5, uOutlined);
   vec4 texel = uTextured && !uOutlinePass ? texture(uTexture, vTexCoord) : vec4(1.0);
+  // (a texel more than half see-through isn't drawn, as the DS's images
+  // have it: their alpha one bit; a card's rounded corners, an icon's ground)
+  if (texel.a < 0.5)
+    discard;
   vec3 colour = uOutlinePass ? uColour.rgb : vColour.rgb * uColour.rgb * texel.rgb;
   if (uLit) {
     vec3 n = normalize(vNormal);

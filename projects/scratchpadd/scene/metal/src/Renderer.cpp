@@ -97,6 +97,10 @@ vertex VertexOut sceneVertex(VertexIn in [[stage_in]], constant Frame &frame [[b
 float4 shade(VertexOut in, constant Frame &frame, constant Draw &draw, texture2d<float> image) {
   constexpr sampler smooth(filter::linear, mip_filter::linear, address::clamp_to_edge);
   float4 texel = draw.textured != 0 && draw.outlinePass == 0 ? image.sample(smooth, in.uv) : float4(1.0);
+  // (a texel more than half see-through isn't drawn, as the DS's images
+  // have it: their alpha one bit; a card's rounded corners, an icon's ground)
+  if (texel.a < 0.5)
+    discard_fragment();
   float3 colour = draw.outlinePass != 0 ? draw.colour.rgb : in.colour.rgb * draw.colour.rgb * texel.rgb;
   if (draw.lit != 0) {
     float3 n = normalize(in.normal);

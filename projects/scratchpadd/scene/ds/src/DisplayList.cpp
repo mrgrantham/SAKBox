@@ -158,9 +158,12 @@ std::vector<std::uint32_t> packAlpha(const Source &source, const Variant &varian
     packer.add(KBegin, {static_cast<std::uint32_t>(run.kind)});
     for (std::uint32_t c = run.first; c < run.first + run.count; ++c) {
       const Source::Corner &corner = source.corners[c];
-      // (textured: the colour's in the texture, the vertex lit as white)
-      const Colour tinted = variant.textured || image ? Colour{255, 255, 255, corner.colour.a}
-                                                      : multiply(corner.colour, variant.colour);
+      // (toon-textured: the colour's in the texture, the vertex lit as
+      // white; an image, as untextured, tinted by the vertex's colour and
+      // the material's, which the DS multiplies the image by, as the other
+      // backends do: a card's layers, one white shape each, tinted)
+      const Colour tinted = variant.textured ? Colour{255, 255, 255, corner.colour.a}
+                                             : multiply(corner.colour, variant.colour);
       const std::uint16_t thisColour = rgb15(tinted);
       const bool newColour = first || thisColour != colour;
       if (variant.lit) {

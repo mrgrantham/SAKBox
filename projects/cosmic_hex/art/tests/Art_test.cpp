@@ -61,26 +61,51 @@ TEST(ArtTest, EveryIconDraws) {
   }
 }
 
-// Every card draws, as the areas say: its title band in a colour of its
-// own, not the card's cream; the art's dark panel; the cream where its words
-// go; and its rounded corner see-through
-TEST(ArtTest, EveryCardDrawsInItsAreas) {
-  const auto at = [](const TR::Image &image, float x, float y) {
-    return image.at(static_cast<int>(x / Art::kCardWidth * static_cast<float>(image.width)),
-                    static_cast<int>(y / Art::kCardHeight * static_cast<float>(image.height)));
-  };
+// A card is 2:3 (the user's true card shape), its areas inside it, its
+// icon on its art band
+TEST(ArtTest, ACardIsTwoByThreeItsAreasInside) {
+  EXPECT_FLOAT_EQ(Art::kCardHeight / Art::kCardWidth, 1.5f);
+  for (const Art::CardArea &area :
+       {Art::kCardTitle, Art::kCardArt, Art::kCardIcon, Art::kCardWords}) {
+    EXPECT_GE(area.x, 0);
+    EXPECT_GE(area.y, 0);
+    EXPECT_LE(area.x + area.width, Art::kCardWidth);
+    EXPECT_LE(area.y + area.height, Art::kCardHeight);
+  }
+  EXPECT_GE(Art::kCardIcon.x, Art::kCardArt.x);
+  EXPECT_GE(Art::kCardIcon.y, Art::kCardArt.y);
+  EXPECT_LE(Art::kCardIcon.x + Art::kCardIcon.width, Art::kCardArt.x + Art::kCardArt.width);
+  EXPECT_LE(Art::kCardIcon.y + Art::kCardIcon.height, Art::kCardArt.y + Art::kCardArt.height);
+}
+
+// Every card's icon draws, the icon's shape (2:1): something in its
+// middle, its corner see-through (the art band shows round it)
+TEST(ArtTest, EveryCardIconDraws) {
   for (int i = 0; i < Art::kCards; ++i) {
-    const auto recipe = TR::read(Art::cardRecipeOf(static_cast<Art::Card>(i)));
+    const auto recipe = TR::read(Art::cardIconRecipeOf(static_cast<Art::Card>(i)));
     ASSERT_TRUE(recipe.has_value()) << "card " << i << ": " << recipe.error();
-    const TR::Image image = TR::draw(*recipe, 126, 176, TR::Format::Rgba8);
-    const auto band =
-        at(image, Art::kCardTitle.x + 2, Art::kCardTitle.y + Art::kCardTitle.height / 2);
-    EXPECT_NE(band.r, 0xf4) << "card " << i;
-    const auto art = at(image, Art::kCardArt.x + 2, Art::kCardArt.y + 2);
-    EXPECT_EQ(art.r, 0x18) << "card " << i;
-    const auto words = at(image, Art::kCardWords.x + 1, Art::kCardWords.y + 1);
-    EXPECT_EQ(words.r, 0xf4) << "card " << i;
+    const TR::Image image = TR::draw(*recipe, 112, 56, TR::Format::Rgba8);
     EXPECT_EQ(image.at(0, 0).a, 0) << "card " << i;
+    int drawn = 0;
+    for (int y = 20; y < 36; ++y)
+      for (int x = 40; x < 72; ++x)
+        drawn += image.at(x, y).a > 0 ? 1 : 0;
+    EXPECT_GT(drawn, 20) << "card " << i;
+  }
+}
+
+// Every card's title band has its colour (cards.txt): the resources' as
+// their drawings had them, never the body's cream
+TEST(ArtTest, EveryCardHasItsBandsColour) {
+  EXPECT_EQ(Art::bandOf(Art::Card::Minerals), (Art::Rgb{0xaa, 0x96, 0x82}));
+  EXPECT_EQ(Art::bandOf(Art::Card::Food), (Art::Rgb{0x6e, 0xc8, 0x6e}));
+  EXPECT_EQ(Art::bandOf(Art::Card::Fuel), (Art::Rgb{0xeb, 0x96, 0x50}));
+  EXPECT_EQ(Art::bandOf(Art::Card::Water), (Art::Rgb{0xaa, 0xd7, 0xf5}));
+  EXPECT_EQ(Art::bandOf(Art::Card::Crystals), (Art::Rgb{0xb9, 0x82, 0xe6}));
+  for (int i = 0; i < Art::kCards; ++i) {
+    const Art::Rgb band = Art::bandOf(static_cast<Art::Card>(i));
+    EXPECT_NE(band, (Art::Rgb{0, 0, 0})) << "card " << i;
+    EXPECT_NE(band, Art::kCardBody) << "card " << i;
   }
 }
 
@@ -111,13 +136,15 @@ TEST(ArtTest, EveryCardsWordsFit) {
   }
 }
 
-// Both card backs draw: dark, their rounded corners see-through
+// Both card backs draw, 2:3 as the faces: dark down to their foot, their
+// rounded corners see-through
 TEST(ArtTest, TheCardBacksDraw) {
   for (Art::CardBack design : {Art::CardBack::Rings, Art::CardBack::Planets}) {
     const auto recipe = TR::read(Art::cardBackRecipe(design));
     ASSERT_TRUE(recipe.has_value()) << recipe.error();
-    const TR::Image image = TR::draw(*recipe, 63, 88, TR::Format::Rgba8);
+    const TR::Image image = TR::draw(*recipe, 64, 96, TR::Format::Rgba8);
     EXPECT_EQ(image.at(0, 0).a, 0);
-    EXPECT_EQ(image.at(20, 80).g, 0x1c); // (the dark ground, inside the edge, clear of stars)
+    EXPECT_EQ(image.at(0, 95).a, 0);
+    EXPECT_EQ(image.at(20, 92).g, 0x1c); // (the dark ground, inside the edge, clear of stars)
   }
 }

@@ -103,12 +103,6 @@ void DealtShow::deal(const std::vector<Art::Card> &cards, double now) {
   if (on() && cards == cards_)
     return;
   cards_ = cards;
-  closeUpDrawn_ = false;
-  shown_.start(now);
-}
-
-void DealtShow::closeUpDrawn(double now) {
-  closeUpDrawn_ = true;
   shown_.start(now);
 }
 
@@ -598,19 +592,6 @@ std::optional<HomePayShow::Card> HomePayShow::card(double now) const {
                 .words = partOf(now, *at + kSecondsCard, kSecondsWordsIn)};
   }
   return std::nullopt;
-}
-
-std::vector<HomePayShow::Card> HomePayShow::cardsAhead(double now) const {
-  std::vector<Card> ahead;
-  const Timeline t = timeline();
-  for (std::size_t i = 0; i < t.pays && ahead.size() < 2; ++i) {
-    const std::optional<double> at = i < t.spins.size() ? t.spins[i].cardAt : std::nullopt;
-    const bool gone = at && now >= *at + kSecondsCard + kSecondsHold + kSecondsAway;
-    const std::optional<Resource> resource = pays_[i].resource;
-    if (!gone && resource)
-      ahead.push_back({.order = static_cast<int>(i), .resource = *resource});
-  }
-  return ahead;
 }
 
 bool HomePayShow::waitingForChoice(double now) const {

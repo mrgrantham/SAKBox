@@ -388,6 +388,34 @@ TEST_F(RendererTest, TexturesShowTheirImage) {
   renderer->unload(texture);
 }
 
+// A texel more than half see-through isn't drawn, on a solid mesh as on a
+// DS (its images' alpha one bit): what's behind shows (a card's icon's
+// ground showed black, its layers' rounded corners square)
+TEST_F(RendererTest, SeeThroughTexelsShowWhatsBehind) {
+  // 8 x 8: its left half see-through red, its right half green
+  std::vector<Colour> pixels(64);
+  for (std::size_t i = 0; i < pixels.size(); ++i)
+    pixels[i] = i % 8 < 4 ? Colour{255, 0, 0, 0} : Colour{0, 255, 0, 255};
+  const Texture texture = renderer->load(TextureImage{8, 8, pixels});
+  ASSERT_TRUE(texture);
+  const Mesh square =
+      renderer->load(MeshBuilder()
+                         .quad({-2, -2, 0}, {2, -2, 0}, {2, 2, 0}, {-2, 2, 0}, {},
+                               {TexCoord{0, 1}, TexCoord{1, 1}, TexCoord{1, 0}, TexCoord{0, 0}})
+                         .data());
+  std::array<std::array<float, 2>, 2> at{};
+  renderer->beginFrame(camera, environment); // (toScreen needs a frame's camera)
+  ASSERT_TRUE(renderer->toScreen({-1, 0, 0}, at[0][0], at[0][1]));
+  ASSERT_TRUE(renderer->toScreen({1, 0, 0}, at[1][0], at[1][1]));
+  renderer->endFrame();
+  const Material material{.shading = Material::Shading::Unlit, .texture = texture};
+  const auto shown =
+      frame([&] { renderer->draw(square, Transform::identity(), material); }, {at[0], at[1]});
+  expectNear(shown[0], {0, 0, 40}); // (the background)
+  expectNear(shown[1], {0, 255, 0});
+  renderer->unload(texture);
+}
+
 // A texture's picture replaced (a close-up reused): draws show the new
 // one, under the same handle
 TEST_F(RendererTest, AReplacedTextureShowsItsNewPicture) {

@@ -131,8 +131,9 @@ struct Variant {
   // toon table's band and the texture its colour
   bool textured = false;
   // An image texture (Material::texture) instead, this many texels across
-  // and down: each corner its Vertex::uv's texel, lit as white, the image
-  // giving the colours (0: none)
+  // and down: each corner its Vertex::uv's texel, the image multiplied by
+  // the vertex's colour and the material's, as an untextured mesh's
+  // colours are (0: none)
   int imageWidth = 0, imageHeight = 0;
   bool operator==(const Variant &) const = default;
 };

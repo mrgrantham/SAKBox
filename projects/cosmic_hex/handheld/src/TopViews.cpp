@@ -3,6 +3,7 @@
 #include <CosmicHex/Dice/DiceTray.hpp>
 #include <CosmicHex/Handheld/BoardMotion.hpp>
 #include <CosmicHex/Handheld/BoardPieces.hpp>
+#include <CosmicHex/Handheld/CardFace.hpp>
 #include <CosmicHex/Handheld/CardPlaces.hpp>
 #include <CosmicHex/Handheld/CardsHeld.hpp>
 #include <CosmicHex/Handheld/DicePieces.hpp>
@@ -18,6 +19,7 @@
 #include <array>
 #include <cmath>
 #include <functional>
+#include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -44,12 +46,14 @@ constexpr float kPi = 3.14159265f;
 
 // The largest scale from `largest` down to `smallest`, in four steps, that
 // `text` fits `width` at as drawn (its letters' spacing included), as
-// `textWidth` measures it; `smallest` if none does
+// `measure` measures it, its line no taller than `height`; `smallest` if
+// none does
 float scaleToFit(std::string_view text, float width, float largest, float smallest,
-                 TextWidth textWidth = Scene::Overlay::textWidth) {
+                 TextMeasure measure = {}, float height = std::numeric_limits<float>::max()) {
   const float step = (largest - smallest) / 4;
   float scale = largest;
-  while (scale > smallest && textWidth(text, scale) > width)
+  while (scale > smallest &&
+         (measure.width(text, scale) > width || measure.lineHeight(scale) > height))
     scale = std::max(smallest, scale - step);
   return scale;
 }
@@ -69,6 +73,74 @@ void backdrop(const TopFrame &f, float top, Scene::Colour colour, float alpha,
                   {.shading = Scene::Material::Shading::Unlit,
                    .colour = colour,
                    .alpha = static_cast<std::uint8_t>(alpha)});
+}
+
+// How a card's face is drawn (cardFace)
+struct CardLook {
+  float turned = 1;                      // (over from its back: its width through |cos|; 1, flat)
+  float title = 1;                       // (its title on its band fading in, 0 to 1; 0, none)
+  float words = 0;                       // (what it does, under its art, fading in; 0, none)
+  std::optional<Scene::Colour> titleInk; // (else its band's: CardFace::titleInkOf)
+  std::uint8_t alpha = 31;
+  float distance = kPictureDistance;
+};
+
+// A card's face, `w` wide (CardFace::heightOf tall) with its top left at
+// (x, y), the one way every view draws a card (CardFace): its layers in one
+// draw, its icon over them, and once it's flat the overlay's words: its
+// short title on its band, as large as fits the band; what it does under
+// its art, as many lines as fit
+void cardFace(const TopFrame &f, Art::Card card, float x, float y, float w,
+              const CardLook &look = {}) {
+  const auto index = static_cast<std::size_t>(card);
+  const float h = CardFace::heightOf(w), u = w / Art::kCardWidth;
+  const float across = std::abs(std::cos(look.turned * kPi));
+  const float cw = w * across, cx = x + (w - cw) / 2, cu = cw / Art::kCardWidth;
+  if (cw < 0.5f)
+    return;
+  f.renderer.draw(f.pictures.cardLayers[index],
+                  onScreenAt(f.camera, f.width, f.height, cx, y, cw, h, look.distance),
+                  {.shading = Scene::Material::Shading::Unlit,
+                   .texture = f.pictures.cardShapes,
+                   .alpha = look.alpha});
+  const Art::CardArea &icon = Art::kCardIcon;
+  f.renderer.draw(f.pictures.pictureSquare,
+                  onScreenAt(f.camera, f.width, f.height, cx + icon.x * cu, y + icon.y * u,
+                             icon.width * cu, icon.height * u, look.distance - CardFace::kIconLift),
+                  {.shading = Scene::Material::Shading::Unlit,
+                   .texture = f.pictures.cardIcons[index],
+                   .alpha = look.alpha});
+  if (look.turned < 1)
+    return;
+  const float k = f.k();
+  const Art::CardWords words = Art::wordsOf(card);
+  if (look.title > 0) {
+    const Scene::LineBox band{y + Art::kCardTitle.y * u,
+                              y + (Art::kCardTitle.y + Art::kCardTitle.height) * u};
+    const float scale = scaleToFit(words.shortTitle, Art::kCardTitle.width * u,
+                                   std::max(1.0f, 2 * k), 1, TextMeasure{}, band.height());
+    f.overlay.textCentred(x + w / 2, band.middle(), words.shortTitle,
+                          fadedIn(look.titleInk.value_or(CardFace::titleInkOf(card)), look.title,
+                                  CardFace::bandOf(card)),
+                          scale);
+  }
+  if (look.words > 0) {
+    // (wrapped by the width the letters take as drawn, spacing included;
+    // stacked by the font's own line height, as many as the area holds)
+    constexpr Scene::Colour kInk{40, 40, 48}, kCream{244, 241, 232};
+    const Art::CardArea &area = Art::kCardWords;
+    const float lineHeight = Scene::Overlay::lineHeight(k), bottom = y + (area.y + area.height) * u;
+    float top = y + area.y * u;
+    for (const auto &line :
+         Scene::wrapText(words.words, area.width * u, [k](std::string_view line) {
+           return Scene::Overlay::textWidth(line, k);
+         })) {
+      if (top + lineHeight > bottom)
+        break;
+      f.overlay.text(x + area.x * u, top, line, fadedIn(kInk, look.words, kCream), k);
+      top += lineHeight + k;
+    }
+  }
 }
 } // namespace
 
@@ -235,71 +307,31 @@ void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
 // ------------------------------------------------------------------- Dealt
 
 namespace {
-// A card's title over its label band, fading in by `shown` from the band
-// itself (dark letters on a light band: TopPictures::titleInkOf)
-Scene::Colour titleInk(const TopFrame &f, Art::Card card, float shown = 1) {
-  return fadedIn(f.pictures.titleInkOf(card), shown,
-                 f.pictures.cardBands[static_cast<std::size_t>(card)]);
-}
-Scene::Colour titleInk(const TopFrame &f, Resource resource, float shown = 1) {
-  return titleInk(f, static_cast<Art::Card>(resource), shown); // (resources first in Art::Card)
-}
-
-// A resource card's name on its label band (3 to 19 of its 52-unit
-// picture), in its band's ink, `shown` faded in: the card's middle at `x`,
-// its top at `top`, `h` tall
-void resourceCardTitle(const TopFrame &f, Resource resource, float x, float top, float h,
-                       float shown) {
-  f.overlay.textCentred(x, top + h * 11 / 52, GameWords::of(resource), titleInk(f, resource, shown),
-                        1.5f * f.k());
-}
-
-// An action card's face, `w` wide with its top left at (x, y), turned over
-// `turned` of the way (its width through |cos|: past halfway, its face):
-// its picture (sharp when `closeUp` shows it), its body, and once flat its
-// title and words
-void actionCardFace(const TopFrame &f, Art::Card card, float x, float y, float w, float turned,
-                    const ScratchPadd::PictureSlot *closeUp, float shown = 1) {
-  const float k = f.k();
-  const float pictureH = w * 52 / 63, cardH = w * 88 / 63;
-  const float across = std::abs(std::cos(turned * kPi));
-  const float cw = w * across, cx = x + w * (1 - across) / 2;
-  const bool sharp = closeUp && closeUp->showing(static_cast<int>(card));
-  picture(f, sharp ? f.pictures.closeUpCardSquare : f.pictures.pictureSquare,
-          sharp ? closeUp->texture() : f.pictures.cards[static_cast<std::size_t>(card)], cx, y, cw,
-          pictureH);
-  // The card's body under its picture, and once flat, its words
-  f.overlay.rectangle(cx, y + pictureH, cw, cardH - pictureH, {236, 232, 220, 255});
-  if (turned < 1 || shown <= 0)
-    return;
-  const Art::CardWords words = Art::wordsOf(card);
-  // (the title in its band's ink, centred on the label band, 3 to 19 of
-  // the card's 88 units, as large as fits its width: the user's)
-  f.overlay.textCentred(x + w / 2, y + w * 11 / 63, words.shortTitle, titleInk(f, card, shown),
-                        scaleToFit(words.shortTitle, w * 54 / 63, 2 * k, k));
-  // (wrapped by the width the letters take as drawn, spacing included)
-  const auto lines = Scene::wrapText(words.words, w - 8 * k, [k](std::string_view line) {
-    return Scene::Overlay::textWidth(line, k);
-  });
-  for (std::size_t l = 0; l < lines.size() && l < 6; ++l)
-    f.overlay.text(x + 4 * k, y + pictureH + (3 + 9 * static_cast<float>(l)) * k, lines[l],
-                   fadedIn({40, 40, 48}, shown, {236, 232, 220}), k);
-}
+constexpr float kDealtTop = 8, kDealtGap = 16; // (a DS's pixels)
+// The hint under the cards dealt: its line's middle
+float dealtHintY(float height, float k) { return height - 6 * k; }
 } // namespace
 
-void drawDealtCards(const TopFrame &f, const DealtShow &show, int chosen,
-                    const std::array<ScratchPadd::PictureSlot, 2> &closeUps) {
+CardBox dealtCardBox(float width, float height, std::size_t i, std::size_t count) {
+  const float k = width / 256, n = static_cast<float>(std::max<std::size_t>(count, 1));
+  const float gap = kDealtGap * k, top = kDealtTop * k;
+  const float bottom = dealtHintY(height, k) - Scene::Overlay::lineHeight(k) / 2 - 4 * k;
+  const float w =
+      std::min(100 * k, CardFace::widthToFit((width - 8 * k - (n - 1) * gap) / n, bottom - top));
+  const float left = (width - (n * w + (n - 1) * gap)) / 2;
+  return {left + static_cast<float>(i) * (w + gap), top, w, CardFace::heightOf(w)};
+}
+
+void drawDealtCards(const TopFrame &f, const DealtShow &show, int chosen) {
   const std::vector<Art::Card> &cards = show.cards();
   if (!show.on() || cards.empty())
     return;
   const float k = f.k();
-  const float w = 100 * k, cardH = w * 88 / 63, gap = 16 * k;
-  const auto count = static_cast<float>(cards.size());
-  const float left = (f.width - (count * w + (count - 1) * gap)) / 2, top = 8 * k;
-  f.overlay.textCentred(f.width / 2, f.height - 6 * k, "Keep one: touch it below",
+  f.overlay.textCentred(f.width / 2, dealtHintY(f.height, k), "Keep one: touch it below",
                         Palette::kDimWords, k);
   for (std::size_t i = 0; i < cards.size(); ++i) {
-    const float homeX = left + static_cast<float>(i) * (w + gap);
+    const CardBox home = dealtCardBox(f.width, f.height, i, cards.size());
+    const float w = home.width, cardH = home.height, homeX = home.x, top = home.y;
     // Thrown in from the bottom left along an arc (bowing up), landing
     // with a settle (DealtShow::thrown)
     const float flown = show.thrown(i, f.now);
@@ -307,16 +339,15 @@ void drawDealtCards(const TopFrame &f, const DealtShow &show, int chosen,
     const float y = Motion::arc(f.height, top, -30 * k, flown);
     // Then turned over: its width through |cos|, its back until halfway
     const float turned = show.turned(i, f.now);
-    const float across = std::abs(std::cos(turned * kPi));
-    const float cw = w * across, cx = x + w * (1 - across) / 2;
     if (turned < 0.5f) {
+      const float across = std::abs(std::cos(turned * kPi));
+      const float cw = w * across, cx = x + w * (1 - across) / 2;
       picture(f, f.pictures.backSquare,
               f.pictures.backs[static_cast<std::size_t>(Art::kActionBack)], cx, y, cw, cardH);
       continue;
     }
-    const Art::Card card = cards[i];
-    const ScratchPadd::PictureSlot *closeUp = i < closeUps.size() ? &closeUps[i] : nullptr;
-    actionCardFace(f, card, x, y, w, turned, closeUp, show.words(i, f.now));
+    const float words = show.words(i, f.now);
+    cardFace(f, cards[i], x, y, w, {.turned = turned, .title = words, .words = words});
     if (turned < 1)
       continue;
     if (static_cast<int>(i) == chosen) {
@@ -330,6 +361,14 @@ void drawDealtCards(const TopFrame &f, const DealtShow &show, int chosen,
 
 // -------------------------------------------------------------- Card play
 
+CardBox playedCardBox(float width, float height) {
+  // (as big as fits under its words at the top)
+  const float k = width / 256;
+  const float w = std::min(90 * k, CardFace::widthToFit(width, height - 24 * k));
+  const float h = CardFace::heightOf(w), midY = height / 2 + 6 * k;
+  return {width / 2 - w / 2, midY - h / 2, w, h};
+}
+
 void drawCardPlay(const TopFrame &f, const CardPlayShow &show, const State &state, int you) {
   const auto m = show.at(f.now);
   const CardPlayShow::Play *play = show.current();
@@ -339,21 +378,24 @@ void drawCardPlay(const TopFrame &f, const CardPlayShow &show, const State &stat
   backdrop(f, 0, {8, 12, 22}, 12 * std::min(1.0f, m->up * 2) * (1 - m->away));
   // From its player (your hand below, or their row of the points bars) up
   // to the middle, face down until it turns; then off up and away
-  const float w = 90 * k, cardH = w * 88 / 63;
+  const CardBox held = playedCardBox(f.width, f.height);
+  const float w = held.width, cardH = held.height;
   const auto [fromX, fromY] = CardPlaces::at(f, state, play->player, you);
-  const float midX = f.width / 2, midY = f.height / 2 + 6 * k;
+  const float midX = held.x + w / 2, midY = held.y + cardH / 2;
   const float cx =
       Motion::arc(Motion::arc(fromX, midX, -10 * k, m->up), f.width + w, 0.0f, m->away);
   const float cy = Motion::arc(Motion::arc(fromY, midY, -20 * k, m->up), -cardH, -20 * k, m->away);
   const float size = std::max(0.2f, std::min(1.0f, m->up)) * (1 - 0.5f * m->away);
   const float cw = w * size;
-  const float x = cx - cw / 2, y = cy - cw * 88 / 63 / 2;
+  const float x = cx - cw / 2, y = cy - CardFace::heightOf(cw) / 2;
   if (m->turned < 0.5f) {
     const float across = std::abs(std::cos(m->turned * kPi));
     picture(f, f.pictures.backSquare, f.pictures.backs[static_cast<std::size_t>(Art::kActionBack)],
-            x + cw * (1 - across) / 2, y, cw * across, cw * 88 / 63);
+            x + cw * (1 - across) / 2, y, cw * across, CardFace::heightOf(cw));
   } else {
-    actionCardFace(f, play->card, x, y, cw, m->away > 0 ? 0.999f : m->turned, nullptr, m->words);
+    // (its words only while it's held flat, not as it flies away)
+    const float turned = m->away > 0 ? 0.999f : m->turned;
+    cardFace(f, play->card, x, y, cw, {.turned = turned, .title = m->words, .words = m->words});
   }
   if (m->away <= 0) {
     const bool charter = play->card >= Art::Card::CharterThreeOfAKind;
@@ -448,18 +490,19 @@ namespace {
 // the screen, 1 in place: by its order across the piles), and a pile's
 // newest `fresh` cards, at its back, by `dropped` (0 above the screen, 1
 // in place). The order counted on past the piles, for what's drawn next
+// A DS's pixels between a pile's cards (their bands show)
+constexpr float kPileStep = 5;
+
 int drawPiles(const TopFrame &f, const Resources &heldOf, const std::function<float(int)> &showSlid,
               const Resources &fresh, const std::function<float(Resource, int)> &dropped) {
   const float k = f.k();
   const TopPictures &p = f.pictures;
-  const auto rw = static_cast<float>(p.resourceWidth), rh = rw * 52 / 63;
-  constexpr float kPileStep = 5; // (pixels between a pile's cards: their bands show)
+  const auto rw = static_cast<float>(p.resourceWidth), rh = CardFace::heightOf(rw);
   // Five piles across with a little room between, their bottoms just above
   // the screen's edge
   const float pileGap = 6 * k;
   const float pilesLeft = (f.width - (5 * rw + 4 * pileGap)) / 2;
   const float pileY = f.height - rh - 6 * k;
-  const float u = rw / Art::kCardWidth;
   int order = 0;
   for (int r = 0; r < kResources; ++r) {
     const int held = heldOf[static_cast<std::size_t>(r)];
@@ -473,23 +516,20 @@ int drawPiles(const TopFrame &f, const Resources &heldOf, const std::function<fl
       // (a newly gained card, at the back: dropping down into its place)
       if (j >= shown - newest)
         slid -= (1 - dropped(static_cast<Resource>(r), shown - 1 - j)) * (slid + rh + 4);
-      f.renderer.draw(p.resourceSquare,
-                      onScreenAt(f.camera, f.width, f.height, x, slid, rw, rh,
-                                 kPictureDistance - 0.02f * static_cast<float>(shown - j)),
-                      {.shading = Scene::Material::Shading::Unlit,
-                       .texture = p.resources[static_cast<std::size_t>(r)],
-                       .alpha = static_cast<std::uint8_t>(held == 0 ? 10 : 31)});
+      // (the title on the front card's band, in its band's ink, faint
+      // when there are none)
+      cardFace(
+          f, static_cast<Art::Card>(r), x, slid, rw,
+          {.title = j == 0 ? 1.0f : 0.0f,
+           .titleInk = held == 0 ? std::optional(Scene::Colour{120, 128, 145}) : std::nullopt,
+           .alpha = static_cast<std::uint8_t>(held == 0 ? 10 : 31),
+           .distance = kPictureDistance - CardFace::kCardStep * static_cast<float>(shown - j)});
     }
-    // The title in the front card's band, in its band's ink, faint when
-    // there are none; past five, how many in a badge above the pile
-    const float front = pileY + (1 - showSlid(order - 1)) * (f.height - pileY + 4);
-    const Scene::Colour ink =
-        held == 0 ? Scene::Colour{120, 128, 145} : titleInk(f, static_cast<Resource>(r));
-    f.overlay.textCentred(x + rw / 2, front + (Art::kCardTitle.y + Art::kCardTitle.height / 2) * u,
-                          GameWords::of(static_cast<Resource>(r)), ink);
+    // Past five, how many in a badge on the front card, under its art
     if (held > 5) {
-      const float top = pileY - static_cast<float>(shown - 1) * kPileStep * k;
-      const float bw = 14 * k, bh = 10 * k, by = top - 13 * k;
+      const float front = pileY + (1 - showSlid(order - 1)) * (f.height - pileY + 4);
+      const float bw = 14 * k, bh = 10 * k;
+      const float by = front + (Art::kCardWords.y + 4) * rw / Art::kCardWidth;
       f.overlay.rectangle(x + rw / 2 - bw / 2, by, bw, bh, {58, 74, 106});
       f.overlay.textCentred(x + rw / 2, by + bh / 2, std::to_string(held), Palette::kWords);
     }
@@ -512,14 +552,20 @@ void drawResources(const TopFrame &f, const Player &player, const CardsShow &sho
   for (const int id : player.contracts)
     if (const auto card = cardOf(id))
       actions.push_back(*card);
-  const auto w = static_cast<float>(p.cardWidth), h = w * 52 / 63;
+  // (as big as fits between the HUD's top rows and the tallest piles, with
+  // their titles under them: the 3DS's screen is shorter for its width)
+  const auto rw = static_cast<float>(p.resourceWidth);
+  const float pilesTop = f.height - 6 * k - CardFace::heightOf(rw) - 4 * kPileStep * k;
+  const float y = 28 * k, titleRoom = Scene::Overlay::lineHeight(1) + 6 * k;
+  const float w =
+      CardFace::widthToFit(static_cast<float>(p.cardWidth), pilesTop - 2 * k - titleRoom - y);
+  const float h = CardFace::heightOf(w);
   const float gap = 8 * k, total = static_cast<float>(actions.size()) * (w + gap) - gap;
   for (std::size_t i = 0; i < actions.size(); ++i) {
-    const float x = (f.width - total) / 2 + static_cast<float>(i) * (w + gap), y = 44 * k;
+    const float x = (f.width - total) / 2 + static_cast<float>(i) * (w + gap);
     const float in = show.arrived(order++, f.now);
-    picture(f, p.pictureSquare, p.cards[static_cast<std::size_t>(actions[i])], x,
-            y - (1 - in) * (y + h + 4), w, h);
-    f.overlay.textCentred(x + w / 2, y + h + 6 * k, Art::wordsOf(actions[i]).shortTitle,
+    cardFace(f, actions[i], x, y - (1 - in) * (y + h + 4), w, {.title = 0});
+    f.overlay.textCentred(x + w / 2, y + h + titleRoom / 2, Art::wordsOf(actions[i]).shortTitle,
                           Palette::kWords);
   }
 }
@@ -586,7 +632,7 @@ OtherPlayerLayout otherPlayerLayout(const PlayerView &view, std::string_view nam
   l.resourcesX = width * 84 / 256;
   l.actionsX = width * 170 / 256;
   l.columnWidth = std::min(l.actionsX - l.resourcesX - gap, l.right - l.actionsX);
-  l.nameScale = scaleToFit(name, l.resourcesX - gap - l.left, 1.5f * k, k, measure.width);
+  l.nameScale = scaleToFit(name, l.resourcesX - gap - l.left, 1.5f * k, k, measure);
   const auto header = Scene::stackDown(top, std::array{l.nameScale, k}, gap, measure.lineHeight);
   l.name = header[0];
   l.points = header[1];
@@ -594,7 +640,7 @@ OtherPlayerLayout otherPlayerLayout(const PlayerView &view, std::string_view nam
   // won't at the smallest, a shorter word: a pixel font shrinks only so far)
   const auto labelScale = [&](const std::string &a, const std::string &b) {
     const std::string &longer = measure.width(a, k) < measure.width(b, k) ? b : a;
-    return scaleToFit(longer, l.columnWidth, k, 0.6f * k, measure.width);
+    return scaleToFit(longer, l.columnWidth, k, 0.6f * k, measure);
   };
   const auto fits = [&](const std::string &text, float scale) {
     return measure.width(text, scale) <= l.columnWidth;
@@ -613,7 +659,7 @@ OtherPlayerLayout otherPlayerLayout(const PlayerView &view, std::string_view nam
   // The Charters along the bottom, fitted across
   const std::string charters = chartersLine(view);
   l.chartersScale =
-      charters.empty() ? k : scaleToFit(charters, l.right - l.left, k, 0.6f * k, measure.width);
+      charters.empty() ? k : scaleToFit(charters, l.right - l.left, k, 0.6f * k, measure);
   l.charters = charters.empty()
                    ? Scene::LineBox{bottom, bottom}
                    : Scene::stackUp(bottom, std::array{l.chartersScale}, 0, measure.lineHeight)[0];
@@ -650,10 +696,9 @@ OtherPlayerLayout otherPlayerLayout(const PlayerView &view, std::string_view nam
   const float sectionsBelow = between + piecesHigh + between + planetsHigh +
                               (charters.empty() ? 0 : between + l.charters.height());
   const float room = bottom - sectionsBelow - l.cardsTop;
-  constexpr float kCardShape = 88.0f / 63; // (height over width)
   const float tallest = room / (1 + kRowShows * static_cast<float>(l.cardRows - 1));
-  l.cardWidth = std::max(0.0f, std::min({36 * u, l.columnWidth / 2, tallest / kCardShape}));
-  l.cardHeight = l.cardWidth * kCardShape;
+  l.cardWidth = std::max(0.0f, CardFace::widthToFit(std::min(36 * u, l.columnWidth / 2), tallest));
+  l.cardHeight = CardFace::heightOf(l.cardWidth);
   l.rowStep = kRowShows * l.cardHeight;
 
   // Each under the one before; what room's spare left at the bottom
@@ -1000,16 +1045,39 @@ void drawRollPay(const TopFrame &f, const RollPayShow &show, const State &state,
     // (a card stolen between two others, or dealt to another: face down, as
     // at a table; its back the whole card, on the backs' own square)
     const bool hidden = card.secret && card.player != you && card.from != you;
+    // (each card a step nearer than the last: crossing paths, one stays
+    // whole in front of the other, its layers never mixed with another's)
+    const float tall = CardFace::heightOf(size);
+    const float distance = kPictureDistance - CardFace::kCardStep * static_cast<float>(i % 8);
     if (hidden)
       picture(f, p.backSquare, p.backs[static_cast<std::size_t>(Art::kResourceBack)], x - size / 2,
-              y - size * 88 / 63 / 2, size, size * 88 / 63);
+              y - tall / 2, size, tall, distance);
     else
-      picture(f, p.resourceSquare, p.resources[static_cast<std::size_t>(card.resource)],
-              x - size / 2, y - size * 52 / 63 / 2, size, size * 52 / 63);
+      cardFace(f, static_cast<Art::Card>(card.resource), x - size / 2, y - tall / 2, size,
+               {.title = 0, .distance = distance});
   }
 }
 
 // ---------------------------------------------------------------- Picking
+
+namespace {
+// The picker's row of what you could build, its names and how to take it
+// stacked at the foot (LineStack): the row's middle, and its names' top
+// below that (a DS's pixels)
+constexpr float kPickNamesDown = 8;
+float pickRowY(float height, float k) {
+  return height - 3 * k - Scene::stackHeight(std::array{k, k}, 2 * k) - kPickNamesDown * k;
+}
+} // namespace
+
+CardBox pickCardBox(float width, float height) {
+  // (as big as fits between the title and the row)
+  const float k = width / 256;
+  const float top = 22 * k, bottom = pickRowY(height, k) - 12 * k;
+  const float w = std::min(84 * k, CardFace::widthToFit(width, bottom - top));
+  const float h = CardFace::heightOf(w);
+  return {width / 2 - w / 2, (top + bottom) / 2 - h / 2, w, h};
+}
 
 void drawPick(const TopFrame &f, const PickShow &show, std::string_view title,
               const Resources &held, const Settings &settings, Scene::Colour yours) {
@@ -1018,21 +1086,19 @@ void drawPick(const TopFrame &f, const PickShow &show, std::string_view title,
     return;
   const float k = f.k();
   backdrop(f, 0, {8, 12, 22}, 12);
-  // The card big in the middle, the next sliding in from the side moved to
-  // and the last out of the other
-  const float w = 84 * k, h = w * 52 / 63;
-  const float midX = f.width / 2, midY = f.height * 0.42f, travel = f.width * 0.75f;
-  const auto card = [&](Resource r, float x) {
-    picture(f, f.pictures.resourceSquare, f.pictures.resources[static_cast<std::size_t>(r)],
-            x - w / 2, midY - h / 2, w, h);
-  };
+  // The card big in the middle (pickCardBox), the next sliding in from the
+  // side moved to and the last out of the other
+  const CardBox box = pickCardBox(f.width, f.height);
+  const float w = box.width, h = box.height;
+  const float midX = f.width / 2, midY = box.y + h / 2, travel = f.width * 0.75f;
+  const std::array wordScales{k, k};
+  const float rowY = pickRowY(f.height, k);
   const auto dir = static_cast<float>(m->direction);
   if (m->leaving)
-    card(*m->leaving, midX - dir * travel * m->in);
+    cardFace(f, static_cast<Art::Card>(*m->leaving), midX - dir * travel * m->in - w / 2,
+             midY - h / 2, w, {.title = 0});
   const float x = midX + dir * travel * (1 - m->in);
-  card(m->shown, x);
-  if (m->words > 0)
-    resourceCardTitle(f, m->shown, x, midY - h / 2, h, m->words);
+  cardFace(f, static_cast<Art::Card>(m->shown), x - w / 2, midY - h / 2, w, {.title = m->words});
   f.overlay.textCentred(f.width / 2, 12 * k, title, Palette::kWords, k);
   // What you could build with it: a ship, a station, a colony, a card,
   // each dimmed when you couldn't even with this one
@@ -1055,13 +1121,8 @@ void drawPick(const TopFrame &f, const PickShow &show, std::string_view title,
                                      {"Colony", settings.colonyCost, 2},
                                      {"Card", settings.contractCost, 3}}};
   // The row of them, their names under them and how to take it under
-  // those: under the card, lifted where they'd run off the bottom (the
-  // 3DS's screen is shorter for its width)
-  const std::array wordScales{k, k};
-  const float namesDown = 8 * k; // (from the row's middle to its names' top)
-  const float rowY = std::min(midY + h / 2 + 26 * k,
-                              f.height - 3 * k - Scene::stackHeight(wordScales, 2 * k) - namesDown);
-  const auto [namesLine, hintLine] = Scene::stackDown(rowY + namesDown, wordScales, 2 * k);
+  // those
+  const auto [namesLine, hintLine] = Scene::stackDown(rowY + kPickNamesDown * k, wordScales, 2 * k);
   const float gap = 52 * k;
   for (std::size_t i = 0; i < things.size(); ++i) {
     const Thing &thing = things[i];
@@ -1094,6 +1155,9 @@ namespace {
 // Where the home die faces you (a DS's pixels, scaled): up the middle of
 // the screen, `kDieAcross` across its sides; the card held under it
 constexpr float kDieY = 50, kDieAcross = 40, kCardBelowDie = 28;
+// Their scale on a screen: a DS's sizes by the width, but no more than by
+// the height, so the die and its whole card fit the 3DS's shorter screen
+float homePayScale(float width, float height) { return std::min(width / 256, height / 192); }
 // The opening onto space left while the die is out: just under where the
 // die seats (its face shows down to its settle's sink, and is gone into
 // space as it dips: HomePayShow's kSeatSink and kDip)
@@ -1149,13 +1213,13 @@ void homeDieAt(const TopFrame &f, const Scene::Transform &pose, Art::Face face) 
 // The die from its place to facing you, as the show has it now (its place
 // empty space while it's out, rippling where it leaves and seats)
 void homeDie(const TopFrame &f, const HomePayShow::Die &die, Hex hex, Art::Face face) {
-  const float k = f.k();
+  const float dk = homePayScale(f.width, f.height);
   if (die.out) {
     emptyPlace(f, hex);
     // (bowing up the screen: it leaps up and over, an arc)
     const Scene::Transform pose = homeDiePose(
         homeDieInBoard(BoardPieces::centre(hex)),
-        homeDieFacing(f.camera, f.width, f.height, f.width / 2, kDieY * k, kDieAcross * k),
+        homeDieFacing(f.camera, f.width, f.height, f.width / 2, kDieY * dk, kDieAcross * dk),
         viewAxes(f.camera).up * 1.2f, die.lifted, die.sink, die.turn);
     homeDieAt(f, pose, face);
   }
@@ -1163,53 +1227,62 @@ void homeDie(const TopFrame &f, const HomePayShow::Die &die, Hex hex, Art::Face 
     homeDieRipple(f, hex, *die.ripple);
 }
 
+// What a home's card gives, written under it: its scale (a DS's)
+constexpr float kGivesScale = 1.5f;
+
 // The card out of the die (a pop: Settle), held big with its name, then
-// winding up and off along an arc to its player (CardPlaces), shrinking;
-// sharp from its close-up slot (order % 2) once that holds it
+// winding up and off along an arc to its player (CardPlaces), shrinking
 void homePayCard(const TopFrame &f, const HomePayShow::Card &card, const State &state, int player,
-                 bool yours, const std::array<ScratchPadd::PictureSlot, 2> &closeUps) {
+                 bool yours) {
   const float k = f.k();
   const float grown = Motion::along(Motion::Curve::Settle, card.grown);
   const float leave = Motion::along(Motion::Curve::Anticipate, card.away);
-  const float bigW = 70 * k, bigH = bigW * 52 / 63;
+  const CardBox big = homePayCardBox(f.width, f.height);
+  const float givesScale = kGivesScale * k, heldTop = big.y, bigW = big.width, bigH = big.height;
   const float w = bigW * grown * (1 - 0.8f * std::max(0.0f, leave));
-  const float h = w * 52 / 63;
+  const float h = CardFace::heightOf(w);
   // (rising out of the die to under it as it grows)
-  const float dieY = kDieY * k, heldX = f.width / 2, heldY = dieY + kCardBelowDie * k + bigH / 2;
+  const float dieY = kDieY * homePayScale(f.width, f.height), heldX = f.width / 2;
+  const float heldY = heldTop + bigH / 2;
   const float riseY = dieY + (heldY - dieY) * std::min(1.0f, grown);
   const auto [toX, toY] = CardPlaces::at(f, state, player, yours ? player : -1);
   const float cx = Motion::arc(heldX, toX, yours ? 18 * k : -24 * k, leave);
   const float cy = Motion::arc(riseY, toY, yours ? -30 * k : 0, leave);
-  const ScratchPadd::PictureSlot &slot = closeUps[static_cast<std::size_t>(card.order % 2)];
-  const bool sharp = slot.showing(static_cast<int>(card.resource));
+  // (its name on its band, and what it gives under it, once it's full
+  // size, fading in)
+  const bool held = card.away <= 0 && card.words > 0;
   if (w > 1)
-    picture(f, sharp ? f.pictures.closeUpCardSquare : f.pictures.resourceSquare,
-            sharp ? slot.texture() : f.pictures.resources[static_cast<std::size_t>(card.resource)],
-            cx - w / 2, cy - h / 2, w, h);
-  // (its name on its label band, 3 to 19 of the card's 52-unit picture,
-  // and what it gives under it, once it's full size, fading in)
-  if (card.away <= 0 && card.words > 0) {
-    resourceCardTitle(f, card.resource, cx, cy - h / 2, h, card.words);
-    f.overlay.textCentred(f.width / 2, heldY + bigH / 2 + 10 * k,
+    cardFace(f, static_cast<Art::Card>(card.resource), cx - w / 2, cy - h / 2, w,
+             {.title = held ? card.words : 0});
+  if (held) {
+    const auto [gives] = Scene::stackDown(heldTop + bigH + 4 * k, std::array{givesScale}, 0);
+    f.overlay.textCentred(f.width / 2, gives.middle(),
                           "+1 " + std::string(GameWords::of(card.resource)),
-                          fadedIn(Palette::kWords, card.words), 1.5f * k);
+                          fadedIn(Palette::kWords, card.words), givesScale);
   }
 }
 } // namespace
 
-void drawHomePay(const TopFrame &f, const HomePayShow &show, const State &state, bool yours,
-                 const std::array<ScratchPadd::PictureSlot, 2> &closeUps) {
+CardBox homePayCardBox(float width, float height) {
+  // (as big as fits under the die, with what it gives under it)
+  const float k = width / 256, top = (kDieY + kCardBelowDie) * homePayScale(width, height);
+  const float givesHeight = Scene::Overlay::lineHeight(kGivesScale * k);
+  const float w = std::min(70 * k, CardFace::widthToFit(width, height - top - givesHeight - 8 * k));
+  return {width / 2 - w / 2, top, w, CardFace::heightOf(w)};
+}
+
+void drawHomePay(const TopFrame &f, const HomePayShow &show, const State &state, bool yours) {
   const HomePayShow::Pay *pay = show.current();
   const auto die = show.die(f.now);
   if (!pay || !die)
     return;
-  const float k = f.k();
+  const float k = f.k(), dk = homePayScale(f.width, f.height);
   // A dim backdrop once it faces you, behind it (it rises through its
   // plane on the way up and back, so only near the end)
   const float facing = std::clamp((die->lifted - 0.85f) / 0.15f, 0.0f, 1.0f);
   if (facing > 0) {
     const Scene::Vector3 at =
-        homeDieFacing(f.camera, f.width, f.height, f.width / 2, kDieY * k, kDieAcross * k)
+        homeDieFacing(f.camera, f.width, f.height, f.width / 2, kDieY * dk, kDieAcross * dk)
             .position();
     constexpr float kBehindIt = 1.6f; // (clear of its corners as it spins)
     backdrop(f, 0, {8, 12, 22}, 12 * facing, (at - f.camera.eye).length() + kBehindIt);
@@ -1224,10 +1297,10 @@ void drawHomePay(const TopFrame &f, const HomePayShow &show, const State &state,
                           k);
   }
   if (show.waitingForChoice(f.now))
-    f.overlay.textCentred(f.width / 2, (kDieY + kCardBelowDie + 8) * k,
+    f.overlay.textCentred(f.width / 2, (kDieY + kCardBelowDie + 8) * dk,
                           yours ? "Your choice: below" : "Choosing...", Palette::kHighlight,
                           1.5f * k);
   if (const auto card = show.card(f.now))
-    homePayCard(f, *card, state, pay->player, yours, closeUps);
+    homePayCard(f, *card, state, pay->player, yours);
 }
 } // namespace CosmicHex::Handheld

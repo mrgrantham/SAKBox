@@ -1,4 +1,5 @@
 #include <CosmicHex/Handheld/BoardPieces.hpp>
+#include <CosmicHex/Handheld/CardFace.hpp>
 #include <CosmicHex/Handheld/ChoiceScreens.hpp>
 #include <CosmicHex/Handheld/Palette.hpp>
 #include <CosmicHex/Handheld/RecipePixels.hpp>
@@ -130,27 +131,23 @@ std::string_view nameOfPlayer(int player) {
 CardSprites::CardSprites(int screenWidth, int widthOnADs)
     : width_(static_cast<int>(
           std::lround(static_cast<float>(widthOnADs) * static_cast<float>(screenWidth) / 256.0f))),
-      height_(width_ * 52 / 63), backHeight_(width_ * 88 / 63) {}
+      height_(CardFace::heightOf(width_)), topHeight_(CardFace::topHeightOf(width_)) {}
 
-const std::vector<Canvas::Colour> &CardSprites::small(Art::Card card) {
-  auto &sprite = small_[static_cast<std::size_t>(card)];
+const std::vector<Canvas::Colour> &CardSprites::card(Art::Card card) {
+  auto &sprite = cards_[static_cast<std::size_t>(card)];
   if (!sprite.empty())
     return sprite;
-  // The whole card, then its top down to the picture's foot
-  const int fullHeight = width_ * 88 / 63;
-  const auto whole = recipePixels(Art::cardRecipeOf(card), width_, fullHeight);
-  if (whole.empty())
-    return sprite;
-  sprite.assign(whole.begin(), whole.begin() + static_cast<std::ptrdiff_t>(width_) * height_);
-  // Its short title in the band, dark on a light band
+  // Its layers and its icon, as the top screen draws them
+  const CardFace::PixelArea icon = CardFace::iconPixelsOn(width_);
+  sprite = CardFace::pixelsOf(card, width_,
+                              recipePixels(Art::cardIconRecipeOf(card), icon.width, icon.height));
+  // Its short title on its band, dark on a light band
   Canvas band(width_, height_);
-  band.blend(sprite, width_, height_, 0, 0);
+  band.copy(sprite);
   const float u = static_cast<float>(width_) / Art::kCardWidth;
-  const Colour bandColour =
-      band.at(static_cast<int>(6 * u), static_cast<int>((Art::kCardTitle.y + 2) * u));
   band.textCentred(static_cast<float>(width_) / 2,
                    (Art::kCardTitle.y + Art::kCardTitle.height / 2) * u,
-                   Art::wordsOf(card).shortTitle, Palette::inkOnBand(bandColour));
+                   Art::wordsOf(card).shortTitle, CardFace::titleInkOf(card));
   // (the corners stay see-through: only where the card is drawn changes)
   for (std::size_t p = 0; p < sprite.size(); ++p)
     if (sprite[p].a > 0)
@@ -161,14 +158,14 @@ const std::vector<Canvas::Colour> &CardSprites::small(Art::Card card) {
 const std::vector<Canvas::Colour> &CardSprites::back(Art::CardBack design) {
   auto &sprite = backs_[static_cast<std::size_t>(design)];
   if (sprite.empty())
-    sprite = recipePixels(Art::cardBackRecipe(design), width_, backHeight_);
+    sprite = recipePixels(Art::cardBackRecipe(design), width_, height_);
   return sprite;
 }
 
 bool CardSprites::prepare() {
   for (int r = 0; r < kResources; ++r)
-    if (small_[static_cast<std::size_t>(r)].empty()) {
-      small(static_cast<Art::Card>(r));
+    if (cards_[static_cast<std::size_t>(r)].empty()) {
+      card(static_cast<Art::Card>(r));
       return false;
     }
   for (Art::CardBack design : {Art::CardBack::Rings, Art::CardBack::Planets})
@@ -241,7 +238,7 @@ void drawResources(Canvas &canvas, const Pickers::ResourceChoice &choice,
     const auto resource = static_cast<Resource>(r);
     const Box box = resourceBox(canvas.width(), r, cards.width(), cards.height());
     const bool offered = choice.offers(resource);
-    canvas.blend(cards.small(cardOf(resource)), cards.width(), cards.height(),
+    canvas.blend(cards.card(cardOf(resource)), cards.width(), cards.height(),
                  static_cast<int>(box.x), static_cast<int>(box.y), offered ? 1.0f : 0.35f);
     const auto times = std::count(picked.begin(), picked.end(), resource);
     for (int t = 0; t < times; ++t)
@@ -269,7 +266,7 @@ std::optional<Touch> resourcesTouch(int width, int x, int y) {
   if (confirmBox(width).contains(x, y))
     return Touch{Touch::What::Confirm};
   const float k = scaleOf(width);
-  const int w = static_cast<int>(std::lround(48 * k)), h = w * 52 / 63;
+  const int w = static_cast<int>(std::lround(48 * k)), h = CardFace::heightOf(w);
   for (int r = 0; r < kResources; ++r)
     if (resourceBox(width, r, w, h).contains(x, y))
       return Touch{Touch::What::Item, r};
@@ -283,7 +280,7 @@ void drawPlayers(Canvas &canvas, const Pickers::PlayerChoice &choice, int chosen
   canvas.text(8 * k, 8 * k, "Steal from whom?", kWords);
   canvas.text(8 * k, 21 * k, "only players beside the planet", kDim);
   // The cards' backs at half a small card's width, overlapping
-  const int bw = cards.width() / 2, bh = cards.backHeight() / 2;
+  const int bw = cards.width() / 2, bh = cards.height() / 2;
   std::vector<Canvas::Colour> half(static_cast<std::size_t>(bw) * static_cast<std::size_t>(bh));
   const auto &whole = cards.back(backs);
   if (!whole.empty())
@@ -379,8 +376,8 @@ void drawCards(Canvas &canvas, const std::vector<HeldCard> &cards, int chosen, C
   canvas.textCentred(static_cast<float>(canvas.width()) / 2, 9 * k,
                      cards.empty() ? "No cards yet: buy one from Build" : "Your cards", kDim);
   for (std::size_t i = 0; i < cards.size() && i < 8; ++i) {
-    const Box box = cardBox(canvas.width(), sprites.width(), sprites.height(), i, cards.size());
-    canvas.blend(sprites.small(cards[i].card), sprites.width(), sprites.height(),
+    const Box box = cardBox(canvas.width(), sprites.width(), sprites.topHeight(), i, cards.size());
+    canvas.blend(sprites.card(cards[i].card), sprites.width(), sprites.topHeight(),
                  static_cast<int>(box.x), static_cast<int>(box.y),
                  cards[i].playable ? 1.0f : 0.55f);
     if (static_cast<int>(i) == chosen)
@@ -407,7 +404,7 @@ std::optional<Touch> cardsTouch(int width, std::size_t cards, int x, int y) {
     return Touch{Touch::What::Confirm};
   const CardSprites sizes(width, kCardsScreenWidth);
   for (std::size_t i = 0; i < cards && i < 8; ++i)
-    if (cardBox(width, sizes.width(), sizes.height(), i, cards).contains(x, y))
+    if (cardBox(width, sizes.width(), sizes.topHeight(), i, cards).contains(x, y))
       return Touch{Touch::What::Item, static_cast<int>(i)};
   return std::nullopt;
 }
@@ -420,7 +417,7 @@ void drawKeep(Canvas &canvas, const KeepChoice &choice, int chosen, CardSprites 
   for (std::size_t i = 0; i < choice.cards.size(); ++i) {
     const Box box =
         cardBox(canvas.width(), sprites.width(), sprites.height(), i, choice.cards.size());
-    canvas.blend(sprites.small(choice.cards[i]), sprites.width(), sprites.height(),
+    canvas.blend(sprites.card(choice.cards[i]), sprites.width(), sprites.height(),
                  static_cast<int>(box.x), static_cast<int>(box.y));
     if (static_cast<int>(i) == chosen)
       canvas.outline(box.x - 2, box.y - 2, box.w + 4, box.h + 4, kChosen, 2);
@@ -527,7 +524,7 @@ Box tradeCard(int width, float y, int r) {
   const float k = scaleOf(width);
   const CardSprites sizes(width);
   return {(6 + 49 * static_cast<float>(r)) * k, y, static_cast<float>(sizes.width()),
-          static_cast<float>(sizes.height())};
+          static_cast<float>(sizes.topHeight())};
 }
 Box tradeMinus(int width, float y, int r) {
   const float k = scaleOf(width);
@@ -568,7 +565,7 @@ void drawTrade(Canvas &canvas, const TradeRoom &room, CardSprites &cards, const 
     for (int r = 0; r < kResources; ++r) {
       const Box box = tradeCard(width, y, r);
       const int n = counts[static_cast<std::size_t>(r)];
-      canvas.blend(cards.small(cardOf(static_cast<Resource>(r))), cards.width(), cards.height(),
+      canvas.blend(cards.card(cardOf(static_cast<Resource>(r))), cards.width(), cards.topHeight(),
                    static_cast<int>(box.x), static_cast<int>(box.y), n > 0 ? 1.0f : 0.45f);
       if (n > 0) {
         // (how many in a badge at the card's foot, clear of its picture)

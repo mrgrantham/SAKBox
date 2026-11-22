@@ -1,7 +1,9 @@
 #include <CosmicHex/Art.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
+#include <cstdint>
 
 namespace CosmicHex::Art {
 
@@ -218,7 +220,7 @@ std::string_view iconRecipeOf(Icon which) {
   return {};
 }
 
-std::string_view cardRecipeOf(Card which) {
+std::string_view cardIconRecipeOf(Card which) {
   const auto text = [](const unsigned char *bytes, std::size_t size) {
     return std::string_view(reinterpret_cast<const char *>(bytes), size);
   };
@@ -270,11 +272,36 @@ std::string_view trimmed(std::string_view text) {
   return text;
 }
 
-// Every card's words, read from cards.txt once ("file | title | short |
-// words" a line; '#' lines and blank ones skipped)
-const std::array<CardWords, kCards> &allWords() {
-  static const std::array<CardWords, kCards> kWords = [] {
-    std::array<CardWords, kCards> out{};
+// "#rrggbb" as a colour (black if it isn't one)
+Rgb rgbOf(std::string_view hex) {
+  const auto digit = [](char c) {
+    if (c >= '0' && c <= '9')
+      return c - '0';
+    if (c >= 'a' && c <= 'f')
+      return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F')
+      return c - 'A' + 10;
+    return 0;
+  };
+  if (hex.size() != 7 || hex.front() != '#')
+    return {0, 0, 0};
+  const auto byte = [&](std::size_t at) {
+    return static_cast<std::uint8_t>(digit(hex[at]) * 16 + digit(hex[at + 1]));
+  };
+  return {byte(1), byte(3), byte(5)};
+}
+
+// A card's line of cards.txt
+struct CardLine {
+  Rgb band{0, 0, 0};
+  CardWords words;
+};
+
+// Every card's line, read from cards.txt once ("file | band | title |
+// short | words" a line; '#' lines and blank ones skipped)
+const std::array<CardLine, kCards> &allLines() {
+  static const std::array<CardLine, kCards> kLines = [] {
+    std::array<CardLine, kCards> out{};
     std::string_view text(reinterpret_cast<const char *>(Recipes::kCardWordsText),
                           Recipes::kCardWordsTextSize);
     while (!text.empty()) {
@@ -283,7 +310,7 @@ const std::array<CardWords, kCards> &allWords() {
       text.remove_prefix(std::min(end + 1, text.size()));
       if (trimmed(line).empty() || trimmed(line).front() == '#')
         continue;
-      std::array<std::string_view, 4> fields{};
+      std::array<std::string_view, 5> fields{};
       for (std::size_t f = 0; f < fields.size(); ++f) {
         const std::size_t bar = f + 1 < fields.size() ? line.find('|') : line.size();
         fields[f] = trimmed(line.substr(0, bar));
@@ -291,16 +318,18 @@ const std::array<CardWords, kCards> &allWords() {
       }
       for (int c = 0; c < kCards; ++c)
         if (fileOf(static_cast<Card>(c)) == fields[0])
-          out[static_cast<std::size_t>(c)] = {fields[1], fields[2], fields[3]};
+          out[static_cast<std::size_t>(c)] = {rgbOf(fields[1]), {fields[2], fields[3], fields[4]}};
     }
     return out;
   }();
-  return kWords;
+  return kLines;
 }
 
 } // namespace
 
-CardWords wordsOf(Card card) { return allWords()[static_cast<std::size_t>(card)]; }
+CardWords wordsOf(Card card) { return allLines()[static_cast<std::size_t>(card)].words; }
+
+Rgb bandOf(Card card) { return allLines()[static_cast<std::size_t>(card)].band; }
 
 std::string_view cardBackRecipe(CardBack design) {
   return design == CardBack::Planets

@@ -47,9 +47,9 @@ struct PlatformProfile {
   // ...and the memory they must leave for the rest of the game, where it's
   // counted (BoardPicture::setMemoryRoom: the DS)
   std::size_t boardZoomReserve;
-  // Close-ups: a picture shown big for a moment (a discovered tile, the
-  // two cards dealt) drawn again at this many pixels across, when it's
-  // shown, into textures kept for it (Renderer::replace)
+  // Close-ups: a picture shown big for a moment (a discovered tile) drawn
+  // again at this many pixels across, when it's shown, into textures kept
+  // for it (Renderer::replace)
   int closeUpSize;
   // ...and a discovered tile's back, seen only flying up face down: on the
   // DS smaller, as its texture memory is full (GamePictures_test)
@@ -58,6 +58,10 @@ struct PlatformProfile {
   // memory can't hold a 128-pixel picture whole as it's drawn; elsewhere all
   // at once
   int closeUpBandRows;
+  // The cards' icons' width (the only picture on a card, 2:1: CardFace),
+  // as sharp as the biggest card each screen shows (the cards dealt), so
+  // cards need no close-ups of their own
+  int cardIconWidth;
 
   // The dice's physics: its fixed step (each proved fair by
   // dice_fairness over 20,000 throws at it), and the most steps a frame may
@@ -90,6 +94,7 @@ inline constexpr PlatformProfile kDsProfile{
     .closeUpSize = 128,
     .closeUpBackSize = 64,
     .closeUpBandRows = 16,
+    .cardIconWidth = 64,
     .diceStep = 1.0 / 30,
     .mostDiceSteps = 2,
 };
@@ -116,6 +121,7 @@ inline constexpr PlatformProfile kThreeDsProfile{
     .closeUpSize = 128,
     .closeUpBackSize = 128,
     .closeUpBandRows = 128,
+    .cardIconWidth = 128,
     .diceStep = 1.0 / 60,
     .mostDiceSteps = 4,
 };

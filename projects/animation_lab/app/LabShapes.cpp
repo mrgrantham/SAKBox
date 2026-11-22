@@ -1,6 +1,7 @@
 #include "LabShapes.hpp"
 
 #include <CosmicHex/Art.hpp>
+#include <CosmicHex/Handheld/CardFace.hpp>
 #include <CosmicHex/Handheld/DicePieces.hpp>
 #include <CosmicHex/Handheld/RecipePixels.hpp>
 
@@ -41,8 +42,8 @@ void fitted(LabShape &shape) {
 
 LabShape card() {
   LabShape shape{.name = "card"};
-  // 63 by 88 (the card's shape), lying flat, a little thick; its picture on
-  // top, its back plain
+  // 2:3 (the card's shape), lying flat, a little thick; its face on top
+  // (CardFace's layers and icon, as the consoles draw it), its back plain
   const float w = CosmicHex::Art::kCardWidth / CosmicHex::Art::kCardHeight / 2, l = 0.5f,
               t = 0.012f;
   const Scene::Colour edge{40, 44, 56};
@@ -56,10 +57,13 @@ LabShape card() {
   b.quad({-w, -t, -l}, {-w, -t, l}, {-w, t, l}, {-w, t, -l}, edge);
   shape.built = std::move(b);
   shape.pictureWidth = 126;
-  shape.pictureHeight = 176;
-  shape.picture = CosmicHex::Handheld::recipePixels(
-      CosmicHex::Art::cardRecipeOf(CosmicHex::Art::Card::Minerals), shape.pictureWidth,
-      shape.pictureHeight);
+  shape.pictureHeight = CosmicHex::Handheld::CardFace::heightOf(shape.pictureWidth);
+  const auto icon = CosmicHex::Handheld::CardFace::iconPixelsOn(shape.pictureWidth);
+  shape.picture = CosmicHex::Handheld::CardFace::pixelsOf(
+      CosmicHex::Art::Card::Minerals, shape.pictureWidth,
+      CosmicHex::Handheld::recipePixels(
+          CosmicHex::Art::cardIconRecipeOf(CosmicHex::Art::Card::Minerals), icon.width,
+          icon.height));
   return shape;
 }
 

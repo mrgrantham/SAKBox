@@ -25,29 +25,31 @@ namespace CosmicHex::Handheld {
 
 using ScratchPadd::Canvas; // (ScratchPadd/Canvas)
 
-// The cards' small pictures for a screen `screenWidth` wide, drawn from
-// their recipes once each, when first needed (on a DS each takes a tenth of
-// a second or so: prepare() draws one at a time, in spare frames)
+// The cards' pictures for a screen `screenWidth` wide, each drawn in its
+// layers with its icon (CardFace, as the top screen's) once, when first
+// needed (prepare() draws one at a time, in spare frames)
 class CardSprites {
 public:
   // `widthOnADs`: a card's width on a DS's 256-wide screen (in proportion
   // on wider ones): 48 for the pickers' five across, 56 for the cards
   // screens' four, their titles roomier
   explicit CardSprites(int screenWidth, int widthOnADs = 48);
-  // A small card: the drawing down to its picture's foot, its short title
-  // in the band (dark letters on a light band), `width` x height()
-  const std::vector<Canvas::Colour> &small(Art::Card card);
-  // A card's back, the same width, the whole card
+  // A whole card, 2:3, its short title in its band (dark letters on a
+  // light band), width() x height(). Its first topHeight() rows are its top
+  // (title and art), for rows of cards with no room for whole ones (the
+  // trade room, the cards screen)
+  const std::vector<Canvas::Colour> &card(Art::Card card);
+  // A card's back, the same size
   const std::vector<Canvas::Colour> &back(Art::CardBack design);
   int width() const { return width_; }
-  int height() const { return height_; }         // a small card's
-  int backHeight() const { return backHeight_; } // a whole card's
+  int height() const { return height_; }
+  int topHeight() const { return topHeight_; }
   // Draws one not yet drawn; whether they're all ready
   bool prepare();
 
 private:
-  int width_, height_, backHeight_;
-  std::array<std::vector<Canvas::Colour>, Art::kCards> small_;
+  int width_, height_, topHeight_;
+  std::array<std::vector<Canvas::Colour>, Art::kCards> cards_;
   std::array<std::vector<Canvas::Colour>, 2> backs_;
 };
 

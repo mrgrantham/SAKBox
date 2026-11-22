@@ -254,10 +254,11 @@ TEST(DisplayListTest, APaletteHoldsAtMostItsTexels) {
 }
 
 // An image texture: each corner sends its Vertex::uv as texels of the
-// image's size (12.4), the colours white (the image gives them)
+// image's size (12.4), the colours white for a white mesh (the image gives
+// them)
 TEST(DisplayListTest, ImageTexturesSendTheirCoordinates) {
   MeshBuilder builder;
-  builder.quad({0, 0, 0}, {1, 0, 0}, {1, 1, 0}, {0, 1, 0}, {200, 100, 50},
+  builder.quad({0, 0, 0}, {1, 0, 0}, {1, 1, 0}, {0, 1, 0}, {255, 255, 255},
                {TexCoord{0, 1}, TexCoord{1, 1}, TexCoord{1, 0}, TexCoord{0, 0}});
   const Source source = prepare(builder.data());
   const auto sent =
@@ -278,6 +279,26 @@ TEST(DisplayListTest, ImageTexturesSendTheirCoordinates) {
   };
   EXPECT_TRUE(has(0u | ((16u * 16u) << 16)));
   EXPECT_TRUE(has(32u * 16u));
+}
+
+// An image tinted by its vertices' colour and the material's, which the DS
+// multiplies it by, as Material says and the other backends do (a card's
+// layers, white shapes from one texture, showed white on a DS: the vertex
+// colours were dropped for any image)
+TEST(DisplayListTest, AnImageIsTintedByItsVerticesAndMaterial) {
+  MeshBuilder builder;
+  builder.quad({0, 0, 0}, {1, 0, 0}, {1, 1, 0}, {0, 1, 0}, {200, 100, 50},
+               {TexCoord{0, 1}, TexCoord{1, 1}, TexCoord{1, 0}, TexCoord{0, 0}});
+  const Source source = prepare(builder.data());
+  const auto sent = unpack(onlyList(pack(
+      source, {.lit = false, .colour = {255, 128, 255}, .imageWidth = 32, .imageHeight = 16})));
+  bool coloured = false;
+  for (const Sent &s : sent)
+    if (s.command == KColour) {
+      EXPECT_EQ(s.parameters[0], rgb15(multiply({200, 100, 50}, {255, 128, 255})));
+      coloured = true;
+    }
+  EXPECT_TRUE(coloured);
 }
 
 // The overlay's triangles' depths (the user's: the roll's hexagon

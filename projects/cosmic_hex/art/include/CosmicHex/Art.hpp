@@ -66,11 +66,13 @@ enum class Icon : std::uint8_t {
 inline constexpr int kIcons = 9;
 std::string_view iconRecipeOf(Icon icon);
 
-// The cards. Each drawing is the card
-// without its words: its frame, the title band in the card's colour and the
-// art. The game writes the title and the card's words over it, in the areas
-// below (titles centred, up to two lines, the same band on every
-// card), so a new drawing keeps to them.
+// The cards. Each is drawn in layers (the consoles' CardFace.hpp): its
+// edge and cream body, its title band in the card's own colour (bandOf,
+// from cards.txt) and its dark art band, plain rounded rectangles; then its
+// icon, the only picture: the drawing in cards/, on a see-through ground
+// the shape of the icon's area (kCardIcon, 2:1). The game writes the title
+// and the card's words over them, in the areas below (titles centred, the
+// same band on every card), so a new icon keeps to its area.
 enum class Card : std::uint8_t {
   Minerals,
   Food,
@@ -86,8 +88,8 @@ enum class Card : std::uint8_t {
   CharterDeepSpaceRelay,
 };
 inline constexpr int kCards = 12;
-std::string_view cardRecipeOf(Card card);
-// A card's back, the same shape as the cards: the six kinds of planet for
+std::string_view cardIconRecipeOf(Card card);
+// A card's back, the same shape as the cards (2:3): the six kinds of planet for
 // resource cards, rings of hexagons for action cards (the
 // user's: one design for each kind of card)
 enum class CardBack : std::uint8_t { Rings, Planets }; // back_rings.svg, back_planets.svg
@@ -95,14 +97,29 @@ std::string_view cardBackRecipe(CardBack design);
 inline constexpr CardBack kResourceBack = CardBack::Planets;
 inline constexpr CardBack kActionBack = CardBack::Rings;
 
-// A card's areas, in its drawing's units (63 x 88, a playing card's shape)
+// A card's areas, in its units (63 x 94.5: 2:3, the user's true card shape)
 struct CardArea {
   float x, y, width, height;
 };
-inline constexpr float kCardWidth = 63, kCardHeight = 88;
-inline constexpr CardArea kCardTitle{3, 3, 57, 16}; // the title band
-inline constexpr CardArea kCardArt{3, 21, 57, 30};  // the picture (a small card shows down to here)
-inline constexpr CardArea kCardWords{5, 54, 53, 31}; // what it does
+inline constexpr float kCardWidth = 63, kCardHeight = 94.5f;
+inline constexpr CardArea kCardTitle{3, 3, 57, 16};     // the title band
+inline constexpr CardArea kCardArt{3, 21, 57, 30};      // the art band
+inline constexpr CardArea kCardIcon{3.5f, 22, 56, 28};  // the icon, on the art band
+inline constexpr CardArea kCardWords{5, 54, 53, 37.5f}; // what it does
+// The layers' corners' radii (the card's, the bands'), in those units
+inline constexpr float kCardCorner = 4, kBandCorner = 2;
+
+// A colour, 0 to 255 each
+struct Rgb {
+  std::uint8_t r, g, b;
+  bool operator==(const Rgb &) const = default;
+};
+// The layers' colours every card shares: its edge, its cream body, its art
+// band; and each card's own title band (cards.txt)
+inline constexpr Rgb kCardEdge{0xc9, 0xc2, 0xad};
+inline constexpr Rgb kCardBody{0xf4, 0xf1, 0xe8};
+inline constexpr Rgb kCardArtBand{0x18, 0x22, 0x37};
+Rgb bandOf(Card card);
 
 // A card's words (cards/cards.txt, embedded by the build, so
 // they're edited as text): its title, its short title for small cards, and
@@ -111,7 +128,7 @@ struct CardWords {
   std::string_view title, shortTitle, words;
 };
 CardWords wordsOf(Card card);
-// The card's drawing's file name in cards/, without ".svg"
+// The card's icon's file name in cards/, without ".svg"
 std::string_view fileOf(Card card);
 
 } // namespace CosmicHex::Art

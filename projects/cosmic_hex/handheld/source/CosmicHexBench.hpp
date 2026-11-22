@@ -105,8 +105,8 @@ inline void run() {
     std::printf("rollout step  %lld us\n", micros(start) / 1000);
   }
   // Drawing a picture from its recipe, as the DS does (Coarse), at the
-  // size it's drawn now and twice that: a tile face (a planet) and an
-  // action card, for close-ups drawn when they're shown
+  // size it's drawn now and twice that: a tile face (a planet) and a card's
+  // icon (2:1)
   for (const int side : {32, 64}) {
     const Clock::time_point start = Clock::now();
     const auto face = CosmicHex::Handheld::recipePixels(
@@ -115,8 +115,8 @@ inline void run() {
     const long long faceUs = micros(start);
     const Clock::time_point cardStart = Clock::now();
     const auto card = CosmicHex::Handheld::recipePixels(
-        CosmicHex::Art::cardRecipeOf(CosmicHex::Art::Card::InterstellarCartel), side,
-        side * 88 / 63, ScratchPadd::TextureRecipe::Smoothing::Coarse);
+        CosmicHex::Art::cardIconRecipeOf(CosmicHex::Art::Card::InterstellarCartel), side, side / 2,
+        ScratchPadd::TextureRecipe::Smoothing::Coarse);
     std::printf("face %d %lld ms card %lld ms (%zu)\n", side, faceUs / 1000,
                 micros(cardStart) / 1000, (face.size() + card.size()) & 1);
   }

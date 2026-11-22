@@ -24,8 +24,7 @@ protected:
       SKIP_OR_FAIL_WITHOUT("display", "no window to draw in: " + display.error());
     renderer.emplace(display);
     const auto square = Scene::MeshBuilder().quad({0, 0, 0}, {1, 0, 0}, {1, 1, 0}, {0, 1, 0}, {});
-    pictures.pictureSquare = pictures.backSquare = pictures.resourceSquare =
-        pictures.closeUpCardSquare = renderer->load(square.data());
+    pictures.pictureSquare = pictures.backSquare = renderer->load(square.data());
     pictures.hexTile = pictures.numberChip =
         renderer->load(Scene::MeshBuilder().box({}, {1, 0.1f, 1}).data());
     camera.eye = {0, 12, 9};
@@ -58,11 +57,36 @@ protected:
 
 } // namespace
 
+// Every big card a true card's shape (2:3) and whole on the screen, on both
+// consoles' top screens, with room for the words round it: before, the
+// cards were cut off under their art, and a whole card at the old sizes
+// ran off the 3DS's shorter screen
+TEST(TopViewsLayoutTest, EveryBigCardIsTwoByThreeAndWholeOnTheScreen) {
+  for (const auto &[width, height] : {std::pair{256.0f, 192.0f}, std::pair{400.0f, 240.0f}}) {
+    const float k = width / 256;
+    const std::vector<CardBox> boxes{
+        playedCardBox(width, height), pickCardBox(width, height), homePayCardBox(width, height),
+        dealtCardBox(width, height, 0, 2), dealtCardBox(width, height, 1, 2)};
+    for (const CardBox &box : boxes) {
+      EXPECT_NEAR(box.height / box.width, 1.5f, 1e-4f) << width;
+      EXPECT_GE(box.x, 0) << width;
+      EXPECT_GE(box.y, 0) << width;
+      EXPECT_LE(box.x + box.width, width) << width;
+      EXPECT_LE(box.y + box.height, height) << width;
+      EXPECT_GE(box.width, 40 * k) << width; // (still big enough to read)
+    }
+    // (the two dealt side by side, apart; a home's card leaving room for
+    // what it gives under it)
+    EXPECT_LT(boxes[3].x + boxes[3].width, boxes[4].x) << width;
+    const CardBox home = homePayCardBox(width, height);
+    EXPECT_LE(home.y + home.height + Scene::Overlay::lineHeight(1.5f * k), height) << width;
+  }
+}
+
 // A home paying one, and two in a row (the die out once), for you and for
 // a bot, the star's choice made at once
 TEST_F(TopViewsTest, AHomePayFromStartToEnd) {
   pictures.homeDie = pictures.column = pictures.hexRing = pictures.hexTile;
-  const std::array<ScratchPadd::PictureSlot, 2> slots{};
   for (const int face : {0, 3, kResources}) {
     for (const int player : {0, 2}) {
       for (const int pays : {1, 2}) {
@@ -74,7 +98,7 @@ TEST_F(TopViewsTest, AHomePayFromStartToEnd) {
           show.saw({{player, Action{Action::Kind::ChooseHome, 2}}}, state, 0);
         frames(every(-0.5, HomePayShow::seconds(pays) + 0.5), [&](const TopFrame &f) {
           show.update(f.now);
-          drawHomePay(f, show, state, player == 0, slots);
+          drawHomePay(f, show, state, player == 0);
         });
       }
     }
@@ -101,9 +125,7 @@ TEST_F(TopViewsTest, ADiscoveryFromStartToEnd) {
 TEST_F(TopViewsTest, DealtCardsOtherPlayersAndTheFirstRoll) {
   DealtShow dealt;
   dealt.deal({Art::Card::Enforcer, Art::Card::CharterOccupier}, 0);
-  dealt.closeUpDrawn(0);
-  const std::array<ScratchPadd::PictureSlot, 2> slots{};
-  frames(every(0, 3), [&](const TopFrame &f) { drawDealtCards(f, dealt, 1, slots); });
+  frames(every(0, 3), [&](const TopFrame &f) { drawDealtCards(f, dealt, 1); });
   frames(every(0, 1, 0.1), [&](const TopFrame &f) {
     drawOtherPlayer(f, viewOf(state, 2), static_cast<float>(f.now));
   });

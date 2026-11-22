@@ -1,18 +1,20 @@
-# The cards' words: the game writes them over the drawings in
-# this folder. One card a line: its drawing's file name, its title, its
-# short title (on small cards: 46 pixels at most), and what it does (on the
-# big card: 7 lines at most). Edit freely; Art_test checks they fit.
+# The cards' words and colours: the game draws each card's title band in
+# its colour and writes its words over the card, round its icon (the
+# drawing in this folder). One card a line: its icon's file name, its title
+# band's colour, its title, its short title (on small cards: 46 pixels at
+# most), and what it does (on the big card: 7 lines at most). Edit freely;
+# Art_test checks they fit.
 #
-# file | title | short title | words
-resource_minerals | Minerals | Minerals | From asteroid belts. For ships and colonies.
-resource_food | Food | Food | From lush planets. For colonies and cards.
-resource_fuel | Fuel | Fuel | From gas giants. For ships; 1 moves a ship a corner further.
-resource_water | Water | Water | From ice moons. For ships and cards.
-resource_crystals | Crystals | Crystals | From nebulas. For cards.
-enforcer | Enforcer | Enforcer | Move the blockade and steal 1 resource. Most played (3+): the Embargo.
-interstellar_cartel | Interstellar Cartel | Cartel | Name a resource: every other player gives you all of theirs.
-shipyard_surplus | Shipyard Surplus | Surplus | Build a ship and a second comes free at the same colony.
-supply_drop | Supply Drop | Supply | Take any 2 resources from the bank.
-charter_three_of_a_kind | Charter | Charter | Stations on 3 planets of one kind: 2 points, shown when true.
-charter_occupier | Charter: Occupier | Charter | A station on another player's used-up home: 2 points, shown when true.
-charter_deep_space_relay | Charter: Deep-space Relay | Charter | Build one station touching no planet. It scores 1, and this card 1 more.
+# file | band | title | short title | words
+resource_minerals | #aa9682 | Minerals | Minerals | From asteroid belts. For ships and colonies.
+resource_food | #6ec86e | Food | Food | From lush planets. For colonies and cards.
+resource_fuel | #eb9650 | Fuel | Fuel | From gas giants. For ships; 1 moves a ship a corner further.
+resource_water | #aad7f5 | Water | Water | From ice moons. For ships and cards.
+resource_crystals | #b982e6 | Crystals | Crystals | From nebulas. For cards.
+enforcer | #c0392b | Enforcer | Enforcer | Move the blockade and steal 1 resource. Most played (3+): the Embargo.
+interstellar_cartel | #c0392b | Interstellar Cartel | Cartel | Name a resource: every other player gives you all of theirs.
+shipyard_surplus | #5b8c3a | Shipyard Surplus | Surplus | Build a ship and a second comes free at the same colony.
+supply_drop | #5b8c3a | Supply Drop | Supply | Take any 2 resources from the bank.
+charter_three_of_a_kind | #2c6e9e | Charter | Charter | Stations on 3 planets of one kind: 2 points, shown when true.
+charter_occupier | #2c6e9e | Charter: Occupier | Charter | A station on another player's used-up home: 2 points, shown when true.
+charter_deep_space_relay | #2c6e9e | Charter: Deep-space Relay | Charter | Build one station touching no planet. It scores 1, and this card 1 more.

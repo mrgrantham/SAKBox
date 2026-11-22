@@ -18,6 +18,7 @@ cc_library(
         "src/BottomScreen.cpp",
         "src/BuildMenu.cpp",
         "src/CardChoices.cpp",
+        "src/CardFace.cpp",
         "src/CardPlaces.cpp",
         "src/CardsHeld.cpp",
         "src/ChoiceScreens.cpp",
@@ -51,6 +52,7 @@ cc_library(
         "include/CosmicHex/Handheld/BoardView.hpp",
         "include/CosmicHex/Handheld/BuildMenu.hpp",
         "include/CosmicHex/Handheld/CardChoices.hpp",
+        "include/CosmicHex/Handheld/CardFace.hpp",
         "include/CosmicHex/Handheld/CardPlaces.hpp",
         "include/CosmicHex/Handheld/CardsHeld.hpp",
         "include/CosmicHex/Handheld/ChoiceScreens.hpp",
@@ -182,6 +184,16 @@ cc_test(
 
 # The game's pictures loaded with the DS's texture memory emulated: needs a
 # window (tagged display), as Renderer_test does
+cc_test(
+    name = "CardFace_test",
+    size = "small",
+    srcs = ["tests/CardFace_test.cpp"],
+    deps = [
+        ":handheld",
+        "@gtest//:gtest_main",
+    ],
+)
+
 cc_test(
     name = "GamePictures_test",
     size = "small",

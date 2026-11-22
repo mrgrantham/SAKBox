@@ -163,7 +163,9 @@ ICONS = ["roll", "build", "trade", "show_resources", "cards", "end_turn", "other
     symbol = "kIcon" + "".join([word.capitalize() for word in name.split("_")]),
 ) for name in ICONS]
 
-# The cards' art, one for each card
+# The cards' icons, one for each card, each on a see-through ground the
+# icon's shape (2:1): the only picture on a card, its other layers drawn as
+# tinted shapes (the consoles' CardFace)
 CARDS = ["resource_minerals", "resource_food", "resource_fuel", "resource_water", "resource_crystals", "enforcer", "interstellar_cartel", "shipyard_surplus", "supply_drop", "charter_three_of_a_kind", "charter_occupier", "charter_deep_space_relay"]
 
 [texture_recipe(
@@ -184,7 +186,8 @@ CARDS = ["resource_minerals", "resource_food", "resource_fuel", "resource_water"
     symbol = "kCardBack" + design.capitalize(),
 ) for design in ["rings", "planets"]]
 
-# The cards' words, edited as text: Art.hpp's wordsOf reads them
+# The cards' words and band colours, edited as text: Art.hpp's wordsOf and
+# bandOf read them
 embed_file(
     name = "card_words",
     src = "cards/cards.txt",

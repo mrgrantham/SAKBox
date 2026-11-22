@@ -244,12 +244,6 @@ void ScreenPadd::updateShows() {
   updateHand();
   updatePointer();
   updateCelebration();
-  // The two cards dealt, drawn sharp before they're thrown in (on a DS
-  // about a quarter of a second, while the screen is still)
-  if (dealt_.needsCloseUp()) {
-    closeUpCards(dealt_.cards());
-    dealt_.closeUpDrawn(showsNow());
-  }
 }
 
 // The map, sharpened (the map's faces at the whole board's size, and the

@@ -331,7 +331,7 @@ Over the board:
 
 Words over a card or tile (its name, a token's number, a card's words) wait for it to settle, then fade in (`kSecondsWordsIn`).
 
-Pictures shown big for a moment (a discovered tile, both its back as it flies up face down and its face, the cards dealt, played or paid) are drawn again at `PlatformProfile::closeUpSize` (128 on both consoles) just before they're shown, while nothing moves, into textures kept for them. On a DS they're drawn 16 rows at a time (`closeUpBandRows`), as a picture drawn whole needs more main memory than a game has free.
+Pictures shown big for a moment (a discovered tile, both its back as it flies up face down and its face) are drawn again at `PlatformProfile::closeUpSize` (128 on both consoles) just before they're shown, while nothing moves, into textures kept for them. Cards need none: their icons are loaded sharp ([Art](#art)). On a DS they're drawn 16 rows at a time (`closeUpBandRows`), as a picture drawn whole needs more main memory than a game has free.
 
 Moves animate and the dice roll on the game's own clock (ScratchPadd's `GameClock`), which stops while a watched game is paused; the shows run on a clock of their own at the Animations setting's pace. B (Back) takes whatever is animating (the dice, who goes first, pieces moving, the turn's banner, the trade screen coming in, a turned-over tile, a pay, the cards dealt coming in) straight to its end.
 
@@ -379,7 +379,8 @@ What the app plays and draws is in `handheld/`, tested on the Mac:
 | `BottomScreen`, `BoardButtons`, `ChoiceScreens`, `BuildMenu`, `Pickers`, `CardChoices`, `TradeRoom` | The bottom screen and its choosing screens |
 | `Hud`, `RollDice`, `TopShows`, `TopViews` | What's over the board on the top screen |
 | `PlatformProfile` | Each console's numbers (texture sizes, memory budgets, the dice's step) |
-| `GamePictures` | The pictures the top screen draws with, loaded once at the start; `GamePictures_test` loads them as the DS would, its 256 KB of texture memory emulated, with room left for toon textures |
+| `GamePictures` | The pictures the top screen draws with, loaded once at the start; `GamePictures_test` loads them as the DS would, its 256 KB of texture memory emulated, with room left for toon textures (and prints what the 3DS's take) |
+| `CardFace` | Every card drawn one way, in layers: the shapes texture, each card's layers mesh, and the bottom screen's card pixels |
 
 ### The app's files
 
@@ -490,13 +491,17 @@ It throws them many times and checks each face comes up a sixth of the time and 
 | `art/*.svg` | The tiles' faces |
 | `art/make_number_chips.py` | Writes the number chips' SVGs: a planet's number on a round chip, with a dot for each way two dice make it (big enough to stay apart on a DS's small chip; close up, the top screen draws the dots sharp over it) |
 | `art/icons/*.svg` | The board screen's button icons |
-| `art/cards/*.svg` | The cards' drawings |
-| `art/cards/back_rings.svg`, `back_planets.svg` | The cards' backs: rings of hexagons for action cards, the six kinds of planet on a starfield for resource cards |
-| `art/cards/cards.txt` | The cards' words: a line a card, its title, short title and what it does (the build embeds it and `Art::wordsOf` reads it) |
+| `art/cards/*.svg` | The cards' icons, each on a see-through ground the shape of the icon's area (2:1) |
+| `art/cards/back_rings.svg`, `back_planets.svg` | The cards' backs (2:3, as the faces): rings of hexagons for action cards, the six kinds of planet on a starfield for resource cards |
+| `art/cards/cards.txt` | The cards' words and colours: a line a card, its title band's colour, its title, short title and what it does (the build embeds it; `Art::bandOf` and `Art::wordsOf` read it) |
 
-A card's drawing has no words: the game writes the title (centred, up to two lines) and what it does over it, in the areas `Art.hpp` gives (`kCardTitle`, `kCardArt`, `kCardWords`, in the drawing's 63 x 88 units), so a new drawing keeps to them. `Art_test` checks every card's words fit, in each console's font (the DS's Silkscreen, the 3DS's Orbitron).
+A card is drawn in layers, one way on both screens (`handheld`'s `CardFace`): its edge, its cream body, its title band in its own colour and its dark art band are plain tinted rounded rectangles; only its icon is a picture. The game writes the title and what it does over them, in the areas `Art.hpp` gives (`kCardTitle`, `kCardArt`, `kCardIcon`, `kCardWords`, in the card's 63 x 94.5 units), so a new icon keeps to its area. `Art_test` checks every card's words fit, in each console's font (the DS's Silkscreen, the 3DS's Orbitron).
 
-- **A title's letters** take their colour from the card's label band, on every card view of both screens (`Palette::inkOnBand`, `TopPictures::titleInkOf`): dark on a light band (every resource card's), light on a dark one.
+- **A card is a true card's shape, 2:3,** everywhere it's shown whole: Show resources' piles and action cards, cards gained, the cards flying (a roll's pay, the starting hand, steals, trades), the home die's card, the cards dealt, a card played, the resource picker on both screens, the keep screen and the backs. The trade room and the cards screen show the cards' tops (title and art: `CardSprites::topHeight`), as whole cards don't fit their rows.
+- **The layers are cheap:** each card's four layers are one mesh (four quads, tinted by their vertices) cut from one small alpha texture shared by every card (`CardFace::shapesPixels`: 64 x 64, a rounded rectangle for each shape of layer, so each is stretched only in its own proportions; its corners may blur). No layer has a texture of its own.
+- **The icon is the only picture,** loaded once at `PlatformProfile::cardIconWidth` (64 x 32 on a DS, 128 x 64 on a 3DS), as sharp as the biggest card shown, so cards need no close-ups.
+- **Big cards fit the screen** they're on, with the words round them (`dealtCardBox`, `playedCardBox`, `pickCardBox`, `homePayCardBox`, checked on both screens by `TopViews_test`); the home die and its card scale by the screen's height too where it's shorter for its width (the 3DS's).
+- **A title's letters** take their colour from the card's band, on every card view of both screens (`Palette::inkOnBand`, `CardFace::titleInkOf`): dark on a light band (every resource card's), light on a dark one. A title is as large as fits its band (its width and its line's height).
 
 ## Models
 

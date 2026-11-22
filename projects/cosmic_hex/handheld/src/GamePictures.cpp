@@ -1,5 +1,6 @@
 #include <CosmicHex/Handheld/GamePictures.hpp>
 
+#include <CosmicHex/Handheld/CardFace.hpp>
 #include <CosmicHex/Handheld/RecipePixels.hpp>
 #include <CosmicHex/Handheld/ScreenPictures.hpp>
 
@@ -9,54 +10,42 @@ namespace Scene = ScratchPadd::Scene;
 
 void loadCardPictures(Scene::Renderer &renderer, const PlatformProfile &profile,
                       TopPictures &pictures, CloseUpSlots &closeUps) {
-  // Resources bigger (the user's: room for their titles, and
-  // the cards under the top one easy to see), action cards smaller: on
-  // the DS 44 and 32 pixels wide, 8 and 2 KB each, all of them fitting
-  // beside the tile faces in the 128 KB the textures share
+  // Resources bigger in Show resources' piles (the user's: room for their
+  // titles, and the cards under the top one easy to see), action cards
+  // smaller
   pictures.resourceWidth = profile.topWidth >= 400 ? 64 : 44;
   pictures.cardWidth = profile.topWidth >= 400 ? 44 : 32;
-  const auto load = [&](Art::Card card, int width, float &uMax, float &vMax) {
-    const int height = width * 52 / 63;
-    const auto whole =
-        recipePixels(Art::cardRecipeOf(card), width, width * 88 / 63, profile.recipeSmoothing);
-    if (whole.empty())
-      return Scene::Texture{};
-    const std::vector<Scene::Colour> top(whole.begin(), whole.begin() + width * height);
-    // (the band's colour, for its title's letters: dark on a light band)
-    const int bandPixel = (width * 11 / 63) * width + width * 6 / 63;
-    pictures.cardBands[static_cast<std::size_t>(card)] = top[static_cast<std::size_t>(bandPixel)];
-    const PaddedPicture picture = padded(top, width, height);
-    uMax = picture.uMax;
-    vMax = picture.vMax;
-    return renderer.load(Scene::TextureImage{picture.width, picture.height, picture.pixels});
-  };
-  float uMax = 1, vMax = 1;
-  for (int r = 0; r < kResources; ++r)
-    pictures.resources[static_cast<std::size_t>(r)] =
-        load(static_cast<Art::Card>(r), pictures.resourceWidth, uMax, vMax);
-  pictures.resourceSquare = renderer.load(pictureSquare(uMax, vMax).data());
-  for (int c = kResources; c < Art::kCards; ++c)
-    pictures.cards[static_cast<std::size_t>(c)] =
-        load(static_cast<Art::Card>(c), pictures.cardWidth, uMax, vMax);
-  pictures.pictureSquare = renderer.load(pictureSquare(uMax, vMax).data());
-  // The close-ups' slots, blank until one's shown (closeUpTile and
-  // closeUpCards draw into them: PictureSlot)
-  const int size = profile.closeUpSize;
-  closeUps.face.load(renderer, size, size);
+  // The cards in layers (CardFace): the one shapes texture every layer is
+  // cut from, each card's layers as a mesh, and its icon, the only
+  // picture, as sharp as the biggest card shown (profile.cardIconWidth)
+  const std::vector<Scene::Colour> shapes = CardFace::shapesPixels();
+  pictures.cardShapes =
+      renderer.load(Scene::TextureImage{CardFace::kShapesSize, CardFace::kShapesSize, shapes});
+  const int iconWidth = profile.cardIconWidth, iconHeight = iconWidth / 2;
+  for (int c = 0; c < Art::kCards; ++c) {
+    const auto card = static_cast<Art::Card>(c);
+    pictures.cardLayers[static_cast<std::size_t>(c)] =
+        renderer.load(CardFace::layersMesh(card).data());
+    const std::vector<Scene::Colour> icon =
+        recipePixels(Art::cardIconRecipeOf(card), iconWidth, iconHeight, profile.recipeSmoothing);
+    if (!icon.empty())
+      pictures.cardIcons[static_cast<std::size_t>(c)] =
+          renderer.load(Scene::TextureImage{iconWidth, iconHeight, icon});
+  }
+  pictures.pictureSquare = renderer.load(pictureSquare().data());
+  // The tile close-ups' slots, blank until one's shown (closeUpTile draws
+  // into them: PictureSlot)
+  closeUps.face.load(renderer, profile.closeUpSize, profile.closeUpSize);
   closeUps.back.load(renderer, profile.closeUpBackSize, profile.closeUpBackSize);
-  for (ScratchPadd::PictureSlot &card : closeUps.cards)
-    card.load(renderer, size, size);
-  const int smallCardHeight = size * 52 / 63; // (whole pixels, as the card is drawn)
-  pictures.closeUpCardSquare = renderer.load(
-      pictureSquare(1, static_cast<float>(smallCardHeight) / static_cast<float>(size)).data());
   // The two backs, whole cards (the planets for resource cards, the rings
   // for action cards: the agreed designs), for cards held face down
+  const int backHeight = CardFace::heightOf(pictures.cardWidth);
   for (const Art::CardBack design : {Art::CardBack::Rings, Art::CardBack::Planets}) {
-    const auto whole = recipePixels(Art::cardBackRecipe(design), pictures.cardWidth,
-                                    pictures.cardWidth * 88 / 63, profile.recipeSmoothing);
+    const auto whole = recipePixels(Art::cardBackRecipe(design), pictures.cardWidth, backHeight,
+                                    profile.recipeSmoothing);
     if (whole.empty())
       continue;
-    const PaddedPicture picture = padded(whole, pictures.cardWidth, pictures.cardWidth * 88 / 63);
+    const PaddedPicture picture = padded(whole, pictures.cardWidth, backHeight);
     pictures.backs[static_cast<std::size_t>(design)] =
         renderer.load(Scene::TextureImage{picture.width, picture.height, picture.pixels});
     pictures.backSquare = renderer.load(pictureSquare(picture.uMax, picture.vMax).data());
