@@ -41,7 +41,7 @@ void ScreenPadd::drawStage() {
     auto timing = profile_.time(kProfileWait);
     ConsoleScreens::waitForTheRefresh();
   } else {
-    drawBoard(latest_ ? &latest_->state : nullptr);
+    drawBoard(shows_.latest() ? &shows_.latest()->state : nullptr);
     still_.drawn(topMoving());
     drawnSnapshots_ = snapshots_;
     drawnTurn_ = turn_;
@@ -60,12 +60,12 @@ void ScreenPadd::drawTitle() {
     renderer_->overlay().rectangle(
         0, 0, kStageWidth, kStageHeight,
         {0, 0, 0, static_cast<std::uint8_t>(std::lround((1 - in) * 255))});
-  if (flow_.screen() == ScreenFlow::Screen::Won && latest_) {
-    const int winner = latest_->state.winner;
+  if (flow_.screen() == ScreenFlow::Screen::Won && shows_.latest()) {
+    const int winner = shows_.latest()->state.winner;
     Scene::Overlay &overlay = renderer_->overlay();
     overlay.textCentred(kStageWidth / 2.0f, kStageHeight - 34,
-                        (mode_ == Mode::Playing && winner == 0 ? std::string("You win")
-                                                               : names_[winner] + " wins") +
+                        (shows_.playing() && winner == 0 ? std::string("You win")
+                                                         : shows_.names()[winner] + " wins") +
                             "!",
                         Palette::kHighlight, 2);
     overlay.text(kStageWidth / 2.0f - 60, kStageHeight - 16, "A: to the title",
@@ -120,7 +120,7 @@ void ScreenPadd::drawBoard(const State *shown) {
     // (down: a moment to look at the board, the game still held, then who
     // goes first; A goes on at once)
     if (flow_.screen() == ScreenFlow::Screen::Game)
-      lookingSince_ = Clock::now();
+      shows_.boardDown();
   }
   // (the game's camera, following the corner you've chosen: CameraFollow)
   const Scene::Camera camera =
@@ -130,7 +130,7 @@ void ScreenPadd::drawBoard(const State *shown) {
     shown = &menus_.preview(); // (the game's first state on its way: the same board)
   // (not under another player's panel once it covers the stage: the
   // DS's frame is then the panel's alone)
-  const bool covered = others_.inPlace(showsNow());
+  const bool covered = shows_.others().inPlace(showsNow());
   if (!covered)
     renderer_->draw(stars_, Scene::Transform::identity(),
                     {.shading = Scene::Material::Shading::Unlit});
@@ -141,7 +141,7 @@ void ScreenPadd::drawBoard(const State *shown) {
   }
   drawShowsOverBoard(TopFrame{*renderer_, renderer_->overlay(), camera,
                               static_cast<float>(kStageWidth), static_cast<float>(kStageHeight),
-                              pictures_, names_, showsNow()});
+                              pictures_, shows_.names(), showsNow()});
   // The blockade's chosen hex, ringed on the 3D board too (a touched
   // corner has the pointer over it instead of a ring: the user's)
   if (selected_ && choosingAHex())
@@ -246,7 +246,7 @@ void ScreenPadd::drawShip(const ShipPose &pose, const Scene::Transform &placemen
                   {.shading = Scene::Material::Shading::Toon, .colour = colour, .alpha = alpha});
   if (pose.flame <= 0)
     return;
-  const float flicker = 0.85f + 0.15f * std::sin(static_cast<float>(gameClock_.seconds()) * 47);
+  const float flicker = 0.85f + 0.15f * std::sin(static_cast<float>(gameNow()) * 47);
   const float length = 0.65f * pose.flame * flicker;
   renderer_->draw(
       flame_,
@@ -259,7 +259,7 @@ void ScreenPadd::drawShip(const ShipPose &pose, const Scene::Transform &placemen
 // A board's tiles, chips, stations and ships, placed by `placement`
 void ScreenPadd::drawPieces(const State &state, const Scene::Transform &placement) {
   // How far through the latest move's animation (0 to 1)
-  const float t = static_cast<float>((gameClock_.seconds() - motionStarted_) / kSecondsAnimating);
+  const float t = static_cast<float>((gameNow() - shows_.motionStarted()) / kSecondsAnimating);
   drawTiles(state, placement, t);
   drawStations(state, placement, t);
   drawShips(state, placement, t);
@@ -294,7 +294,7 @@ void ScreenPadd::drawTile(CosmicHex::Hex hex, std::optional<float> turn, CosmicH
 void ScreenPadd::drawTiles(const State &state, const Scene::Transform &placement, float t) {
   // (a home whose die is out: its place left empty, the die and the space
   // where the tile was drawn by its show: HomePayShow)
-  const auto dieOutOf = homePay_.dieOutOf(showsNow());
+  const auto dieOutOf = shows_.homePay().dieOutOf(showsNow());
   const auto dieOut = dieOutOf ? CardPlaces::homeOf(state, *dieOutOf) : std::nullopt;
   for (std::size_t i = 0; i < state.planets.size(); ++i) {
     // (one turned over is shown big first: face down here till it's
@@ -302,14 +302,14 @@ void ScreenPadd::drawTiles(const State &state, const Scene::Transform &placement
     const CosmicHex::Hex hex = state.planets[i].hex;
     if (hex == dieOut)
       continue;
-    if (discovery_.stillToShow(hex, showsNow())) {
-      if (!discovery_.flying(hex, showsNow()))
+    if (shows_.discovery().stillToShow(hex, showsNow())) {
+      if (!shows_.discovery().flying(hex, showsNow()))
         drawTile(hex, std::nullopt, CosmicHex::Art::Face::PlanetFaceDown,
                  CosmicHex::Art::Face::PlanetFaceDown, placement);
       continue;
     }
-    const bool shownBig = discovery_.shownBig(hex);
-    const auto turn = shownBig ? std::nullopt : motion_.planetTurn(i, t);
+    const bool shownBig = shows_.discovery().shownBig(hex);
+    const auto turn = shownBig ? std::nullopt : shows_.motion().planetTurn(i, t);
     drawTile(hex, turn, CosmicHex::Art::Face::PlanetFaceDown, faceOf(state.planets[i]), placement);
     // its number chip, once it's lying face up; one just
     // turned over drops onto it from above and settles (a
@@ -318,8 +318,8 @@ void ScreenPadd::drawTiles(const State &state, const Scene::Transform &placement
     const Scene::Texture chip = pictures_.chips[static_cast<std::size_t>(number)];
     if (number > 0 && !turn && chip) {
       float drop = 0;
-      if (motion_.planetTurn(i, 0) && !shownBig) {
-        const double since = gameClock_.seconds() - motionStarted_ - kSecondsAnimating;
+      if (shows_.motion().planetTurn(i, 0) && !shownBig) {
+        const double since = gameNow() - shows_.motionStarted() - kSecondsAnimating;
         const float landed = ScratchPadd::Motion::along(
             ScratchPadd::Motion::Curve::Settle, static_cast<float>(since / kSecondsChipDrop));
         drop = since < 0 ? kChipDropHeight : (1 - landed) * kChipDropHeight;
@@ -332,12 +332,13 @@ void ScreenPadd::drawTiles(const State &state, const Scene::Transform &placement
   }
   for (std::size_t i = 0; i < state.zone.size(); ++i) {
     const CosmicHex::Hex hex = state.zone[i].hex;
-    if (discovery_.stillToShow(hex, showsNow())) {
-      if (!discovery_.flying(hex, showsNow()))
+    if (shows_.discovery().stillToShow(hex, showsNow())) {
+      if (!shows_.discovery().flying(hex, showsNow()))
         drawTile(hex, std::nullopt, CosmicHex::Art::Face::FindFaceDown,
                  CosmicHex::Art::Face::FindFaceDown, placement);
     } else
-      drawTile(hex, discovery_.shownBig(hex) ? std::nullopt : motion_.siteTurn(i, t),
+      drawTile(hex,
+               shows_.discovery().shownBig(hex) ? std::nullopt : shows_.motion().siteTurn(i, t),
                CosmicHex::Art::Face::FindFaceDown, faceOf(state.zone[i]), placement);
   }
 }
@@ -350,7 +351,7 @@ void ScreenPadd::drawStations(const State &state, const Scene::Transform &placem
   };
   for (std::size_t i = 0; i < state.stations.size(); ++i) {
     const CosmicHex::Station &station = state.stations[i];
-    const Landing landing = motion_.landing(i, t);
+    const Landing landing = shows_.motion().landing(i, t);
     const Scene::Transform corner = placement * BoardPieces::onCorner(station.at);
     renderer_->draw(station.colony ? colony_ : station_,
                     corner * Scene::Transform::translation({0, landing.drop, 0}) *
@@ -371,13 +372,14 @@ void ScreenPadd::drawStations(const State &state, const Scene::Transform &placem
 // it instead, once someone's won; and the blockade, swooping to its planet
 void ScreenPadd::drawShips(const State &state, const Scene::Transform &placement, float t) {
   for (std::size_t i = 0; i < state.ships.size(); ++i)
-    if (!celebration_ || state.ships[i].owner != state.winner)
-      drawShip(motion_.ship(i, t), placement, BoardColours::ofPlayer(state.ships[i].owner));
-  if (celebration_ && state.winner >= 0)
-    for (std::size_t i = 0; i < celebration_->ships(); ++i)
-      drawShip(celebration_->pose(i, showsNow()), placement, BoardColours::ofPlayer(state.winner),
-               static_cast<std::uint8_t>(31 * celebration_->fadedIn(i, showsNow())));
-  if (const auto pose = motion_.blockade(t))
+    if (!shows_.celebration() || state.ships[i].owner != state.winner)
+      drawShip(shows_.motion().ship(i, t), placement, BoardColours::ofPlayer(state.ships[i].owner));
+  if (shows_.celebration() && state.winner >= 0)
+    for (std::size_t i = 0; i < shows_.celebration()->ships(); ++i)
+      drawShip(shows_.celebration()->pose(i, showsNow()), placement,
+               BoardColours::ofPlayer(state.winner),
+               static_cast<std::uint8_t>(31 * shows_.celebration()->fadedIn(i, showsNow())));
+  if (const auto pose = shows_.motion().blockade(t))
     drawShip(*pose, placement, BoardColours::kBlockade);
 }
 
@@ -385,7 +387,7 @@ void ScreenPadd::drawShips(const State &state, const Scene::Transform &placement
 // can reach, fuel's orange where the move takes a fuel, or where a build
 // may go; and the board's pointer (the user's: a white chevron)
 void ScreenPadd::drawSelectedShip() {
-  if (!bottomScreen_ || !latest_)
+  if (!bottomScreen_ || !shows_.latest())
     return;
   const std::vector<CosmicHex::Corner> fuel = bottomScreen_->placingCornersWithFuel();
   for (const CosmicHex::Corner &corner : bottomScreen_->placingCorners()) {
@@ -417,7 +419,7 @@ void ScreenPadd::drawSelectedShip() {
   // what's at the corner (a ship, a station, the board), and the dust a
   // new building raises where it touches
   constexpr float kHover = 0.8f;
-  const float surface = BoardPieces::topAt(latest_->state, look->to);
+  const float surface = BoardPieces::topAt(shows_.latest()->state, look->to);
   const float hover = between(1) + kHover + bob * (1 - std::clamp(look->dip, 0.0f, 1.0f));
   const float height = hover + (between(1) + surface - hover) * look->dip;
   if (look->dust) {

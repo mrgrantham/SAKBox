@@ -38,20 +38,20 @@
 #include <CosmicHex/Handheld/BoardView.hpp>
 #include <CosmicHex/Handheld/BottomScreen.hpp>
 #include <CosmicHex/Handheld/GamePictures.hpp>
+#include <CosmicHex/Handheld/GameShows.hpp>
 #include <CosmicHex/Handheld/Pickers.hpp>
 #include <CosmicHex/Handheld/PlayerNames.hpp>
 #include <CosmicHex/Handheld/RollDice.hpp>
 #include <CosmicHex/Handheld/ScorePops.hpp>
 #include <CosmicHex/Handheld/ScreenFlow.hpp>
+#include <CosmicHex/Handheld/ScriptedPlayer.hpp>
 #include <CosmicHex/Handheld/TopShows.hpp>
 #include <CosmicHex/Handheld/TopViews.hpp>
-#include <CosmicHex/Handheld/TradeArrival.hpp>
 #include <CosmicHex/Handheld/WinCelebration.hpp>
 #include <ScratchPadd/Banner/Banner.hpp>
 #include <ScratchPadd/Canvas/Canvas.hpp>
 #include <ScratchPadd/ConsoleScreens/ConsoleScreens.hpp>
 #include <ScratchPadd/FrameProfile.hpp>
-#include <ScratchPadd/GameClock.hpp>
 #include <ScratchPadd/Input/GamePadd.hpp>
 #include <ScratchPadd/PictureSlot/PictureSlot.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
@@ -82,19 +82,6 @@ public:
   void starting() override;
 
 private:
-  // Why the game is held, if it is: one bit each. The table is told to hold
-  // while any is set or you've paused, and to go on once none is
-  enum class Hold : std::uint8_t {
-    Start = 1,     // (the board coming down, who goes first)
-    Menu = 2,      // (the pause menu)
-    Info = 4,      // (Show resources, another player's panel)
-    Discovery = 8, // (a tile shown big)
-    HomePay = 16,  // (a home's pay)
-    RollPay = 32,  // (a roll's pay)
-    CardPlay = 64  // (an action card played)
-  };
-  // In a game, watching or playing
-  enum class Mode : std::uint8_t { Watching, Playing };
   // Where each frame's time goes (the DS's stutter), shown on
   // the -watch builds: the touch panel, the dice, the stage (its
   // wait for the refresh included), and that wait
@@ -121,48 +108,28 @@ private:
     Scene::Mesh mesh;
   };
   static constexpr Scene::Colour kFuelOrange{235, 150, 80}; // (fuel's, as its card's band)
-  // How long the board, come down, is looked at before who goes first
-  static constexpr double kSecondsLookingAtBoard = 2;
 
   // ScreenPadd.cpp: starting, the frame loop, holds, the animations' pace
   void loadPieces();
   void frame();
   void zoomMap(const Input::Edges &pressed, bool zooming);
-  void followInfoView();
   void followTouchPanel();
-  void updateStart();
   void updateShows();
   void prepareMap();
-  void holdFor(Hold why, bool on);
-  void sendHold();
   void save(const char *file, std::string_view bytes);
   void paceAnimations();
-  bool skippable() const;
-  void skipAnimations();
   // The app's real clock, in seconds (menus, buttons)
   double now() const { return secondsSince(startedAt_); }
-  // The shows' clock (what shows over the board): real time at the
-  // Animations setting's pace (twice as fast when Quick), jumping ahead
-  // when an animation's skipped; it runs while the game's held
-  double showsNow() const { return showClock_.seconds(); }
+  // The shows' clock and the game's (GameShows)
+  double showsNow() const { return shows_.showsNow(); }
+  double gameNow() const { return shows_.gameNow(); }
 
-  // GameFlow.cpp: a snapshot's arrival, starting and stopping games, who
-  // goes first, the dice, the win
+  // GameFlow.cpp: a snapshot's arrival, starting and stopping games, the
+  // shows' hooks, the win
   void onSnapshot(const TableSnapshot &snapshot);
-  bool startMotion(const TableSnapshot &snapshot);
-  void startBanners(const TableSnapshot &snapshot);
-  void startShows(const TableSnapshot &snapshot);
-  void showGains(const TableSnapshot &snapshot);
-  void followOnTouchPanel(const TableSnapshot &snapshot);
-  void announceTradeAnswer();
+  void hookShows();
   void apply(const ScreenFlow::Step &step);
   void startGame();
-  void startPlacingBanner(const State &state);
-  void startFirstRoll();
-  void endFirstRoll();
-  bool yourRollWaits(const TableSnapshot &snapshot) const;
-  void promptForYourRoll();
-  void throwDice();
   void celebrate(const State &state);
   void updateCelebration();
 
@@ -198,12 +165,6 @@ private:
   void showProfile();
   void closeUpTile(CosmicHex::Art::Face face);
   void closeUpTileInto(ScratchPadd::PictureSlot &slot, CosmicHex::Art::Face face, int size);
-  void updateRollPay();
-  void updatePick();
-  void updateHand();
-  void updateCardPlay();
-  void updateHomePay();
-  void updateDiscovery();
   void updatePointer();
   std::optional<CosmicHex::Corner> pointerCorner() const;
   bool topMoving() const;
@@ -221,6 +182,7 @@ private:
   void handleTouch(const Input::Touch &touch);
   void tapBoard();
   Input::Touch scripted(const Input::Touch &touch);
+  void playScripted(Input::Gamepad &pad);
   bool onTheBoard() const;
   bool onAMenuScreen() const;
   void drawTouchPanel();
@@ -249,25 +211,24 @@ private:
   std::string profileLine_;
   double startSeconds_ = 0; // (the start's work: starting())
 
-  // The game as last sent, and how it's shown moving
-  std::optional<TableSnapshot> latest_;
-  BoardMotion motion_;
-  // The game's own time (Gregory 8.4): moves animate and dice roll on it,
-  // and it stops while a watched game is paused
-  ScratchPadd::GameClock gameClock_;
-  double motionStarted_ = 0;
+  // The game as last sent, how it's shown moving, and the shows over the
+  // board (GameShows: their state, timing and holds; drawn here)
+  GameShows shows_{static_cast<float>(kStageWidth)};
   float turn_ = 0;
-  // The roll's physics dice (RollDice), and the table's seed last thrown
-  RollDice roll_{kThisPlatform.diceStep, kThisPlatform.mostDiceSteps};
-  Scene::Mesh die_;
-  std::uint64_t thrownSeed_ = 0;
-  bool rollAsked_ = false;    // (you've said to throw the dice: Roll or A)
-  bool rollPrompted_ = false; // (the banner says ROLL THE DICE, until you do)
+  Scene::Mesh die_; // (the roll's dice)
 
-  // The pad and the clocks
+  // The self-playing build's player (kScriptedPlay): its next input's
+  // time, and a tap held down for a few frames
+  ScriptedPlayer scriptedPlayer_{
+      static_cast<std::uint64_t>(Clock::now().time_since_epoch().count())};
+  double nextScripted_ = 0;
+  int scriptedTouchFrames_ = 0;
+  Input::Touch scriptedTouch_{};
+  std::array<std::uint16_t, Input::kButtons> scriptedPresses_{};
+
+  // The pad and the clock
   Input::Gamepad lastPad_;
   Clock::time_point startedAt_ = Clock::now(); // (the scripted taps' times)
-  ScratchPadd::GameClock showClock_;
 
   // The touch panel: the flat board (BoardPicture), its buttons and
   // choosing screens (BottomScreen), written straight into the bottom
@@ -290,7 +251,6 @@ private:
   // since when it's been held, or let go
   double heldChangedAt_ = -1e9;
   bool heldShown_ = false;
-  int othersShown_ = -1; // (the other player last shown: which way the carousel turns)
   std::size_t cursor_ = 0;
   // What the buttons cover on the map, as last drawn; and whether the
   // touch panel shows the map as last drawn (so only what changes needs
@@ -300,35 +260,7 @@ private:
   bool fading_ = false;       // (mid-fade: the map already drawn)
   bool fadeFromMenu_ = false; // (the touch panel fading from the setup's menu)
 
-  // The turn banner (ScratchPadd::Banner)
-  ScratchPadd::Banner banner_{static_cast<float>(kStageWidth)};
-  std::optional<Pickers::ResourceChoice> bannerFor_; // (the choice its banner was for)
-  // (the start's placing: its banner waits for the starting hands' deal)
-  bool placingBannerAfterDeal_ = false;
-  // An offer to you (or a counter to yours) arriving: its banner, then the
-  // trade screen coming down the touch panel (on the banner's clock)
-  TradeArrival tradeArrival_;
-  // The info views (Show resources): which is shown, since when, and
-  // whether it holds the game; the cards' pictures for them
-  BottomScreen::Info shownInfo_ = BottomScreen::Info::None;
-  CardsShow cards_;                      // (Show resources' cards in and off)
-  std::optional<double> outlineMovedAt_; // (the turn's outline moving: since, on the shows' clock)
-  int outlineFrom_ = 0;                  // (from this player's row)
-  // What shows over the board for a while (TopShows; drawn by TopViews),
-  // each on the shows' clock (showsNow())
-  DiscoveryShow discovery_;         // (tiles turned over)
-  DealtShow dealt_;                 // (the two cards dealt)
-  PanelShow others_{kSecondsPanel}; // (another player's panel)
-  FirstRollShow firstRoll_;         // (who goes first)
-  HomePayShow homePay_;             // (a home's pay on its die)
-  RollPayShow rollPay_;             // (a roll's pay, card by card)
-  ScorePops scorePops_;             // (points and badges won, popping in)
-  CardPlayShow cardPlay_;           // (an action card played, a Charter revealed)
-  PickShow pick_;                   // (choosing a resource: the card in focus, big)
-  HandShow hand_;                   // (your cards gained, dropping into your hand)
-  CornerPointer pointer_;           // (the board's pointer)
-  // Someone's won: their ships fly round above the board (WinCelebration)
-  std::optional<WinCelebration> celebration_;
+  CornerPointer pointer_;          // (the board's pointer)
   ScratchPadd::StillFrames still_; // (when the stage can hold its last frame)
   // What the stage last showed (topIsStill): the table's snapshots
   // drawn, the camera's turn and the selected spot, and when
@@ -340,11 +272,6 @@ private:
   std::array<BoardGaps, 2> gaps_;
   std::size_t olderGaps_ = 0; // (which of gaps_ goes next)
 
-  // Holding the game: why, and whether you've paused it (watching, with
-  // A, so the PAUSED band shows)
-  std::uint8_t holds_ = 0;
-  bool youPaused_ = false;
-
   // Which screen (ScreenFlow), and the menus it shows
   ScreenFlow flow_;
   MenuScreens menus_{
@@ -352,14 +279,9 @@ private:
       {.step = [this](ScreenFlow::Event event) { apply(flow_.on(event)); },
        .animationsChanged = [this] { paceAnimations(); },
        .save = [this](const char *file, std::string_view bytes) { save(file, bytes); }}};
-  Mode mode_ = Mode::Watching;
   bool quitting_ = false;
-  // Who's who: your name, the bots' (PlayerNames), made as each game starts
-  PlayerNames names_;
   // The start of a game: the board coming down, the touch panel fading
   std::optional<Clock::time_point> descentStarted_;
-  // The board come down, looked at a moment before who goes first
-  std::optional<Clock::time_point> lookingSince_;
 };
 
 } // namespace CosmicHex::Handheld::App

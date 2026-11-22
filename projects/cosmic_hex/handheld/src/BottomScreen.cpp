@@ -287,10 +287,22 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
     // roll), its moves as they'll be once they end: choosing one ends them
     // first, as a build does (the user's: touching the ship did nothing)
     if (yourMove_ && spot) {
-      const auto shipHere =
-          std::find_if(state_.ships.begin(), state_.ships.end(), [&](const Ship &ship) {
-            return ship.owner == state_.turn && ship.corner == spot->corner;
-          });
+      // (two of your ships on one corner: the one that can still move,
+      // else the first: a new ship on its colony under one that's moved)
+      const auto yoursHere = [&](const Ship &ship) {
+        return ship.owner == state_.turn && ship.corner == spot->corner;
+      };
+      const auto canMove = [&](std::size_t index) {
+        return std::any_of(legal_.begin(), legal_.end(), [&](const Action &a) {
+          return a.kind == Kind::Move && a.a == static_cast<int>(index);
+        });
+      };
+      auto shipHere = std::find_if(state_.ships.begin(), state_.ships.end(), yoursHere);
+      for (auto it = shipHere; it != state_.ships.end(); ++it)
+        if (yoursHere(*it) && canMove(static_cast<std::size_t>(it - state_.ships.begin()))) {
+          shipHere = it;
+          break;
+        }
       if (shipHere != state_.ships.end()) {
         const bool trading = state_.phase == Phase::Trading;
         std::vector<Action> legal = legal_;
@@ -737,6 +749,10 @@ BottomScreen::Outcome BottomScreen::press(Key key) {
     // B back, from countering to the offer)
     if (key == Key::Confirm)
       return confirmTrade();
+    // (B on an offer: Decline, as B goes back everywhere else; from
+    // countering, the offer again)
+    if (key == Key::Back && trade_.showingOffer())
+      return {trade_.decline(), true};
     if (key == Key::Back) {
       backFromTrade();
     } else if ((key == Key::Left || key == Key::Right) && !trade_.answering()) {
@@ -786,6 +802,19 @@ ChoiceScreens::Press BottomScreen::actionPress() const {
   ChoiceScreens::Press press = actionPress_;
   press.now = now_;
   return press;
+}
+
+std::optional<std::array<int, 2>> BottomScreen::buttonAt(BoardButtons::Button button) const {
+  if (mode_ != Mode::Board && mode_ != Mode::Placing)
+    return std::nullopt;
+  BoardButtons::Situation situation = situation_;
+  situation.placing = mode_ == Mode::Placing;
+  situation.placeChosen = chosen_.has_value();
+  for (const BoardButtons::Place &place : BoardButtons::layout(width_, height_, situation))
+    if (place.button == button && place.usable)
+      return std::array<int, 2>{static_cast<int>(place.x + place.size / 2),
+                                static_cast<int>(place.y + place.size / 2)};
+  return std::nullopt;
 }
 
 void BottomScreen::layOutButtons() {

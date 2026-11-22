@@ -206,6 +206,7 @@ Cosmic Hex and Infinifly are their own projects, using ScratchPadd as a library.
 - **Decided:** countering reuses the trade room's builder (`TradeRoom::startCountering`), started from the offer turned round, with Counter in the offer screen's Back place; a bot counters only a person's offer (`tradingRuleMove(state, mayCounter)`, which `TableGame` sets when the offerer is a person).
 - **Why:** the rules already allowed one counter an offer (`CounterTrade`, `TradeCounter`) but no screen made one; bots countering each other would change the measured balance of the simulations.
 - **Not chosen:** a separate counter screen (a second builder to keep in step); a key for Counter (the screen's keys are taken: A accepts, the D-pad moves; touch only for now); a counter's headline "COUNTERS YOUR OFFER" (too wide for a DS's banner).
+- **Since:** with the shows taking turns (`GameShows`, below), the offer's banner waits its turn as every banner does (after a show that has the stage, or on the band of one sweeping), and the screen comes down after its words whenever they come in (`TradeArrival::after`).
 
 ## Cosmic Hex: another player's panel laid out from the screen (2026-11-22)
 
@@ -219,3 +220,20 @@ Cosmic Hex and Infinifly are their own projects, using ScratchPadd as a library.
 - **Why:** the owner asked for cards built from cheap pieces, true card shapes and sharper icons; a whole card as one picture for each card and size cost the DS most of its card memory and showed only the card's top. Every card already shared one template (frame, bands, art box), so action cards take the same layers, and the drawing lives in one place for both screens.
 - **Also:** the DS's renderer now tints an image by its vertices' and material's colours, as `Material` says and the other backends did (it drew every image white-lit, so the layers all showed white); and every backend leaves out a texel more than half see-through on a solid mesh, as the DS's one-bit alpha does (the 3DS and the desktops drew its colour: an icon's see-through ground black, the layers' corners square).
 - **Not chosen:** one stretched rounded square for every layer (a long band's corners stretch with it); nine-slicing each layer (nine quads a layer, too many polygons for a DS showing Show resources' piles); a texture per resource for the frame; keeping the action cards as whole pictures (two ways to draw a card, and 2:3 would have cost the DS more); whole 2:3 cards in the trade room and the cards screen (their rows have no room; they show the cards' tops).
+
+## Cosmic Hex: the shows' flow apart from the screens, and scripted play (2026-11-22)
+
+- **Decided:** what ScreenPadd did with each new state and each frame for the shows (starting them, moving them on, the holds, the dice, B's skip, which show is drawn over the board) is `GameShows` in the handheld library, with no console code; ScreenPadd draws what it says and sends the table what it asks. `ScriptedGame` runs it with `BottomScreen` and a table paced as `TablePadd`, player 0 by `ScriptedPlayer`, logging every show (`ShowLog`).
+- **Why:** the owner saw shows skip and asked for whole games scripted through the app's own hooks. The shows' flow lived in the console-only padd, so the Mac couldn't run it; moved, the runs exercise the code the consoles run, and found every cause below.
+- **Not chosen:** scripting melonDS's input (slow, not repeatable, no view of the shows' state); a copy of the flow for tests (it would drift from the app's).
+
+## Cosmic Hex: the table waits for the stage, one show at a time (2026-11-22)
+
+- **Decided:** the game is held from the moment a move brings a show until it has shown, and while the pieces move or a banner sweeps; shows over the board take turns in the order they came, banners follow each other on one band and wait for a show that has the stage; the game's own clock pauses only when you pause; your move waits for the pieces to land; the table waits a move's time after each state it sends, and the dealer's draws after your move or the dice come with it; B ends only what's animating.
+- **Why:** the scripted runs (20 games a setting) found 698 shows cut short or skipped unasked with Full animations: banners covered (373) or cut by the next (160), pieces cut by the next move (132), a home's pay spinning unseen under a discovery and appearing half done (the owner's "the home die just appears"), cards played under a discovery, the dice thrown under a discovery still to come (34, once the log counted the dice as hidden under a show), your cards gained shown once a game, and with B pressed now and then a home's pay or cards still to come skipped with what B was for. The table moved each 0.6 s whatever was showing, each show was timed as it came, and only one is drawn at a time. After: none.
+- **Not chosen:** a longer pause between the table's moves (shows vary in length; the board would wait when nothing shows); drawing two shows at once (a DS's words are on one layer over every shape).
+
+## Cosmic Hex: B declines an offer (2026-11-22)
+
+- **Decided:** answering an offer, A accepts and B declines; touching two of your ships on one corner chooses the one that can still move.
+- **Why:** the scripted player, on the pad alone, couldn't decline an offer it couldn't accept, and couldn't choose a new ship standing on its colony under one that had moved (End Turn waits for it): both left a game stuck.

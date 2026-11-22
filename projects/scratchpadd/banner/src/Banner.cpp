@@ -84,6 +84,13 @@ std::optional<std::size_t> Banner::waitingSlide() const {
   return std::nullopt;
 }
 
+std::optional<double> Banner::lastEntersAt() const {
+  if (!started_ || slides_.empty())
+    return std::nullopt;
+  const double at = entersAt(slides_.size() - 1);
+  return at == kNever ? std::nullopt : std::optional(at);
+}
+
 bool Banner::showing(double now) const { return started_ && now < endsAt(); }
 
 bool Banner::waiting(double now) const {

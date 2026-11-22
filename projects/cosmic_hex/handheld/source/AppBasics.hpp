@@ -1,8 +1,9 @@
 // AppBasics.hpp - what every part of the Cosmic Hex app shares: the
 // build's switches, its clock, and how long things take on screen
+// (ShowTimes.hpp)
 #pragma once
 
-#include <CosmicHex/Handheld/BoardMotion.hpp>
+#include <CosmicHex/Handheld/ShowTimes.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -20,43 +21,28 @@ constexpr bool kWatchAtStart = true;
 constexpr bool kWatchAtStart = false;
 #endif
 
+// The build that plays itself (COSMIC_HEX_SCRIPTED_PLAY: the -scripted
+// app): player 0's taps and buttons from the scripted player
+// (ScriptedPlayer), as the Mac's scripted runs make them, game after game
+#if defined(COSMIC_HEX_SCRIPTED_PLAY)
+constexpr bool kScriptedPlay = true;
+#else
+constexpr bool kScriptedPlay = false;
+#endif
+
 // The title screen: the 3D scene, or the plain text title (false). Which
 // one a player sees, and how it's chosen, is an open question on the
 // roadmap page; the scene for now
 constexpr bool kTitleScene = true;
+
+// How long the title takes to fade in from black, once the start's work
+// is done (a little after the last)
+constexpr double kSecondsTitleFadeIn = 0.6;
 
 using Clock = std::chrono::steady_clock;
 // The seconds since `start`
 inline double secondsSince(Clock::time_point start) {
   return std::chrono::duration<double>(Clock::now() - start).count();
 }
-
-// The points bars' outline moving to the next player's row
-// (0.6 s, the user's: at 0.35 s, a row's 5 pixels, as the turn's banner
-// came in, it read as a jump)
-constexpr float kSecondsOutline = 0.6f;
-// How long the other players' view takes to slide down (or up)
-// (long enough to see it come: at 0.3 s a DS's 20 or so frames a second
-// showed it in four or five jumps)
-constexpr float kSecondsPanel = 0.45f;
-// How long the title takes to fade in from black, once the start's work
-// is done (a little after the last)
-constexpr double kSecondsTitleFadeIn = 0.6;
-
-// How long each move stays on screen before the next, so a game can be
-// watched (the dealer's draws go straight on), and how long its slide or
-// flip takes
-constexpr double kSecondsAMove = 0.6;
-// (a ship's flight: long enough to see its engine burn, within a move's
-// time on screen)
-constexpr double kSecondsAnimating = 0.5;
-// A planet's number chip, once it's turned over, drops this far onto it
-// and settles in this long
-constexpr double kSecondsChipDrop = 0.35;
-constexpr float kChipDropHeight = 1.2f;
-// How long the board moves after a move: the pieces, a chip dropping, a
-// building's dust fading
-constexpr double kSecondsBoardMoving =
-    std::max(kSecondsAnimating + kSecondsChipDrop, BoardMotion::kLandingEnds *kSecondsAnimating);
 
 } // namespace CosmicHex::Handheld::App

@@ -53,6 +53,11 @@ DiscoveryShow::Step DiscoveryShow::update(double now,
   return step;
 }
 
+void DiscoveryShow::waitFor(double until) {
+  if (!queue_.empty() && !closeUpDrawn_ && (!startsAt_ || *startsAt_ < until))
+    startsAt_ = until;
+}
+
 const Discovery::Found *DiscoveryShow::current() const {
   return queue_.empty() ? nullptr : &queue_.front();
 }
@@ -373,8 +378,10 @@ void HomePayShow::saw(const std::vector<TableGame::Played> &moves, const State &
       Pay pay{.player = move.player, .face = move.action.a, .seenAt = now, .paidUpAt = now};
       if (move.action.a >= 0 && move.action.a < kResources)
         pay.resource = static_cast<Resource>(move.action.a);
-      if (pays_.empty())
+      if (pays_.empty()) {
         outAt_ = now;
+        out_ = false;
+      }
       pays_.push_back(pay);
     } else if (move.action.kind == Action::Kind::ChooseHome) {
       // (the star's choice, made: the latest of the player's still open)
@@ -460,9 +467,11 @@ HomePayShow::Step HomePayShow::update(double now) {
     if (!end || now < *end)
       break;
     pays_.erase(pays_.begin(), pays_.begin() + static_cast<std::ptrdiff_t>(t.pays));
+    out_ = false;
     if (!pays_.empty())
       outAt_ = std::max(*end, pays_.front().seenAt);
   }
+  out_ = out_ || moving(now);
   Step step;
   const bool busy = moving(now) && !waitingForGame(timeline(), now);
   if (busy != held_) {
@@ -470,6 +479,11 @@ HomePayShow::Step HomePayShow::update(double now) {
     (busy ? step.hold : step.letGo) = true;
   }
   return step;
+}
+
+void HomePayShow::waitFor(double until) {
+  if (!pays_.empty() && !out_ && outAt_ < until)
+    outAt_ = until;
 }
 
 bool HomePayShow::moving(double now) const {
@@ -603,7 +617,9 @@ bool HomePayShow::waitingForChoice(double now) const {
 
 // --------------------------------------------------------------- Roll pay
 
-void RollPayShow::saw(const std::vector<TableGame::Played> &moves, const State &before) {
+void RollPayShow::saw(const std::vector<TableGame::Played> &moves, const State &before,
+                      double now) {
+  const std::size_t had = cards_.size();
   // (who's to be stolen from: as the game had it, then as the blockade
   // names them; the thief is the player whose turn it is)
   if (!moves.empty()) {
@@ -691,6 +707,11 @@ void RollPayShow::saw(const std::vector<TableGame::Played> &moves, const State &
       for (int n = 0; n < pay.count; ++n)
         cards_.push_back({pay.planet, pay.player, pay.resource});
   }
+  // (joining a flight under way: from now, each after the last, so none
+  // is first seen part way along)
+  if (started_)
+    for (std::size_t i = had; i < cards_.size(); ++i)
+      cards_[i].at = std::max(now, i == 0 ? now : cards_[i - 1].at + kStagger);
 }
 
 void RollPayShow::cross(int from, int to, int bundle) {
@@ -700,23 +721,31 @@ void RollPayShow::cross(int from, int to, int bundle) {
       cards_.push_back({-1, to, static_cast<Resource>(r), from});
 }
 
-float RollPayShow::seconds() const {
+double RollPayShow::seconds() const {
   if (cards_.empty())
     return 0;
-  return kStagger * static_cast<float>(cards_.size() - 1) + kSecondsPop + kSecondsFly;
+  if (started_)
+    return endsAt() - startAt_;
+  return kStagger * static_cast<double>(cards_.size() - 1) + kSecondsPop + kSecondsFly;
+}
+
+double RollPayShow::endsAt() const {
+  return cards_.empty() ? startAt_ : cards_.back().at + kSecondsPop + kSecondsFly;
 }
 
 void RollPayShow::start(double now) {
-  if (waiting()) {
-    startAt_ = now;
-    started_ = true;
-  }
+  if (!waiting())
+    return;
+  startAt_ = now;
+  started_ = true;
+  for (std::size_t i = 0; i < cards_.size(); ++i)
+    cards_[i].at = now + kStagger * static_cast<double>(i);
 }
 
 std::optional<RollPayShow::Moment> RollPayShow::at(std::size_t i, double now) const {
   if (i >= cards_.size() || !started_)
     return std::nullopt;
-  const auto t = static_cast<float>(now - startAt_) - kStagger * static_cast<float>(i);
+  const auto t = static_cast<float>(now - cards_[i].at);
   if (t < 0 || t >= kSecondsPop + kSecondsFly)
     return std::nullopt;
   return Moment{Motion::along(Motion::Curve::Settle, std::min(1.0f, t / kSecondsPop)),
@@ -725,7 +754,7 @@ std::optional<RollPayShow::Moment> RollPayShow::at(std::size_t i, double now) co
 }
 
 bool RollPayShow::moving(double now) const {
-  return started_ && !cards_.empty() && now >= startAt_ && now < startAt_ + seconds();
+  return started_ && !cards_.empty() && now >= startAt_ && now < endsAt() - kSlack;
 }
 
 RollPayShow::Step RollPayShow::update(double now) {
@@ -736,7 +765,7 @@ RollPayShow::Step RollPayShow::update(double now) {
     held_ = true;
     step.hold = true;
   }
-  if (now < startAt_ + seconds())
+  if (now < endsAt() - kSlack)
     return step;
   cards_.clear();
   held_ = started_ = false;
@@ -776,6 +805,11 @@ void CardPlayShow::saw(const std::vector<TableGame::Played> &moves, double now) 
   }
 }
 
+void CardPlayShow::waitFor(double until) {
+  if (!queue_.empty() && startedAt_ && !shown_ && *startedAt_ < until)
+    startedAt_ = until;
+}
+
 std::optional<CardPlayShow::Moment> CardPlayShow::at(double now) const {
   if (queue_.empty() || !startedAt_ || now < *startedAt_)
     return std::nullopt;
@@ -797,6 +831,7 @@ CardPlayShow::Step CardPlayShow::update(double now) {
   Step step;
   if (queue_.empty() || !startedAt_ || now < *startedAt_)
     return step;
+  shown_ = true;
   if (!held_) {
     held_ = true;
     step.hold = true;
@@ -804,6 +839,7 @@ CardPlayShow::Step CardPlayShow::update(double now) {
   if (now - *startedAt_ < kSeconds)
     return step;
   queue_.erase(queue_.begin());
+  shown_ = false;
   if (!queue_.empty()) {
     startedAt_ = now;
     return step;
@@ -853,12 +889,12 @@ void HandShow::gained(const Resources &added) {
     queued_[r] += added[r];
 }
 
-bool HandShow::waiting() const {
-  return !startedAt_ && std::any_of(queued_.begin(), queued_.end(), [](int n) { return n > 0; });
+bool HandShow::queued() const {
+  return std::any_of(queued_.begin(), queued_.end(), [](int n) { return n > 0; });
 }
 
 void HandShow::start(double now) {
-  if (!waiting())
+  if (!queued() || showing(now))
     return;
   added_ = queued_;
   queued_ = {};

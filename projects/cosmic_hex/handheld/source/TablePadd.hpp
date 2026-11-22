@@ -33,10 +33,10 @@ private:
   void sendSnapshot(const TableGame &game);
 
   std::optional<TableGame> game_;
-  std::size_t playedSent_ = 0; // (moves already sent in a snapshot)
+  std::size_t playedSent_ = 0;                     // (moves already sent in a snapshot)
+  std::chrono::steady_clock::time_point sentAt_{}; // (the last snapshot's sending)
   std::uint64_t seed_ = 0;
   bool paused_ = false;
-  double lastThinkSeconds_ = 0;
 };
 
 } // namespace CosmicHex::Handheld::App

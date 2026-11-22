@@ -66,6 +66,10 @@ public:
   std::optional<Discovery::Moment> moment(double now) const;
   bool moving(double now) const { return moment(now).has_value(); }
   bool waiting() const { return !queue_.empty(); }
+  std::optional<double> startsAt() const { return startsAt_; } // (the tile showing's)
+  // Not started before `until` (another show has the stage: GameShows);
+  // nothing once the tile showing has started
+  void waitFor(double until);
 
   // For drawing the board: a tile turned over but not back in its place
   // yet (face down there), off the board now (flying: drawn by the show),
@@ -103,6 +107,8 @@ public:
   void stop() { shown_.stop(); }
   bool on() const { return shown_.on(); }
   bool moving() const { return on(); }
+  double seconds(double now) const { return shown_.seconds(now); } // (since thrown)
+  double thrownAt() const { return shown_.since.value_or(0); }
   const std::vector<Art::Card> &cards() const { return cards_; }
 
   // Card i: how far thrown in (0 to 1, eased) and turned over (0 to 1)
@@ -201,6 +207,7 @@ public:
   void stop();
   bool on() const { return on_; }
   bool moving() const { return on_; }
+  double startedAt() const { return startedAt_; }
   // Each frame: the physics stepped to `now`, the next die thrown when it's due
   void update(double now);
   // A: the next die thrown now; once all have landed, done
@@ -320,6 +327,14 @@ public:
   // The first pay of the home showing (its player's); nothing when none
   const Pay *current() const { return pays_.empty() ? nullptr : &pays_.front(); }
   bool moving(double now) const;
+  // When the die showing leaves its place (or will); not before `until`
+  // (another show has the stage, or B skipped another: GameShows), unless
+  // it's already out
+  double outAt() const { return outAt_; }
+  void waitFor(double until);
+  // Out and waiting for the game (the star's choice, or the next roll):
+  // the game must go on for it to
+  bool waitingForGame(double now) const { return waitingForGame(timeline(), now); }
   // The player whose home's tile is off the board now (out as the die),
   // so the board leaves its place empty
   std::optional<int> dieOutOf(double now) const;
@@ -381,6 +396,7 @@ private:
 
   std::vector<Pay> pays_;
   double outAt_ = 0; // (the home showing's die leaving its place)
+  bool out_ = false; // (and it has: update saw it moving)
   bool held_ = false;
 };
 
@@ -399,6 +415,7 @@ public:
     Resource resource;
     int from = -1;       // (stolen or traded: from this player, or the bank)
     bool secret = false; // (stolen: seen only by the two players)
+    double at = 0;       // (when it pops out, once the flight has started)
   };
   static constexpr int kBank = -2; // (a card's `from` or `player`: the bank)
   // The moves made since the last look: a roll's pay queued (from `before`,
@@ -410,9 +427,14 @@ public:
   // its cost going to the bank (behind the ROUND hexagon); and the starting
   // hand (Settings::startCards), each card dealt from the bank round the
   // table from the first player, seen only by whoever it's dealt to
-  void saw(const std::vector<TableGame::Played> &moves, const State &before);
+  // (`now`: cards joining a flight already under way fly from now, after
+  // the last, not from the flight's start)
+  void saw(const std::vector<TableGame::Played> &moves, const State &before, double now);
   void start(double now);
   bool waiting() const { return !cards_.empty() && !started_; }
+  double startAt() const { return startAt_; } // (once started)
+  double endsAt() const;                      // (the last card landed, once started)
+  static constexpr double kSlack = 1e-9;      // (its end, give or take rounding)
   const std::vector<Card> &cards() const { return cards_; }
 
   // Card i's moment: how far it's popped out (0 to 1, Settle) and how far
@@ -422,7 +444,7 @@ public:
   };
   std::optional<Moment> at(std::size_t i, double now) const;
   bool moving(double now) const;
-  float seconds() const; // (all told)
+  double seconds() const; // (all told)
 
   struct Step {
     bool hold = false, letGo = false;
@@ -458,6 +480,10 @@ public:
   void saw(const std::vector<TableGame::Played> &moves, double now);
 
   const Play *current() const { return queue_.empty() ? nullptr : &queue_.front(); }
+  std::optional<double> startedAt() const { return startedAt_; } // (the current one's)
+  // Not started before `until` (another show has the stage: GameShows);
+  // nothing once the current one has started
+  void waitFor(double until);
   // The current one's moment: risen (0 to 1), turned over (0 to 1), gone
   // (0 to 1); nothing when none shows
   struct Moment {
@@ -476,6 +502,7 @@ private:
   std::vector<Play> queue_;
   std::optional<double> startedAt_;
   bool held_ = false;
+  bool shown_ = false; // (the current one has been seen moving: update)
 };
 
 // ---------------------------------------------------------------------------
@@ -518,10 +545,14 @@ public:
   static constexpr float kSecondsCard = 0.35f, kStagger = 0.12f;
   static constexpr float kSecondsHold = 0.6f;
 
-  // Cards gained: queued, shown from `start` (when the top screen is free)
+  // Cards gained: queued, shown from `start` (when the top screen is free;
+  // gained while shown, they're shown again after)
   void gained(const Resources &added);
   void start(double now);
-  bool waiting() const;
+  bool waiting() const { return queued(); }
+  std::optional<double> startedAt() const { return startedAt_; }
+  // Cards gained not yet shown
+  bool queued() const;
   bool showing(double now) const;
   bool moving(double now) const { return showing(now); }
 

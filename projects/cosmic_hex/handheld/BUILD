@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
 # Cosmic Hex as the consoles play it, without the console: the game at the
 # table (people and bots, the dealer, the action log) and the board's 3D
@@ -25,6 +25,7 @@ cc_library(
         "src/ButtonMenu.cpp",
         "src/DicePieces.cpp",
         "src/Discovery.cpp",
+        "src/GameShows.cpp",
         "src/MenuPicture.cpp",
         "src/MoveSpots.cpp",
         "src/OtherPlayers.cpp",
@@ -34,9 +35,13 @@ cc_library(
         "src/ScreenFlow.cpp",
         "src/ScreenPictures.cpp",
         "src/ScorePops.cpp",
+        "src/ScriptedGame.cpp",
+        "src/ScriptedPlayer.cpp",
         "src/SettingsScreen.cpp",
+        "src/ShowLog.cpp",
         "src/StartMenu.cpp",
         "src/TableGame.cpp",
+        "src/TableSnapshot.cpp",
         "src/TopShows.cpp",
         "src/TopViews.cpp",
         "src/TradeArrival.cpp",
@@ -60,6 +65,7 @@ cc_library(
         "include/CosmicHex/Handheld/DicePieces.hpp",
         "include/CosmicHex/Handheld/GameWords.hpp",
         "include/CosmicHex/Handheld/Discovery.hpp",
+        "include/CosmicHex/Handheld/GameShows.hpp",
         "include/CosmicHex/Handheld/MenuPicture.hpp",
         "include/CosmicHex/Handheld/MoveSpots.hpp",
         "include/CosmicHex/Handheld/Pickers.hpp",
@@ -75,9 +81,14 @@ cc_library(
         "include/CosmicHex/Handheld/ScreenFlow.hpp",
         "include/CosmicHex/Handheld/ScreenPictures.hpp",
         "include/CosmicHex/Handheld/ScorePops.hpp",
+        "include/CosmicHex/Handheld/ScriptedGame.hpp",
+        "include/CosmicHex/Handheld/ScriptedPlayer.hpp",
         "include/CosmicHex/Handheld/SettingsScreen.hpp",
+        "include/CosmicHex/Handheld/ShowLog.hpp",
+        "include/CosmicHex/Handheld/ShowTimes.hpp",
         "include/CosmicHex/Handheld/StartMenu.hpp",
         "include/CosmicHex/Handheld/TableGame.hpp",
+        "include/CosmicHex/Handheld/TableSnapshot.hpp",
         "include/CosmicHex/Handheld/TopShows.hpp",
         "include/CosmicHex/Handheld/TopViews.hpp",
         "include/CosmicHex/Handheld/TradeArrival.hpp",
@@ -95,6 +106,7 @@ cc_library(
         "//projects/scratchpadd/canvas",
         "//projects/scratchpadd/scene/overlay_text",
         "//projects/scratchpadd/motion",
+        "//projects/scratchpadd/utilities",  # (GameClock: the game's and the shows' clocks)
         "//projects/action_log",
         "//projects/cosmic_hex/art",
         "//projects/cosmic_hex/dice",
@@ -538,4 +550,26 @@ cc_test(
         ":handheld",
         "@gtest//:gtest_main",
     ],
+)
+
+# Whole games played through the app's own shows and touch panel, player 0
+# by the scripted player (ScriptedGame): every show seen from its start to
+# its end unless the player skipped it; and each cause of a show cut short,
+# found by the runs, kept from coming back
+cc_test(
+    name = "ScriptedGame_test",
+    size = "large",
+    srcs = ["tests/ScriptedGame_test.cpp"],
+    deps = [
+        ":handheld",
+        "@gtest//:gtest_main",
+    ],
+)
+
+# The scripted runs over many seeds, a table of the shows cut short and why
+# (bazel run //projects/cosmic_hex/handheld:scripted_play -- GAMES [FIRST_SEED])
+cc_binary(
+    name = "scripted_play",
+    srcs = ["tools/scripted_play.cpp"],
+    deps = [":handheld"],
 )

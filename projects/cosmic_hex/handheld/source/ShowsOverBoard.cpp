@@ -20,44 +20,65 @@
 namespace CosmicHex::Handheld::App {
 
 // What shows over the board for a while (TopViews; on a DS words are on
-// a layer over every shape, so only one at a time)
+// a layer over every shape, so only one at a time: GameShows::overBoard)
 void ScreenPadd::drawShowsOverBoard(const TopFrame &frame) {
   // The roll's dice (behind another player's view they wait unseen: the
   // game's held)
-  if (!others_.showing(showsNow()))
-    drawRoll(frame, roll_);
+  const double t = showsNow();
+  if (!shows_.others().showing(t))
+    drawRoll(frame, shows_.roll());
+  const auto &latest = shows_.latest();
+  if (!latest) {
+    drawText(frame);
+    return;
+  }
+  const State &state = latest->state;
+  const int you = shows_.playing() ? 0 : -1;
   // (a roll's pay, over the board, the HUD's words still showing: the
   // bots' cards fly to their rows of the points bars)
-  if (latest_ && rollPay_.moving(showsNow()))
-    drawRollPay(frame, rollPay_, latest_->state, mode_ == Mode::Playing ? 0 : -1);
+  if (shows_.rollPay().moving(t))
+    drawRollPay(frame, shows_.rollPay(), state, you);
   // (your cards gained, as Show resources shows them)
-  if (latest_ && hand_.showing(showsNow()) && !cards_.showing(showsNow()))
-    drawGained(frame, latest_->state.player[0].resources, hand_);
+  if (shows_.hand().showing(t) && !shows_.cards().showing(t))
+    drawGained(frame, state.player[0].resources, shows_.hand());
   // (Show resources, over the board, under the views below)
-  if (latest_ && cards_.showing(showsNow()))
-    drawResources(
-        frame, latest_->state.player[static_cast<std::size_t>(infoPlayer(latest_->state))], cards_);
-  if (firstRoll_.on() && latest_)
-    drawFirstRoll(frame, latest_->firstRoll, firstRoll_);
-  else if (others_.showing(showsNow()) && latest_ && others_.which() >= 0) {
-    for (const PanelShow::Drawn &drawn : others_.drawn(showsNow()))
-      drawOtherPlayer(frame, viewOf(latest_->state, drawn.which), drawn.down, drawn.across);
-  } else if (discovery_.moving(showsNow()))
-    drawDiscovery(frame, discovery_, closeUps_.face, closeUps_.back);
-  else if (pick_.at(showsNow()) && latest_ && bottomScreen_ && bottomScreen_->resourceChoice()) {
-    drawPick(frame, pick_, bottomScreen_->resourceChoice()->title,
-             latest_->state.player[static_cast<std::size_t>(latest_->state.turn)].resources,
-             latest_->state.settings, BoardColours::ofPlayer(latest_->state.turn));
+  if (shows_.cards().showing(t))
+    drawResources(frame, state.player[static_cast<std::size_t>(infoPlayer(state))], shows_.cards());
+  switch (shows_.overBoard()) {
+  case GameShows::OverBoard::FirstRoll:
+    drawFirstRoll(frame, latest->firstRoll, shows_.firstRoll());
+    break;
+  case GameShows::OverBoard::OtherPlayers:
+    for (const PanelShow::Drawn &drawn : shows_.others().drawn(t))
+      drawOtherPlayer(frame, viewOf(state, drawn.which), drawn.down, drawn.across);
+    break;
+  case GameShows::OverBoard::Discovery:
+    drawDiscovery(frame, shows_.discovery(), closeUps_.face, closeUps_.back);
+    break;
+  case GameShows::OverBoard::Pick:
+    drawPick(frame, shows_.pick(), bottomScreen_->resourceChoice()->title,
+             state.player[static_cast<std::size_t>(state.turn)].resources, state.settings,
+             BoardColours::ofPlayer(state.turn));
     drawBanner(renderer_->overlay());
-  } else if (homePay_.moving(showsNow()) && latest_)
-    drawHomePay(frame, homePay_, latest_->state,
-                mode_ == Mode::Playing && homePay_.current()->player == 0);
-  else if (cardPlay_.moving(showsNow()) && latest_)
-    drawCardPlay(frame, cardPlay_, latest_->state, mode_ == Mode::Playing ? 0 : -1);
-  else if (dealt_.on())
-    drawDealtCards(frame, dealt_, bottomScreen_ ? bottomScreen_->keepChosen() : -1);
-  else
+    break;
+  case GameShows::OverBoard::HomePay:
+    drawHomePay(frame, shows_.homePay(), state,
+                shows_.playing() && shows_.homePay().current()->player == 0);
+    // (its die waiting out for the game: the banner over it, the picker's
+    // CHOOSE A RESOURCE as the star's choice opens)
+    if (shows_.homePay().waitingForGame(t))
+      drawBanner(renderer_->overlay());
+    break;
+  case GameShows::OverBoard::CardPlay:
+    drawCardPlay(frame, shows_.cardPlay(), state, you);
+    break;
+  case GameShows::OverBoard::Dealt:
+    drawDealtCards(frame, shows_.dealt(), bottomScreen_ ? bottomScreen_->keepChosen() : -1);
+    break;
+  case GameShows::OverBoard::Hud:
     drawText(frame);
+    break;
+  }
 }
 
 // Over the board: the round, each player's points and resources in
@@ -65,40 +86,31 @@ void ScreenPadd::drawShowsOverBoard(const TopFrame &frame) {
 // list of moves when it's on; the held tag and the banner
 void ScreenPadd::drawText(const TopFrame &frame) {
   Scene::Overlay &overlay = renderer_->overlay();
-  if (!latest_)
+  if (!shows_.latest())
     return;
-  const State &state = latest_->state;
+  const State &state = shows_.latest()->state;
   // The HUD (Hud.hpp): the turn's outline easing from the last turn's row
   // to this one; badges, yours when playing, the turn's when watching
-  std::optional<float> outlineRow;
-  if (outlineMovedAt_) {
-    const float moved = ScratchPadd::Motion::along(
-        ScratchPadd::Motion::Curve::EaseInOut,
-        static_cast<float>(showsNow() - *outlineMovedAt_) / kSecondsOutline);
-    if (moved >= 1)
-      outlineMovedAt_.reset();
-    else
-      outlineRow = static_cast<float>(outlineFrom_) +
-                   (static_cast<float>(state.turn) - static_cast<float>(outlineFrom_)) * moved;
-  }
-  const bool lastMoveShows = !latest_->lastMoves.empty() &&
-                             shownInfo_ == BottomScreen::Info::None &&
-                             !cards_.showing(showsNow()) && !others_.showing(showsNow());
+  const std::optional<float> outlineRow = shows_.outlineRow();
+  const bool lastMoveShows =
+      !shows_.latest()->lastMoves.empty() && shows_.shownInfo() == BottomScreen::Info::None &&
+      !shows_.cards().showing(showsNow()) && !shows_.others().showing(showsNow());
   const std::string lastMove =
-      lastMoveShows ? latest_->lastMoves.back().substr(0, kCharsPerLine) : std::string();
+      lastMoveShows ? shows_.latest()->lastMoves.back().substr(0, kCharsPerLine) : std::string();
   drawHud(frame, state,
           {.outlineRow = outlineRow,
-           .badgesOf = mode_ == Mode::Playing ? 0 : state.turn,
-           .pops = &scorePops_,
+           .badgesOf = shows_.playing() ? 0 : state.turn,
+           .pops = &shows_.scorePops(),
            .lastMove = lastMove,
            .winner = state.winner < 0 ? std::string()
-                     : mode_ == Mode::Playing && state.winner == 0
+                     : shows_.playing() && state.winner == 0
                          ? std::string("You win!")
-                         : names_[state.winner] + " wins!"});
+                         : shows_.names()[state.winner] + " wins!"});
   drawWatchReadouts(overlay);
   // (the list of moves: debug builds only, when turned on)
-  if (mode_ == Mode::Playing && latest_->yourMove && shownInfo_ == BottomScreen::Info::None &&
-      !cards_.showing(showsNow()) && bottomScreen_ && bottomScreen_->showingMoveList())
+  if (shows_.playing() && shows_.latest()->yourMove &&
+      shows_.shownInfo() == BottomScreen::Info::None && !shows_.cards().showing(showsNow()) &&
+      bottomScreen_ && bottomScreen_->showingMoveList())
     drawMoves(overlay);
   drawHeldTag(overlay);
   drawBanner(overlay);
@@ -110,13 +122,13 @@ void ScreenPadd::drawWatchReadouts(Scene::Overlay &overlay) {
   static constexpr Scene::Colour kReadout{120, 220, 160};
   if (kWatchAtStart && !memory_.line().empty())
     overlay.text(4, kStageHeight - 26, memory_.line().substr(0, kCharsPerLine), kReadout);
-  if (kWatchAtStart && latest_->botGames > 0) {
+  if (kWatchAtStart && shows_.latest()->botGames > 0) {
     char games[32];
-    std::snprintf(games, sizeof games, "bot: %d games a move", latest_->botGames);
+    std::snprintf(games, sizeof games, "bot: %d games a move", shows_.latest()->botGames);
     overlay.text(4, kStageHeight - 50, games, kReadout);
     // Where its time went, in ms: guessing, the tree, the rollouts,
     // judging; and rollout moves a game
-    const GameBots::SearchTimes &t = latest_->botSearch;
+    const GameBots::SearchTimes &t = shows_.latest()->botSearch;
     if (t.games > 0) {
       char where[64];
       std::snprintf(
@@ -137,8 +149,8 @@ void ScreenPadd::drawWatchReadouts(Scene::Overlay &overlay) {
 // comes in quickly as the view opens and goes as it closes, at the same
 // time as the view's own way off (a second press of Show resources)
 void ScreenPadd::drawHeldTag(Scene::Overlay &overlay) {
-  const bool held = (holds_ & static_cast<std::uint8_t>(Hold::Info)) != 0 &&
-                    flow_.screen() == ScreenFlow::Screen::Game;
+  const bool held =
+      shows_.held(GameShows::Hold::Info) && flow_.screen() == ScreenFlow::Screen::Game;
   if (held != heldShown_) {
     heldShown_ = held;
     heldChangedAt_ = showsNow();
@@ -167,9 +179,7 @@ void ScreenPadd::drawHeldTag(Scene::Overlay &overlay) {
 
 // Whose cards an info view shows: yours when playing, the turn's when
 // watching
-int ScreenPadd::infoPlayer(const State &state) const {
-  return mode_ == Mode::Playing ? 0 : state.turn;
-}
+int ScreenPadd::infoPlayer(const State &state) const { return shows_.playing() ? 0 : state.turn; }
 
 // The turn banner as it moves (ScratchPadd::Banner): a band softly in the player's
 // colour with turquoise edges, the words sweeping through the middle
@@ -178,7 +188,8 @@ void ScreenPadd::drawBanner(Scene::Overlay &overlay) {
   // (the user's: plainer to see than a word in the corner)
   // (only when paused by you, not held by a view or a discovery; its
   // own flag, as a hold's let go reaches the game a frame or two later)
-  const bool pausedByYou = latest_ && latest_->paused && mode_ == Mode::Watching && youPaused_;
+  const bool pausedByYou =
+      shows_.latest() && shows_.latest()->paused && !shows_.playing() && shows_.youPaused();
   if (flow_.screen() == ScreenFlow::Screen::Paused || pausedByYou) {
     static const std::string kTitle = "PAUSED";
     const std::string note =
@@ -190,7 +201,7 @@ void ScreenPadd::drawBanner(Scene::Overlay &overlay) {
                        .colour = {140, 146, 158}});
     return;
   }
-  if (const auto look = banner_.at(gameClock_.seconds()))
+  if (const auto look = shows_.banner().at(gameNow()))
     drawBand(overlay, *look);
 }
 
@@ -221,7 +232,7 @@ void ScreenPadd::drawMoves(Scene::Overlay &overlay) {
   const std::size_t first = cursor_ >= kLines ? cursor_ - kLines + 1 : 0;
   for (std::size_t line = 0; line < kLines && first + line < shown.size(); ++line) {
     const std::size_t i = first + line;
-    std::string text = (i == cursor_ ? "> " : "  ") + latest_->moveText[shown[i]];
+    std::string text = (i == cursor_ ? "> " : "  ") + shows_.latest()->moveText[shown[i]];
     if (text.size() > kCharsPerLine)
       text = text.substr(0, kCharsPerLine - 2) + "..";
     overlay.text(6, 78 + kLineHeight * static_cast<float>(line), text,
@@ -240,8 +251,8 @@ void ScreenPadd::showProfile() {
     spdlog::info("frames: {}", profileLine_);
   }
   // (not over a view that fills the stage: its words would be lost)
-  if (firstRoll_.on() || others_.showing(showsNow()) || dealt_.on() ||
-      discovery_.moving(showsNow()) || homePay_.moving(showsNow()))
+  if (shows_.firstRoll().on() || shows_.others().showing(showsNow()) || shows_.dealt().on() ||
+      shows_.discovery().moving(showsNow()) || shows_.homePay().moving(showsNow()))
     return;
   // (three lines where the stage's narrow)
   for (std::size_t from = 0, row = 0; from < profileLine_.size() && row < 4;
@@ -257,7 +268,7 @@ void ScreenPadd::showProfile() {
 // memory whole), each recipe read once
 void ScreenPadd::closeUpTile(CosmicHex::Art::Face face) {
   closeUpTileInto(closeUps_.face, face, kThisPlatform.closeUpSize);
-  if (const CosmicHex::Handheld::Discovery::Found *found = discovery_.current())
+  if (const CosmicHex::Handheld::Discovery::Found *found = shows_.discovery().current())
     closeUpTileInto(closeUps_.back, found->faceDown, kThisPlatform.closeUpBackSize);
 }
 
@@ -274,83 +285,6 @@ void ScreenPadd::closeUpTileInto(ScratchPadd::PictureSlot &slot, CosmicHex::Art:
         return recipePixels(*recipe, size, size, kThisPlatform.recipeSmoothing, {first, rows});
       },
       kThisPlatform.closeUpBandRows);
-}
-
-// Each frame: the game held while a roll's pay flies
-void ScreenPadd::updateRollPay() {
-  // (once the dice have gone from the stage: not over the roll)
-  if (rollPay_.waiting() && roll_.idle())
-    rollPay_.start(showsNow());
-  const RollPayShow::Step step = rollPay_.update(showsNow());
-  if (step.hold || step.letGo)
-    holdFor(Hold::RollPay, step.hold);
-  // (the starting hands dealt: now whose placing it is)
-  if (step.letGo && placingBannerAfterDeal_ && latest_) {
-    placingBannerAfterDeal_ = false;
-    startPlacingBanner(latest_->state);
-  }
-}
-
-// Each frame: while you choose a resource on the picker, the banner as
-// each choice opens (two in a row: one each), then, once it's gone, the
-// card in focus shown big on the stage (PickShow; the user's: not behind it)
-void ScreenPadd::updatePick() {
-  const bool choosing = mode_ == Mode::Playing && latest_ && latest_->yourMove && bottomScreen_ &&
-                        bottomScreen_->mode() == BottomScreen::Mode::Resources &&
-                        bottomScreen_->resourceChoice();
-  if (!choosing) {
-    bannerFor_.reset();
-    pick_.show(std::nullopt, showsNow());
-    return;
-  }
-  const Pickers::ResourceChoice &choice = *bottomScreen_->resourceChoice();
-  if (!bannerFor_ || !bannerFor_->sameAs(choice)) {
-    bannerFor_ = choice;
-    pick_.show(std::nullopt, showsNow()); // (the last choice's card gone)
-    banner_.start(gameClock_.seconds(), "CHOOSE A RESOURCE", std::string(choice.title),
-                  Palette::kHighlight);
-  }
-  pick_.show(banner_.moving(gameClock_.seconds()) ? std::nullopt : bottomScreen_->resourceInFocus(),
-             showsNow());
-}
-
-// Each frame: your cards gained shown once nothing that brings them is
-// still showing (the roll's pay, the home's, choosing one, a discovery)
-void ScreenPadd::updateHand() {
-  const double t = showsNow();
-  // (the board's pieces moving count too: a discovery comes once they've
-  // stopped)
-  const bool busy = !roll_.idle() || rollPay_.moving(t) || rollPay_.waiting() ||
-                    gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving ||
-                    homePay_.moving(t) || pick_.at(t) || bannerFor_ || discovery_.moving(t) ||
-                    dealt_.on() || cardPlay_.moving(t) || cards_.showing(t) || firstRoll_.on();
-  if (hand_.waiting() && !busy)
-    hand_.start(t);
-}
-
-void ScreenPadd::updateCardPlay() {
-  const CardPlayShow::Step step = cardPlay_.update(showsNow());
-  if (step.hold || step.letGo)
-    holdFor(Hold::CardPlay, step.hold);
-}
-
-// Each frame: the home's pay held over the game
-void ScreenPadd::updateHomePay() {
-  const HomePayShow::Step step = homePay_.update(showsNow());
-  if (step.hold || step.letGo)
-    holdFor(Hold::HomePay, step.hold);
-}
-
-// Each frame: a discovery's close-up drawn before it starts, the game
-// held while one shows and let go after the last (unless a view holds
-// it too), the map drawn again as its tile fades in
-void ScreenPadd::updateDiscovery() {
-  const DiscoveryShow::Step step =
-      discovery_.update(showsNow(), [this](CosmicHex::Art::Face face) { closeUpTile(face); });
-  if (step.hold || step.letGo)
-    holdFor(Hold::Discovery, step.hold);
-  if (step.redrawMap)
-    touchDirty_ = true;
 }
 
 // Each frame: what the pointer points at. While the game wants you to
@@ -380,14 +314,14 @@ void ScreenPadd::updatePointer() {
 // else the ship you touched, else the corner you touched; not the pointer's
 // own resting place near the middle
 std::optional<CosmicHex::Corner> ScreenPadd::followedCorner() const {
-  if (!pointerCorner() || !bottomScreen_ || !latest_)
+  if (!pointerCorner() || !bottomScreen_ || !shows_.latest())
     return std::nullopt;
   if (bottomScreen_->placingBlockade())
     return bottomScreen_->chosenPlacement() ? pointerCorner() : std::nullopt;
   if (const auto chosen = bottomScreen_->chosenPlacement())
-    if (const MoveSpot spot = spotOf(latest_->state, *chosen); !spot.corners.empty())
+    if (const MoveSpot spot = spotOf(shows_.latest()->state, *chosen); !spot.corners.empty())
       return spot.corners.back();
-  const auto &ships = latest_->state.ships;
+  const auto &ships = shows_.latest()->state.ships;
   if (const auto ship = bottomScreen_->selectedShip();
       ship && *ship >= 0 && *ship < static_cast<int>(ships.size()))
     return ships[static_cast<std::size_t>(*ship)].corner;
@@ -397,7 +331,7 @@ std::optional<CosmicHex::Corner> ScreenPadd::followedCorner() const {
 }
 
 std::optional<CosmicHex::Corner> ScreenPadd::pointerCorner() const {
-  if (mode_ != Mode::Playing || !latest_ || !latest_->yourMove || !bottomScreen_ ||
+  if (!shows_.playing() || !shows_.latest() || !shows_.latest()->yourMove || !bottomScreen_ ||
       flow_.screen() != ScreenFlow::Screen::Game)
     return std::nullopt;
   const std::vector<CosmicHex::Corner> places = bottomScreen_->placingCorners();
@@ -405,11 +339,9 @@ std::optional<CosmicHex::Corner> ScreenPadd::pointerCorner() const {
   if (places.empty() && !ship && !selected_ && !bottomScreen_->placingBlockade())
     return std::nullopt; // (nothing to choose on the board, nothing touched)
   const double t = showsNow();
-  const bool busy = gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving ||
-                    banner_.moving(gameClock_.seconds()) || !roll_.idle() ||
-                    shownInfo_ != BottomScreen::Info::None || cards_.showing(t) ||
-                    discovery_.moving(t) || homePay_.moving(t) || rollPay_.moving(t) ||
-                    cardPlay_.moving(t) || hand_.moving(t) || dealt_.on() || pick_.at(t);
+  const bool busy = shows_.showsPlaying() || shows_.banner().moving(gameNow()) ||
+                    shows_.shownInfo() != BottomScreen::Info::None || shows_.cards().showing(t) ||
+                    shows_.hand().moving(t) || shows_.pick().at(t);
   if (busy)
     return std::nullopt;
   // (the blockade: centred on the planet chosen, else on the first it can
@@ -417,16 +349,17 @@ std::optional<CosmicHex::Corner> ScreenPadd::pointerCorner() const {
   if (bottomScreen_->placingBlockade()) {
     const auto hexes = bottomScreen_->placingHexes();
     if (const auto chosen = bottomScreen_->chosenPlacement())
-      return CosmicHex::Corner{latest_->state.planets[static_cast<std::size_t>(chosen->a)].hex, -1};
+      return CosmicHex::Corner{
+          shows_.latest()->state.planets[static_cast<std::size_t>(chosen->a)].hex, -1};
     if (!hexes.empty())
       return CosmicHex::Corner{hexes.front(), -1};
   }
   // (what you've chosen to place, or where a ship's to go: there, ahead
   // of the ship itself)
   if (const std::optional<CosmicHex::Action> chosen = bottomScreen_->chosenPlacement())
-    if (const MoveSpot spot = spotOf(latest_->state, *chosen); !spot.corners.empty())
+    if (const MoveSpot spot = spotOf(shows_.latest()->state, *chosen); !spot.corners.empty())
       return spot.corners.back();
-  const auto &ships = latest_->state.ships;
+  const auto &ships = shows_.latest()->state.ships;
   if (ship && *ship >= 0 && *ship < static_cast<int>(ships.size()))
     return ships[static_cast<std::size_t>(*ship)].corner;
   if (selected_) // (touched: there, marked or not)
@@ -439,27 +372,14 @@ std::optional<CosmicHex::Corner> ScreenPadd::pointerCorner() const {
   return *std::ranges::min_element(places, {}, fromMiddle);
 }
 
-// Whether anything on the stage moves now
+// Whether anything on the stage moves now: the board coming down, the
+// shows (GameShows::moving), the pointer and the camera, a view you opened
 bool ScreenPadd::topMoving() const {
-  if (flow_.screen() != ScreenFlow::Screen::Game || !latest_ || descentStarted_ || !roll_.idle() ||
-      firstRoll_.moving())
+  if (flow_.screen() != ScreenFlow::Screen::Game || !shows_.latest() || descentStarted_)
     return true;
-  if (gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving)
-    return true; // (pieces still moving, or a number chip dropping)
   if (pointer_.at(showsNow()) || follow_.moving(showsNow()))
     return true; // (the board's pointer turning, fading or gliding; the camera following)
-  if (banner_.moving(gameClock_.seconds()))
-    return true; // (the turn's banner moving)
-  if (shownInfo_ != BottomScreen::Info::None || cards_.moving(showsNow()) || outlineMovedAt_)
-    return true; // (an info view coming in or going, the points' outline)
-  // (the views over the board: each says)
-  if (scorePops_.popping(showsNow()) || cardPlay_.moving(showsNow()) || celebration_ ||
-      pick_.moving(showsNow()) || hand_.moving(showsNow()))
-    return true; // (points or badges popping in, a card played)
-  if (dealt_.moving() || others_.moving(showsNow()) || discovery_.moving(showsNow()) ||
-      homePay_.moving(showsNow()) || rollPay_.moving(showsNow()))
-    return true;
-  return false;
+  return shows_.moving() || shows_.shownInfo() != BottomScreen::Info::None;
 }
 
 // Whether the stage can hold its last frame (StillFrames: after something

@@ -185,7 +185,7 @@ TEST_F(TopViewsTest, ARollsPayFromStartToEnd) {
       break;
     }
   RollPayShow show;
-  show.saw({{1, Action{Action::Kind::Roll, 4, 4}}}, state);
+  show.saw({{1, Action{Action::Kind::Roll, 4, 4}}}, state, 0);
   show.start(0);
   ASSERT_EQ(show.cards().size(), 3u); // (a colony's two, a station's one)
   frames(every(-0.2, show.seconds() + 0.3), [&](const TopFrame &f) {
@@ -205,7 +205,7 @@ TEST_F(TopViewsTest, TheStartingHandDealtFromStartToEnd) {
     deal.push_back({-1, Action{Action::Kind::DealStartCard, (i * 2) % kResources}});
   for (const int you : {0, -1}) { // (playing, and watching)
     RollPayShow show;
-    show.saw(deal, dealing);
+    show.saw(deal, dealing, 0);
     show.start(0);
     frames(every(-0.2, show.seconds() + 0.3), [&](const TopFrame &f) {
       show.update(f.now);

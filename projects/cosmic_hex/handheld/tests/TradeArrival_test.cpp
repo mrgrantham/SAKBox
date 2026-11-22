@@ -63,6 +63,26 @@ TEST(TradeArrivalTest, ASkipPutsTheScreenInPlace) {
   EXPECT_FLOAT_EQ(arrival.down(0.1), 1);
 }
 
+// Its banner waiting its turn (a show has the stage, or another banner's
+// words go first): the board stays until the banner starts, and the screen
+// comes down timed from then
+TEST(TradeArrivalTest, ItWaitsForItsBanner) {
+  TradeArrival arrival;
+  ASSERT_TRUE(arrival.saw(true, 0));
+  arrival.waitForBanner();
+  EXPECT_FLOAT_EQ(arrival.down(30), 0);
+  EXPECT_TRUE(arrival.moving(30));
+  arrival.after(40);
+  EXPECT_FLOAT_EQ(arrival.down(40 + kWordsSettled - 0.01), 0);
+  const double inPlace = 40 + TradeArrival::kStartsAfter + TradeArrival::kSeconds + 0.01;
+  EXPECT_FLOAT_EQ(arrival.down(inPlace), 1);
+  EXPECT_FALSE(arrival.moving(inPlace));
+  // (answered while it waited: gone, and nothing timed for the next look)
+  EXPECT_FALSE(arrival.saw(false, 41));
+  arrival.after(50);
+  EXPECT_FALSE(arrival.moving(50));
+}
+
 // Animations Quick: on the banner's clock at twice the pace, in place in
 // half the real time
 TEST(TradeArrivalTest, QuickBringsItInTwiceAsFast) {

@@ -40,6 +40,7 @@ public:
 
   Stage stage() const { return stage_; }
   bool idle() const { return stage_ == Stage::Idle; }
+  double thrownAt() const { return thrownAt_; }
   std::pair<int, int> rolled() const { return rolled_; }
   float shownSeconds() const { return static_cast<float>(shownSeconds_); }
   const Dice::DiceTray &tray() const { return tray_; }

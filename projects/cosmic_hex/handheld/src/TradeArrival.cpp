@@ -1,5 +1,7 @@
 #include <CosmicHex/Handheld/TradeArrival.hpp>
 
+#include <limits>
+
 namespace CosmicHex::Handheld {
 
 bool TradeArrival::saw(bool answering, double now) {
@@ -10,6 +12,16 @@ bool TradeArrival::saw(bool answering, double now) {
   else if (!answering)
     since_.stop();
   return arrived;
+}
+
+void TradeArrival::waitForBanner() {
+  if (since_.on()) // (an answer arriving: timed from no time yet, so not down)
+    since_.start(std::numeric_limits<double>::infinity());
+}
+
+void TradeArrival::after(double bannerAt) {
+  if (since_.on())
+    since_.start(bannerAt);
 }
 
 float TradeArrival::down(double now) const {

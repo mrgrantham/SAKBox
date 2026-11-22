@@ -95,6 +95,20 @@ public:
   // The dealer's or a bot's move, made: what it was, or nothing if it's a
   // person's move or the game is over
   std::optional<Action> step();
+  // What the screens show as one new state: the dealer's draws straight
+  // through, then one player's move (the starting hands dealt on their
+  // own, so their show holds the game before the first player places).
+  // What it made: nothing (the game waits), the dealer's draws only, or a
+  // player's move (a bot's search) too
+  enum class Made : std::uint8_t { Nothing, Draws, PlayerMove };
+  Made playOn();
+  // The dealer's draws that follow a person's move or the dice, made at once
+  // (a planet a ship reached turned over, a stolen card drawn), so the
+  // screens get the move and what it brought as one new state: apart, the
+  // second cut the first's pieces short
+  void playDraws();
+  // How long the last bot move's search took (playOn), in seconds
+  double lastThinkSeconds() const { return lastThinkSeconds_; }
 
   // The moves a person can make now: the rules' legal moves, and in their
   // trading step the plain offers to anyone (one of a resource they hold
@@ -136,6 +150,7 @@ public:
 private:
   std::vector<std::string> history_;
   std::vector<Played> played_;
+  double lastThinkSeconds_ = 0;
 };
 
 } // namespace CosmicHex::Handheld

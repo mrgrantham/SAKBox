@@ -300,3 +300,31 @@ TEST(TableGameTest, ABotCountersAPersonsOffer) {
   }
   EXPECT_TRUE(countered) << "no bot countered the person";
 }
+
+// What the screens get as one new state: the dealer's draws straight
+// through, then one player's move (playOn); and after a person's move the
+// dealer's draws it brought at once (playDraws: apart, the draws' own state
+// cut the move's pieces short on the screen)
+TEST(TableGameTest, PlayOnAndPlayDrawsStopWhereTheScreensLook) {
+  TableGame game(
+      {.seats = {Seat::Person, Seat::Bot, Seat::Bot, Seat::Bot}, .botIterations = 8, .seed = 21});
+  int checked = 0;
+  for (int moves = 0; !game.over() && moves < 4000 && checked < 40; ++moves) {
+    if (game.waitingForPerson()) {
+      ASSERT_TRUE(game.play(game.personMoves().front()));
+      game.playDraws();
+      // (the draws made: someone's move, or the game over)
+      EXPECT_TRUE(game.over() || Game::currentPlayer(game.state()) != GameBots::kDealer ||
+                  game.state().phase == Phase::StartCardsDraw);
+      ++checked;
+      continue;
+    }
+    const std::size_t before = game.played().size();
+    const TableGame::Made made = game.playOn();
+    ASSERT_NE(made, TableGame::Made::Nothing);
+    // (a player's move ends it: the last made was that player's, not a draw)
+    if (made == TableGame::Made::PlayerMove)
+      EXPECT_GT(game.played().size(), before);
+  }
+  EXPECT_GT(checked, 10);
+}

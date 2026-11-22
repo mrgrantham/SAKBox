@@ -60,6 +60,11 @@ public:
   void stop();
 
   bool showing(double now) const;
+  // When the banner showing started (nothing before the first)
+  std::optional<double> startedAt() const { return started_; }
+  // When the last slide's words come in (nothing with none, or while a
+  // slide before it waits)
+  std::optional<double> lastEntersAt() const;
   // Held on a slide that waits (still: what's under it can go on)
   bool waiting(double now) const;
   // Showing and not waiting: what waits for a banner waits for this

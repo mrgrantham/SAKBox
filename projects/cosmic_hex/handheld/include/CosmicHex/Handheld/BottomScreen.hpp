@@ -101,6 +101,9 @@ public:
   // ...of those, for a ship's move, the ones it needs fuel to reach (the
   // boost), to mark differently
   std::vector<Corner> placingCornersWithFuel() const;
+  // Where a board button is now, its middle in pixels, if it shows and can
+  // be used (to touch it: the scripted player)
+  std::optional<std::array<int, 2>> buttonAt(BoardButtons::Button button) const;
   // The ship touched, whose moves are marked (an index into the state's
   // ships), to show it selected
   std::optional<int> selectedShip() const;

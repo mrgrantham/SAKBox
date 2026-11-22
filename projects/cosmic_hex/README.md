@@ -168,6 +168,7 @@ One app runs on the 3DS and the DS: `handheld/source/` (`main` in `cosmic_hex_on
 | `bazel run //projects/cosmic_hex/3ds:cosmic-hex-3ds` | Builds the 3DS app and opens it in Azahar (Docker must be running: see `tools/devkitpro`); `tools/fbi_install` installs it on a 3DS |
 | `bazel run //projects/cosmic_hex/ds:cosmic-hex-ds` | Builds the DS app and opens it in melonDS |
 | `cosmic-hex-3ds-watch`, `cosmic-hex-ds-watch` | Start watching four bots by themselves, for unattended runs, with what each frame costs and the memory on the top screen |
+| `cosmic-hex-ds-scripted` | The DS app playing itself: player 0's taps and buttons from the scripted player ([Scripted play](#scripted-play)), game after game, to watch the shows |
 
 The console apps need Blender to build (tagged `blender`: [Models](#models)).
 
@@ -238,6 +239,7 @@ On the board:
   - **It taps what you choose:** a small lift first, a quick drop onto whatever stands on the corner (a ship, a station, or the board itself), the dust a new building raises where it touches, and a settle back up (`CornerPointer::tap`).
   - **On the flat map** it's a still, flat chevron over the same corner (`BoardPicture::Marks::pointer`).
 - **Build:** choose a row on the build screen and press Build, and you're back on the board with where it can go marked (a station's: the ships that could settle; a ship's: your colonies); the only place, when there's one, is chosen already with the pointer on it. Touch a marked place to choose it (again to put it down), then Confirm or A builds it there. A card has nowhere on the board, so it's bought at once.
+- **Two of your ships on one corner** (a new ship on its colony, under one that has moved): a touch chooses the one that can still move.
 - **Move a ship:** touch it, and the pointer goes over it, and where it can go is marked on both screens, the moves that take a fuel told apart (orange rings on the top screen, outlined squares on the map; the rest highlight-coloured rings and filled dots). Touch a marked corner to choose it (again to put it down), then Confirm or A to move it there; touch anywhere else and the ship is put down and the pointer goes there. After the roll the turn's offers to players are open (the trading phase), and a ship can still be moved: choosing where ends the offers first, as building does. A ship that can't move says why (roll first, or it has moved this turn).
 - **The blockade** (a 7, or an Enforcer): the planets it can go to are outlined on both screens and the pointer sits in the middle of the tile; touch one to choose it (again to put it down), then Confirm or A, and then whom to steal from if more than one player is there. With no planet turned over yet it has nowhere to go: the game says so and goes on by itself.
 - **Banners:** a banner's words sweep in, hold for 2.6 s to be read, and sweep off (ScratchPadd's `Banner`).
@@ -268,8 +270,8 @@ The trade room (`TradeRoom`):
 - your cards to give and get (a touch adds one, a minus takes one back), your own on the lower row, as a hand is held;
 - the deal in words, and why not;
 - Trade with the bank (ending the turn's offers to players first), or Offer to a player;
-- an offer to you, or a counter to yours, opens it by itself, with Accept and Decline, a counter's changes in amber;
-- its arrival is announced: a banner on the top screen in the offering player's colour ("VEGA OFFERS A TRADE", or "VEGA COUNTERS", with the deal: "2 Fuel for your 1 Water"), as the turn banners look; the trade screen slides down over the board once the banner's words have settled, and is in place before they leave (`TradeArrival`);
+- an offer to you, or a counter to yours, opens it by itself, with Accept and Decline, a counter's changes in amber; A accepts and B declines, as the buttons do;
+- its arrival is announced: a banner on the top screen in the offering player's colour ("VEGA OFFERS A TRADE", or "VEGA COUNTERS", with the deal: "2 Fuel for your 1 Water"), as the turn banners look; the banner waits its turn as every banner does, and the trade screen slides down over the board once its words have settled, and is in place before they leave (`TradeArrival`);
 - B skips the banner and puts the screen in place at once; Quick runs both twice as fast; with Animations Off there's no banner and the screen is there at once; a touch or key while the screen is still coming puts it in place and does nothing else (nothing on it is pressed unseen);
 - an offer to you can be countered (Counter, in Back's place; touch only): the trade room's own cards, headed "Your counter to Vega", start from the offer turned round, Counter sends it and Back returns to the offer; the offerer then accepts or declines (the rules allow one counter an offer, and a counter to yours can only be accepted or declined);
 - a bot may counter your offer when it won't take it as it is (one of what it's short of for one of what it can spare: `counterOffer`); bots never counter each other, so the simulations play as measured.
@@ -331,6 +333,17 @@ Over the board:
 
 Words over a card or tile (its name, a token's number, a card's words) wait for it to settle, then fade in (`kSecondsWordsIn`).
 
+Every show is seen whole unless you skip it (`GameShows`; the scripted runs check it: [Scripted play](#scripted-play)):
+
+- **One show over the board at a time,** in the order they came: a discovery, a home's pay and a card played each wait while another has the stage, a banner sweeps or the dice are out (`GameShows::takeTurn`); the dice wait for the shows before them, even those still to come. A banner that comes while a show plays waits for it; one that comes while another banner sweeps follows on its band, never cutting it short.
+- **The table waits for the stage:** the game is held from the moment a move brings something to show until it has shown (a discovery, a home's pay unless it waits for the game, cards flying, a card played), and while the board's pieces move or a banner sweeps (`GameShows::updateHolds`). The table waits a move's time after every state it sends, so the screen's hold reaches it first, and the dealer's draws after your move or the dice (a planet a ship reached, turned over) come with it as one state (`TableGame::playDraws`).
+- **The game's own clock stops only when you pause** (A while watching, the pause menu, a view you opened), never because a show holds the table: a banner never freezes half across.
+- **Your move waits for the pieces:** made while the last move's pieces still fly, it's sent once they've landed.
+- **The star's choice opens once the home die has landed on it,** its CHOOSE A RESOURCE banner over the die; the choice made, the banner goes.
+- **B ends what's animating, not what's to come:** a show still to start (a home's pay after the banner B skipped) starts afresh after it.
+- **Cards joining a flight under way** (a build's cost as the roll's pay flies) fly from when they join, after the last.
+- **Your cards gained show each time** you gain some.
+
 Pictures shown big for a moment (a discovered tile, both its back as it flies up face down and its face) are drawn again at `PlatformProfile::closeUpSize` (128 on both consoles) just before they're shown, while nothing moves, into textures kept for them. Cards need none: their icons are loaded sharp ([Art](#art)). On a DS they're drawn 16 rows at a time (`closeUpBandRows`), as a picture drawn whole needs more main memory than a game has free.
 
 Moves animate and the dice roll on the game's own clock (ScratchPadd's `GameClock`), which stops while a watched game is paused; the shows run on a clock of their own at the Animations setting's pace. B (Back) takes whatever is animating (the dice, who goes first, pieces moving, the turn's banner, the trade screen coming in, a turned-over tile, a pay, the cards dealt coming in) straight to its end.
@@ -365,6 +378,17 @@ Measured with the `-watch` builds' frame profile (`FrameProfile`: the bottom scr
 - **Memory:** with ScratchPadd's counting allocator in the build, the app measures its memory every 2 seconds (the heap, and allocations a second by padd), logged in a debug build and shown in the `-watch` builds.
 - **The DS's depth buffer is coarse:** the board's thin layers (the number chips, the chosen hex's ring) sit high enough, the cameras' near plane far enough out, and the grid between the tiles lies only in the gaps. `BoardView_test` checks them against a model of that buffer (the far find tiles had lost triangles to the grid under them).
 
+### Scripted play
+
+Whole games played through the app's own code with no screens, player 0 by a script, to find the shows cut short or skipped without the player asking:
+
+- **The app's own shows and touch panel:** `ScriptedGame` runs `GameShows` (what ScreenPadd runs), `BottomScreen` and a table paced as `TablePadd` paces it (a move each 0.6 s, a bot's search taking 0.8 s on its thread, its messages answered between moves, held while the shows hold it), a frame at a time on a clock of its own.
+- **Played as a person plays:** `ScriptedPlayer` reads the touch panel (its mode, its buttons' places, the marked corners and planets, the map's corners) and taps or presses, one input every half second, once what's over the board has played: Roll when the dice wait; Build and down to a buildable row, then a marked place and Confirm; a movable ship touched, a marked corner and Confirm; else End Turn. On a choosing screen it picks, keeps, steals, accepts or declines. Its random choices come from the game's seed, so a run repeats.
+- **Every show logged** (`ShowLog`): each show's start, how long it moved and how much of that was drawn, and why it was cut short: B pressed or the Animations setting (the player's), B skipping one still to come, a new one replacing it, another drawn in its place, first seen part way, or never seen.
+- **Many seeds:** `bazel run //projects/cosmic_hex/handheld:scripted_play -- GAMES [FIRST_SEED]` prints each show cut short unasked, with the moves it came with, and a table of every show by how it ended; `--quick` and `--off` (the Animations setting), `--ds` (20 frames a second), `--impatient` (B pressed now and then), `--watch` (four bots), `--trace` (each input as the screen stood).
+- **Tests:** `ScriptedGame_test` plays whole games and checks every cause it found stays fixed.
+- **On a DS:** `cosmic-hex-ds-scripted` plays itself with the same player, its taps and presses given to the app as the stylus and pad would.
+
 ### The code
 
 What the app plays and draws is in `handheld/`, tested on the Mac:
@@ -378,6 +402,9 @@ What the app plays and draws is in `handheld/`, tested on the Mac:
 | `BoardPicture` | The bottom map |
 | `BottomScreen`, `BoardButtons`, `ChoiceScreens`, `BuildMenu`, `Pickers`, `CardChoices`, `TradeRoom` | The bottom screen and its choosing screens |
 | `Hud`, `RollDice`, `TopShows`, `TopViews` | What's over the board on the top screen |
+| `GameShows` | The shows a game brings, as its states arrive: started, moved on each frame, taking turns over the board, holding the table, skipped; and what's drawn over the board |
+| `TableSnapshot`, `ShowTimes` | The game as the screens get it; how long things take on the stage |
+| `ScriptedPlayer`, `ScriptedGame`, `ShowLog` | [Scripted play](#scripted-play) |
 | `PlatformProfile` | Each console's numbers (texture sizes, memory budgets, the dice's step) |
 | `GamePictures` | The pictures the top screen draws with, loaded once at the start; `GamePictures_test` loads them as the DS would, its 256 KB of texture memory emulated, with room left for toon textures (and prints what the 3DS's take) |
 | `CardFace` | Every card drawn one way, in layers: the shapes texture, each card's layers mesh, and the bottom screen's card pixels |
@@ -392,7 +419,7 @@ The app itself is in `handheld/source/`, built by the consoles' Makefiles (every
 | `TablePadd`, `TableMessages.hpp` | The game on its own thread (TableGame, the bots, the dealer), and what it and the screens say to each other |
 | `ScreenPadd.hpp` | The screens' padd, declared; its members defined by role in the files below |
 | `ScreenPadd.cpp` | Starting, the frame loop, holding the game, the animations' pace |
-| `GameFlow.cpp` | A new state's arrival, starting and stopping games, who goes first, the dice, the win |
+| `GameFlow.cpp` | A new state handed to the shows (`GameShows`), what they ask of the app, starting and stopping games, the win |
 | `BoardDrawing.cpp` | The stage's scenes: the title, the setup's board, the game's board and its pieces |
 | `ShowsOverBoard.cpp` | What shows over the board: the HUD, banners, close-ups, the shows' updates, the pointer |
 | `TouchPanel.cpp` | The touch panel's picture, the buttons and touch, your moves |

@@ -24,6 +24,7 @@ namespace Dice = CosmicHex::Dice;
 
 ScreenPadd::ScreenPadd(ScratchPadd::System *system) : Base(system) {
   paceAnimations();
+  hookShows();
   receive<TableSnapshot>([this](const TableSnapshot &snapshot) { onSnapshot(snapshot); });
 }
 
@@ -36,6 +37,7 @@ void ScreenPadd::starting() {
   picture_.emplace(kTouchWidth, kTouchHeight, kThisPlatform.recipeSmoothing);
   picture_->setZoomBudget(kThisPlatform.boardZoomBytes);
   bottomScreen_.emplace(kTouchWidth, kTouchHeight);
+  shows_.setBottomScreen(&*bottomScreen_);
 #if !defined(NDEBUG)
   // (debug builds: the list of moves, behind a button, off at first)
   bottomScreen_->setMoveListButton(true);
@@ -83,6 +85,11 @@ void ScreenPadd::starting() {
     apply(flow_.on(ScreenFlow::Event::Play));
     apply(flow_.on(ScreenFlow::Event::Start));
   }
+  // (the self-playing build: a game you play, played by the script)
+  if (kScriptedPlay) {
+    apply(flow_.on(ScreenFlow::Event::Play));
+    apply(flow_.on(ScreenFlow::Event::Start));
+  }
   push([this] { frame(); });
 }
 
@@ -118,7 +125,11 @@ void ScreenPadd::frame() {
     system_->stop();
     return;
   }
-  const Input::Gamepad pad = currentState<Input::Gamepad>().value;
+  shows_.setNow(Clock::now());
+  shows_.setInGame(flow_.screen() == ScreenFlow::Screen::Game);
+  Input::Gamepad pad = currentState<Input::Gamepad>().value;
+  if (kScriptedPlay)
+    playScripted(pad);
   const Input::Edges pressed(lastPad_, pad);
   lastPad_ = pad;
   // START: the pause menu in a game (and out of it again)
@@ -138,20 +149,22 @@ void ScreenPadd::frame() {
   zoomMap(pressed, zooming);
   handleButtons(pressed, zooming);
   handleTouch(scripted(pad.touch));
-  followInfoView();
   followTouchPanel();
   profile_.frameStarted();
-  updateStart();
+  {
+    // (the shows moved on: the dice stepped among them)
+    auto timing = profile_.time(kProfileDice);
+    shows_.setInGame(flow_.screen() == ScreenFlow::Screen::Game);
+    shows_.frame();
+  }
+  updateShows();
+  if (shows_.takeTouchChanged())
+    touchDirty_ = true;
   if (touchDirty_) {
     auto timing = profile_.time(kProfileBottom);
     drawTouchPanel();
   }
-  {
-    auto timing = profile_.time(kProfileDice);
-    throwDice();
-  }
   memory_.update();
-  updateShows();
   prepareMap();
   drawStage();
   profile_.frameEnded();
@@ -169,30 +182,8 @@ void ScreenPadd::zoomMap(const Input::Edges &pressed, bool zooming) {
   }
 }
 
-// An info view opened or closed (Show resources): the game held while
-// it's open, and let go when it closes, if the view was what held it
-void ScreenPadd::followInfoView() {
-  if (!bottomScreen_ || bottomScreen_->info() == shownInfo_)
-    return;
-  // (Show resources: its cards in as it opens, back off as it closes)
-  if (bottomScreen_->info() == BottomScreen::Info::Resources)
-    cards_.open(showsNow());
-  else if (shownInfo_ == BottomScreen::Info::Resources)
-    cards_.close(showsNow());
-  // (another player's panel: down as it opens, up as it closes)
-  if (bottomScreen_->info() == BottomScreen::Info::Player) {
-    others_.open(bottomScreen_->infoPlayer(), showsNow());
-    othersShown_ = bottomScreen_->infoPlayer();
-  } else if (shownInfo_ == BottomScreen::Info::Player)
-    others_.close(showsNow());
-  shownInfo_ = bottomScreen_->info();
-  if (flow_.screen() == ScreenFlow::Screen::Game)
-    holdFor(Hold::Info, shownInfo_ != BottomScreen::Info::None);
-}
-
-// A pressed button's glow (drawn again while it fades), another player
-// chosen while their panel's open, and a tapped button's message, for a
-// second and a half
+// A pressed button's glow (drawn again while it fades), and a tapped
+// button's message, for a second and a half
 void ScreenPadd::followTouchPanel() {
   if (flow_.screen() == ScreenFlow::Screen::Settings && menus_.settingsPressing(now()))
     touchDirty_ = true; // (a key's glow fading)
@@ -201,15 +192,6 @@ void ScreenPadd::followTouchPanel() {
     if (bottomScreen_->pressing() || pressDrawn_)
       touchDirty_ = true;
     pressDrawn_ = bottomScreen_->pressing(); // (and once more, to clear it)
-  }
-  // (another player chosen while the panel's open: their view)
-  // (the next player round the table comes in from the right, the one
-  // before from the left)
-  if (bottomScreen_ && shownInfo_ == BottomScreen::Info::Player && latest_) {
-    const int which = bottomScreen_->infoPlayer(), players = latest_->state.players;
-    const int ahead = othersShown_ < 0 ? 1 : (which - othersShown_ + players) % players;
-    others_.choose(which, showsNow(), ahead <= players / 2 ? 1 : -1);
-    othersShown_ = which;
   }
   if (bottomScreen_ && bottomScreen_->showingFeedback()) {
     if (!feedbackSince_) {
@@ -222,26 +204,9 @@ void ScreenPadd::followTouchPanel() {
   }
 }
 
-// The start of a game: animations skipped when they're off, the board
-// looked at, then who goes first
-void ScreenPadd::updateStart() {
-  if (menus_.animations() == Animations::Off && skippable())
-    skipAnimations();
-  if (lookingSince_ && secondsSince(*lookingSince_) >= kSecondsLookingAtBoard)
-    startFirstRoll();
-  firstRoll_.update(showsNow());
-  if (firstRoll_.done(showsNow()))
-    endFirstRoll();
-}
-
-// Each frame: what shows over the board moved on
+// Each frame, after the shows moved on (GameShows): the pointer, the
+// winner's celebration's end
 void ScreenPadd::updateShows() {
-  updateDiscovery();
-  updateHomePay();
-  updateRollPay();
-  updateCardPlay();
-  updatePick();
-  updateHand();
   updatePointer();
   updateCelebration();
 }
@@ -262,16 +227,6 @@ void ScreenPadd::prepareMap() {
   }
 }
 
-void ScreenPadd::holdFor(Hold why, bool on) {
-  const auto bit = static_cast<std::uint8_t>(why);
-  const std::uint8_t before = holds_;
-  holds_ = on ? static_cast<std::uint8_t>(holds_ | bit) : static_cast<std::uint8_t>(holds_ & ~bit);
-  if ((before == 0) != (holds_ == 0))
-    sendHold();
-}
-
-void ScreenPadd::sendHold() { send(SetHold{youPaused_ || holds_ != 0}); }
-
 // A file kept on the card (the settings': your name, the animations)
 void ScreenPadd::save(const char *file, std::string_view bytes) {
   sendTo<ScratchPadd::Storage::StoragePadd>(ScratchPadd::Storage::SaveFile{
@@ -281,49 +236,8 @@ void ScreenPadd::save(const char *file, std::string_view bytes) {
 
 // The board's moves, the dice and the shows at the setting's pace
 void ScreenPadd::paceAnimations() {
-  gameClock_.setRate(rateOf(menus_.animations()));
-  showClock_.setRate(rateOf(menus_.animations()));
-}
-
-// Whether something is animating that B (Back) can skip to its end: the
-// dice, who goes first, the board's pieces moving, the turn's banner, the
-// trade screen coming in, a tile turned over, a home's or a roll's pay,
-// the cards dealt coming in
-bool ScreenPadd::skippable() const {
-  if (flow_.screen() != ScreenFlow::Screen::Game || !latest_)
-    return false;
-  if (!roll_.idle() || firstRoll_.on() || lookingSince_ || celebration_)
-    return true;
-  if (gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving)
-    return true;
-  if (banner_.moving(gameClock_.seconds()) || // (not a prompt waiting for you)
-      tradeArrival_.moving(gameClock_.seconds()))
-    return true;
-  const double t = showsNow();
-  const bool dealing =
-      dealt_.on() && !dealt_.cards().empty() && dealt_.turned(dealt_.cards().size() - 1, t) < 1;
-  return dealing || discovery_.moving(t) || homePay_.moving(t) || rollPay_.moving(t) ||
-         cardPlay_.moving(t);
-}
-
-// Every animation straight to its end frame (the user's: B, or every
-// frame when Animations is Off)
-void ScreenPadd::skipAnimations() {
-  // The shows: their clock on past any of their ends
-  static constexpr double kPastAnyShow = 30;
-  showClock_.skipAhead(kPastAnyShow);
-  // Who goes first: each die set down and the order read
-  if (lookingSince_)
-    startFirstRoll();
-  for (int i = 0; i < 16 && firstRoll_.on() && !firstRoll_.done(showsNow()); ++i)
-    firstRoll_.hurry(showsNow());
-  if (firstRoll_.done(showsNow()))
-    endFirstRoll();
-  // The board's pieces where they were going, the turn's banner gone
-  motionStarted_ = std::min(motionStarted_, gameClock_.seconds() - kSecondsBoardMoving);
-  banner_.hurry(gameClock_.seconds()); // (a prompt waiting for you stays)
-  tradeArrival_.skip();                // (the trade screen in place)
-  roll_.skip(gameClock_.seconds());
+  shows_.setNow(Clock::now());
+  shows_.setAnimations(menus_.animations());
 }
 
 } // namespace CosmicHex::Handheld::App

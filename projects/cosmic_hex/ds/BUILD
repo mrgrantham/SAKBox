@@ -78,6 +78,18 @@ devkitpro_nds_app(
     icon_letters = "CW",
 )
 
+# The app playing itself (COSMIC_HEX_SCRIPTED_PLAY): player 0's taps and
+# buttons from the scripted player (handheld's ScriptedPlayer), as the Mac's
+# scripted runs make them, game after game, to watch the shows in melonDS
+devkitpro_nds_app(
+    name = "cosmic-hex-ds-scripted",
+    tags = ["blender"],  # (the title screen's rocket: tools/assets)
+    srcs = ["Makefile"],
+    defines = ["COSMIC_HEX_SCRIPTED_PLAY"],
+    extra_srcs = SOURCES,
+    icon_letters = "CS",
+)
+
 # The watching build with scripted taps (COSMIC_HEX_SCRIPTED_TAPS): the app
 # taps its own bottom screen at set times (Show resources, open and closed),
 # so screens reached by touch can be seen in melonDS

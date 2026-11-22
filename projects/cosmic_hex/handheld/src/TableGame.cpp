@@ -126,6 +126,31 @@ std::optional<Action> TableGame::step() {
   return move;
 }
 
+TableGame::Made TableGame::playOn() {
+  Made made = Made::Nothing;
+  for (;;) {
+    const bool dealer = Game::currentPlayer(state()) == GameBots::kDealer;
+    const bool dealingHands = state().phase == Phase::StartCardsDraw;
+    const auto started = std::chrono::steady_clock::now();
+    if (!step())
+      return made; // (over, a person's move, the dice, or a bug: the game waits)
+    made = Made::Draws;
+    if (!dealer) {
+      lastThinkSeconds_ =
+          std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+      return Made::PlayerMove;
+    }
+    if (dealingHands && state().phase != Phase::StartCardsDraw)
+      return made;
+  }
+}
+
+void TableGame::playDraws() {
+  while (!over() && Game::currentPlayer(state()) == GameBots::kDealer &&
+         state().phase != Phase::StartCardsDraw && step()) {
+  }
+}
+
 std::vector<Action> TableGame::personMoves() const {
   std::vector<Action> moves = Game::legalActions(state());
   if (state().phase != Phase::Trading)

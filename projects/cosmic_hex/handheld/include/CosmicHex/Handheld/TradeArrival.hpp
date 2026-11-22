@@ -34,6 +34,12 @@ public:
   float down(double now) const;
   // Coming down, or waiting to (what B skips)
   bool moving(double now) const;
+  // Its banner waits its turn (a show has the stage): the board still shows
+  // until after(), and the screen comes down from there
+  void waitForBanner();
+  // Its banner starts (or a slide's words come in as though it did) at
+  // `bannerAt`: the screen comes down timed from then
+  void after(double bannerAt);
   // In place at once (B, Animations Off)
   void skip() { since_.stop(); }
 

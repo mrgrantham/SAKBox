@@ -398,7 +398,7 @@ TEST(TopShowsTest, ARollsPayFliesCardByCard) {
   ASSERT_NE(paying, nullptr);
   state.stations.push_back({.at = {paying->hex, 0}, .owner = 1});
   RollPayShow show;
-  show.saw({{0, Action{Action::Kind::Roll, 2, 4}}}, state);
+  show.saw({{0, Action{Action::Kind::Roll, 2, 4}}}, state, 0);
   ASSERT_FALSE(show.cards().empty());
   EXPECT_TRUE(show.waiting()); // (not before the dice have gone)
   EXPECT_FALSE(show.update(20).hold);
@@ -412,7 +412,7 @@ TEST(TopShowsTest, ARollsPayFliesCardByCard) {
   EXPECT_TRUE(show.update(10 + show.seconds()).letGo);
   EXPECT_TRUE(show.cards().empty());
   RollPayShow seven;
-  seven.saw({{0, Action{Action::Kind::Roll, 3, 4}}}, state); // (a 7 pays nothing)
+  seven.saw({{0, Action{Action::Kind::Roll, 3, 4}}}, state, 0); // (a 7 pays nothing)
   EXPECT_TRUE(seven.cards().empty());
 }
 
@@ -430,7 +430,7 @@ TEST(TopShowsTest, TheStartingHandIsDealtFromTheBank) {
   for (int i = 0; i < kCards; ++i)
     deal.push_back({-1, Action{Action::Kind::DealStartCard, i % kResources}});
   RollPayShow show;
-  show.saw(deal, before);
+  show.saw(deal, before, 0);
   ASSERT_EQ(show.cards().size(), 12u);
   for (std::size_t i = 0; i < show.cards().size(); ++i) {
     const RollPayShow::Card &card = show.cards()[i];
@@ -466,7 +466,7 @@ TEST(TopShowsTest, AStartingHandSeenInPartsKeepsItsOrder) {
   RollPayShow show;
   show.saw(
       {{-1, Action{Action::Kind::DealStartCard, 0}}, {-1, Action{Action::Kind::DealStartCard, 1}}},
-      before);
+      before, 0);
   ASSERT_EQ(show.cards().size(), 2u);
   EXPECT_EQ(show.cards()[0].player, 2);
   EXPECT_EQ(show.cards()[1].player, 0);
@@ -480,14 +480,15 @@ TEST(TopShowsTest, AStealFliesFromTheVictim) {
   before.turn = 2;
   RollPayShow show;
   show.saw({{2, Action{Action::Kind::MoveBlockade, 3, 1}}, {-1, Action{Action::Kind::Steal, 4}}},
-           before);
+           before, 0);
   ASSERT_EQ(show.cards().size(), 1u);
   EXPECT_EQ(show.cards()[0].from, 1);
   EXPECT_EQ(show.cards()[0].player, 2);
   EXPECT_EQ(show.cards()[0].planet, -1);
   before.victims = {0, 3};
   RollPayShow pirates;
-  pirates.saw({{-1, Action{Action::Kind::Steal, 0}}, {-1, Action{Action::Kind::Steal, 2}}}, before);
+  pirates.saw({{-1, Action{Action::Kind::Steal, 0}}, {-1, Action{Action::Kind::Steal, 2}}}, before,
+              0);
   ASSERT_EQ(pirates.cards().size(), 2u);
   EXPECT_EQ(pirates.cards()[0].from, 0);
   EXPECT_EQ(pirates.cards()[1].from, 3);
@@ -504,7 +505,7 @@ TEST(TopShowsTest, TradesCross) {
   RollPayShow show;
   show.saw({{1, Action{Action::Kind::OfferTrade, bundleOf(give), bundleOf(get), 2}},
             {2, Action{Action::Kind::AcceptTrade}}},
-           before);
+           before, 0);
   ASSERT_EQ(show.cards().size(), 3u);
   EXPECT_EQ(show.cards()[0].from, 1);
   EXPECT_EQ(show.cards()[0].player, 2);
@@ -512,7 +513,7 @@ TEST(TopShowsTest, TradesCross) {
   EXPECT_EQ(show.cards()[2].player, 1);
   EXPECT_FALSE(show.cards()[0].secret);
   RollPayShow bank;
-  bank.saw({{1, Action{Action::Kind::Trade, 0, 4}}}, before);
+  bank.saw({{1, Action{Action::Kind::Trade, 0, 4}}}, before, 0);
   ASSERT_EQ(bank.cards().size(), static_cast<std::size_t>(tradeRateOf(before, 1) + 1));
   EXPECT_EQ(bank.cards().front().player, RollPayShow::kBank);
   EXPECT_EQ(bank.cards().back().from, RollPayShow::kBank);
@@ -575,6 +576,61 @@ TEST(TopShowsTest, CardsGainedDropIntoTheHand) {
   EXPECT_FLOAT_EQ(hand.card(Resource::Food, 1, first + 2), 1);
   EXPECT_TRUE(hand.showing(first + 1));
   EXPECT_FALSE(hand.showing(20));
+}
+
+// Cards gained while the hand shows are shown again after it (the hand's
+// show started once a game: it never let itself start again)
+TEST(TopShowsTest, CardsGainedShowEveryTime) {
+  HandShow hand;
+  Resources added{};
+  added[2] = 1;
+  hand.gained(added);
+  hand.start(10);
+  hand.gained(added); // (while it shows)
+  hand.start(10.5);   // (not over it)
+  EXPECT_TRUE(hand.waiting());
+  EXPECT_TRUE(hand.showing(10.6));
+  hand.start(20);
+  EXPECT_FALSE(hand.waiting());
+  EXPECT_TRUE(hand.showing(20.1));
+}
+
+// Cards joining a flight already under way (a build's cost while the
+// roll's pay flies) fly from when they join, after the last, not from the
+// flight's start: they were first seen part way along, or not at all
+TEST(TopShowsTest, CardsJoiningAFlightFlyFromWhenTheyJoin) {
+  State before;
+  before.turn = 1;
+  RollPayShow show;
+  show.saw({{1, Action{Action::Kind::Trade, 0, 4}}}, before, 0);
+  show.start(10);
+  const std::size_t first = show.cards().size();
+  show.saw({{1, Action{Action::Kind::Trade, 1, 3}}}, before, 11);
+  ASSERT_GT(show.cards().size(), first);
+  ASSERT_TRUE(show.at(first, 11).has_value());
+  EXPECT_FLOAT_EQ(show.at(first, 11)->pop, 0);
+  EXPECT_TRUE(show.moving(11 + RollPayShow::kSecondsPop));
+  EXPECT_FALSE(show.update(11.1).letGo);
+}
+
+// Shows over the board take turns (GameShows tells one to wait while
+// another has the stage): one still to start waits; one under way doesn't
+TEST(TopShowsTest, AShowStillToStartWaitsItsTurn) {
+  HomePayShow home;
+  home.saw({{1, Action{Action::Kind::RollHomeDie, 0}}}, newGame(4, agreedRules(boardR3())), 5);
+  home.waitFor(8);
+  EXPECT_FALSE(home.moving(7));
+  EXPECT_DOUBLE_EQ(home.outAt(), 8);
+  home.update(8.1);
+  home.waitFor(9); // (out already: it goes on)
+  EXPECT_DOUBLE_EQ(home.outAt(), 8);
+  CardPlayShow card;
+  card.saw({{1, Action{Action::Kind::PlayEnforcer}}}, 5);
+  card.waitFor(6);
+  EXPECT_FALSE(card.moving(5.5));
+  card.update(6.1);
+  card.waitFor(7);
+  EXPECT_TRUE(card.moving(6.5));
 }
 
 // The board's pointer: fades in at its corner, glides to the next, fades

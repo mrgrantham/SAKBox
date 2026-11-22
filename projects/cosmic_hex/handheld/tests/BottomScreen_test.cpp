@@ -238,7 +238,8 @@ TEST(BottomScreenTest, ATouchElsewherePutsTheShipDown) {
 // that can't move says why
 TEST(BottomScreenTest, AShipMovesFromTheTradingPhase) {
   State state = playUntil([](const State &s) {
-    if (s.phase != Phase::Trading)
+    // (the last seat's offer: the next round the table, you, answers first)
+    if (s.phase != Phase::Trading || s.turn != s.players - 1)
       return false;
     State after = s;
     Game::apply(after, Action{Kind::EndTrading});
@@ -550,4 +551,65 @@ TEST(BottomScreenTest, TheBlockadeIsPlacedLikeEverythingElse) {
   } else {
     EXPECT_EQ(screen.mode(), Mode::Players); // (whom to steal from)
   }
+}
+
+// Two of your ships on one corner (a new ship built on its colony, under
+// one that has moved): touching it chose the first, which couldn't move,
+// so the new one, which must move before End Turn, couldn't be chosen
+TEST(BottomScreenTest, TouchingTwoShipsOnACornerChoosesTheOneThatCanMove) {
+  State state = playUntil([](const State &s) {
+    return s.phase == Phase::Main && Game::currentPlayer(s) != GameBots::kDealer &&
+           std::any_of(s.ships.begin(), s.ships.end(),
+                       [&](const Ship &ship) { return ship.owner == s.turn; });
+  });
+  ASSERT_EQ(state.phase, Phase::Main);
+  const auto own = std::find_if(state.ships.begin(), state.ships.end(),
+                                [&](const Ship &ship) { return ship.owner == state.turn; });
+  const int moved = static_cast<int>(own - state.ships.begin());
+  std::vector<Action> legal;
+  for (const Action &a : Game::legalActions(state))
+    if (a.kind != Kind::Move || a.a != moved)
+      legal.push_back(a);
+  // (a second ship on the same corner, with the first's moves; the first none)
+  state.ships.push_back(state.ships[static_cast<std::size_t>(moved)]);
+  const int fresh = static_cast<int>(state.ships.size()) - 1;
+  for (const Action &a : Game::legalActions(state))
+    if (a.kind == Kind::Move && a.a == moved)
+      legal.push_back({Kind::Move, fresh, a.b, a.c});
+  BottomScreen screen(kWidth, kHeight);
+  screen.update(state, legal, true);
+  const BoardPicture map(kWidth, kHeight, ScratchPadd::TextureRecipe::Smoothing::Coarse);
+  const auto at = map.where(state.ships[static_cast<std::size_t>(fresh)].corner);
+  const int x = static_cast<int>(at.x), y = static_cast<int>(at.y);
+  screen.tap(x, y, map.at(x, y));
+  EXPECT_EQ(screen.mode(), Mode::Placing);
+  EXPECT_EQ(screen.selectedShip(), std::optional<int>(fresh));
+}
+
+// An offer to you is answered with the pad too: A accepts, B declines (B did
+// nothing, so a player on the buttons alone couldn't decline it)
+TEST(BottomScreenTest, BDeclinesAnOffer) {
+  State state = playUntil([](const State &s) {
+    // (the last seat's offer to anyone: the next round the table, you,
+    // answers first)
+    if (s.phase != Phase::Trading || s.turn != s.players - 1)
+      return false;
+    const Resources &have = s.player[static_cast<std::size_t>(s.turn)].resources;
+    return std::any_of(have.begin(), have.end(), [](int n) { return n > 0; });
+  });
+  ASSERT_EQ(state.phase, Phase::Trading);
+  const Resources &have = state.player[static_cast<std::size_t>(state.turn)].resources;
+  Resources give{}, get{};
+  const auto held = std::find_if(have.begin(), have.end(), [](int n) { return n > 0; });
+  give[static_cast<std::size_t>(held - have.begin())] = 1;
+  get[(static_cast<std::size_t>(held - have.begin()) + 1) % get.size()] = 1;
+  Game::apply(state, {Kind::OfferTrade, bundleOf(give), bundleOf(get), -1});
+  ASSERT_EQ(state.phase, Phase::TradeReply);
+  ASSERT_EQ(Game::currentPlayer(state), 0);
+  BottomScreen screen(kWidth, kHeight);
+  screen.update(state, Game::legalActions(state), true);
+  ASSERT_EQ(screen.mode(), Mode::Trade);
+  const BottomScreen::Outcome declined = screen.press(BottomScreen::Key::Back);
+  ASSERT_TRUE(declined.play.has_value());
+  EXPECT_EQ(declined.play->kind, Kind::DeclineTrade);
 }

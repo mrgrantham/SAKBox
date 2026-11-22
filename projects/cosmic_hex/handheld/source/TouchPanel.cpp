@@ -64,24 +64,22 @@ void ScreenPadd::handleButtons(const Input::Edges &pressed, bool zooming) {
 bool ScreenPadd::skipOrHurry(const Input::Edges &pressed, Input::Button confirm,
                              Input::Button back) {
   // (B: an animation straight to its end; pressed again, B's own job)
-  if (pressed.pressed(back) && skippable()) {
-    skipAnimations();
+  if (pressed.pressed(back) && shows_.skippable()) {
+    shows_.skip(true);
     return true;
   }
   // (A: on from the winner's celebration)
-  if (celebration_ && pressed.pressed(confirm)) {
-    skipAnimations();
+  if (shows_.celebrating() && pressed.pressed(confirm)) {
+    shows_.skip(true);
     return true;
   }
   // (A: on from looking at the board, and from who goes first)
-  if (lookingSince_ && pressed.pressed(confirm)) {
-    startFirstRoll();
+  if (shows_.lookingAtBoard() && pressed.pressed(confirm)) {
+    shows_.startFirstRoll();
     return true;
   }
-  if (firstRoll_.on() && pressed.pressed(confirm)) {
-    firstRoll_.hurry(showsNow()); // (the next die now; once all have landed, on)
-    if (firstRoll_.done(showsNow()))
-      endFirstRoll();
+  if (shows_.firstRoll().on() && pressed.pressed(confirm)) {
+    shows_.hurryFirstRoll(); // (the next die now; once all have landed, on)
     return true;
   }
   return false;
@@ -112,33 +110,28 @@ void ScreenPadd::pressInGame(const Input::Edges &pressed, bool zooming, Input::B
     touchDirty_ = true;
     return;
   }
-  if (mode_ == Mode::Watching) {
-    if (pressed.pressed(confirm)) {
-      youPaused_ = !youPaused_;
-      sendHold();
-    }
+  if (!shows_.playing()) {
+    if (pressed.pressed(confirm))
+      shows_.togglePaused();
     return;
   }
   // A throws your dice when your roll waits (as Roll does)
-  if (latest_ && yourRollWaits(*latest_) && pressed.pressed(confirm)) {
-    rollAsked_ = true;
+  if (shows_.yourRollWaits() && pressed.pressed(confirm)) {
+    shows_.askRoll();
     return;
   }
-  if (!latest_ || !latest_->yourMove)
+  if (!shows_.latest() || !shows_.latest()->yourMove)
     return;
   // (the trade screen still coming in: in place at once, as a tap does)
   if (key && tradeArriving()) {
-    skipAnimations();
+    shows_.skip(true);
     touchDirty_ = true;
     return;
   }
   if (bottomScreen_ && key) {
     const BottomScreen::Outcome outcome = bottomScreen_->press(*key);
-    if (outcome.play) {
-      send(PlayMove{*outcome.play});
-      latest_->yourMove = false;
+    if (shows_.use(outcome))
       selected_.reset();
-    }
     if (outcome.used) {
       touchDirty_ = true;
       return;
@@ -164,8 +157,7 @@ void ScreenPadd::pressMoveList(const Input::Edges &pressed, Input::Button confir
     touchDirty_ = true;
   }
   if (pressed.pressed(confirm) && cursor_ < shown.size()) {
-    send(PlayMove{latest_->moves[shown[cursor_]]});
-    latest_->yourMove = false; // (until the game says it's yours again)
+    shows_.play(shows_.latest()->moves[shown[cursor_]]);
     selected_.reset();
     cursor_ = 0;
     touchDirty_ = true;
@@ -174,17 +166,18 @@ void ScreenPadd::pressMoveList(const Input::Edges &pressed, Input::Button confir
 
 // Whether your move is on a hex (the blockade's, after a 7), not a corner
 bool ScreenPadd::choosingAHex() const {
-  return latest_ && latest_->yourMove && latest_->state.phase == CosmicHex::Phase::Blockade;
+  return shows_.latest() && shows_.latest()->yourMove &&
+         shows_.latest()->state.phase == CosmicHex::Phase::Blockade;
 }
 
 // The moves listed on your move: those at the touched spot, or all of
 // them (their places in the snapshot's list)
 std::vector<std::size_t> ScreenPadd::movesShown() const {
   std::vector<std::size_t> shown;
-  if (!latest_)
+  if (!shows_.latest())
     return shown;
-  for (std::size_t i = 0; i < latest_->moves.size(); ++i)
-    if (!selected_ || concerns(latest_->state, latest_->moves[i], *selected_))
+  for (std::size_t i = 0; i < shows_.latest()->moves.size(); ++i)
+    if (!selected_ || concerns(shows_.latest()->state, shows_.latest()->moves[i], *selected_))
       shown.push_back(i);
   return shown;
 }
@@ -231,7 +224,7 @@ void ScreenPadd::tapBoard() {
   // (the trade screen still coming in: in place at once, and the tap used
   // for nothing else, so nothing on it is touched unseen)
   if (tradeArriving()) {
-    skipAnimations();
+    shows_.skip(true);
     touchDirty_ = true;
     return;
   }
@@ -240,11 +233,7 @@ void ScreenPadd::tapBoard() {
       bottomScreen_
           ? bottomScreen_->tap(touchStart_[0], touchStart_[1], onTheBoard() ? spot : std::nullopt)
           : BottomScreen::Outcome{};
-  if (outcome.roll && latest_ && yourRollWaits(*latest_))
-    rollAsked_ = true;
-  if (outcome.play && latest_ && latest_->yourMove) {
-    send(PlayMove{*outcome.play});
-    latest_->yourMove = false; // (until the game says it's yours again)
+  if (shows_.use(outcome)) {
     selected_.reset();
   } else if (!outcome.used) {
     // (the same place again: the pointer put away; elsewhere: it goes
@@ -272,6 +261,62 @@ Input::Touch ScreenPadd::scripted(const Input::Touch &touch) {
       return down;
     }
   return touch;
+}
+
+// The self-playing build (kScriptedPlay): the scripted player's next tap or
+// button, as the stylus and pad would give it (a tap down for a few
+// frames, then up; a button down for one), every half second on your move
+// once what's over the board has played; and a new game after each win
+void ScreenPadd::playScripted(Input::Gamepad &pad) {
+  // (the buttons pressed so far by the script, counted with the pad's own,
+  // so each frame's presses are the difference from the last as ever)
+  for (std::size_t b = 0; b < scriptedPresses_.size(); ++b) {
+    pad.presses[b] = static_cast<std::uint16_t>(pad.presses[b] + scriptedPresses_[b]);
+    pad.releases[b] = static_cast<std::uint16_t>(pad.releases[b] + scriptedPresses_[b]);
+  }
+  if (flow_.screen() == ScreenFlow::Screen::Won) {
+    apply(flow_.on(ScreenFlow::Event::Continue));
+    return;
+  }
+  if (flow_.screen() == ScreenFlow::Screen::Title) {
+    apply(flow_.on(ScreenFlow::Event::Play));
+    apply(flow_.on(ScreenFlow::Event::Start));
+    return;
+  }
+  if (scriptedTouchFrames_ > 0) {
+    --scriptedTouchFrames_;
+    pad.touch = scriptedTouch_;
+    return;
+  }
+  const bool waiting = shows_.showsPlaying() && !shows_.dealt().on();
+  if (flow_.screen() != ScreenFlow::Screen::Game || !shows_.latest() || !bottomScreen_ ||
+      !picture_ || waiting || now() < nextScripted_)
+    return;
+  const ScriptedInput input =
+      scriptedPlayer_.next(*shows_.latest(), *bottomScreen_, *picture_, shows_.yourRollWaits());
+  if (input.kind == ScriptedInput::Kind::None)
+    return;
+  nextScripted_ = now() + 0.5;
+  if (input.kind == ScriptedInput::Kind::Tap) {
+    scriptedTouch_.down = true;
+    scriptedTouch_.x = static_cast<std::int16_t>(input.x);
+    scriptedTouch_.y = static_cast<std::int16_t>(input.y);
+    scriptedTouchFrames_ = 3;
+    pad.touch = scriptedTouch_;
+    return;
+  }
+  using Key = BottomScreen::Key;
+  const Input::Button button = input.key == Key::Confirm ? pad.buttonFor(Input::Role::Confirm)
+                               : input.key == Key::Back  ? pad.buttonFor(Input::Role::Back)
+                               : input.key == Key::Up    ? Input::Button::Up
+                               : input.key == Key::Down  ? Input::Button::Down
+                               : input.key == Key::Left  ? Input::Button::Left
+                                                         : Input::Button::Right;
+  // (down and up again within the frame: one press)
+  const auto b = static_cast<std::size_t>(button);
+  ++scriptedPresses_[b];
+  ++pad.presses[b];
+  ++pad.releases[b];
 }
 
 // Whether the touch panel shows the board (rather than a choosing screen)
@@ -303,7 +348,7 @@ void ScreenPadd::drawTouchPanel() {
 std::optional<std::span<const Scene::Colour>> ScreenPadd::drawTouchPicture(bool &showingMap) {
   if (menus_.showing())
     return menus_.draw(*touchCanvas_, now());
-  if (!latest_)
+  if (!shows_.latest())
     return std::nullopt;
   if (bottomScreen_->coversBoard()) {
     bottomScreen_->draw(*touchCanvas_);
@@ -328,7 +373,7 @@ void ScreenPadd::drawMapWithButtons() {
   marks.hexes = bottomScreen_->placingHexes();
   if (bottomScreen_->placingBlockade())
     if (const auto chosen = bottomScreen_->chosenPlacement())
-      marks.hex = latest_->state.planets[static_cast<std::size_t>(chosen->a)].hex;
+      marks.hex = shows_.latest()->state.planets[static_cast<std::size_t>(chosen->a)].hex;
   // (the pointer, flat and still, where the top screen's chevron is going:
   // its target now, not where it was last aimed, which lags a tap by a frame)
   marks.pointer = pointerCorner();
@@ -344,11 +389,11 @@ void ScreenPadd::drawMapWithButtons() {
   marks.fuelCorners = bottomScreen_->placingCornersWithFuel();
   if (chosen)
     marks.preview = BoardPicture::Marks::Preview{
-        *chosenAt, latest_->state.turn, chosen->kind == CosmicHex::Action::Kind::PlaceShip};
+        *chosenAt, shows_.latest()->state.turn, chosen->kind == CosmicHex::Action::Kind::PlaceShip};
   // (the ships and the blockade facing the way the top screen's do)
-  for (std::size_t i = 0; i < latest_->state.ships.size(); ++i)
-    marks.shipHeadings.push_back(motion_.restingHeading(i));
-  marks.blockadeHeading = motion_.blockadeHeading();
+  for (std::size_t i = 0; i < shows_.latest()->state.ships.size(); ++i)
+    marks.shipHeadings.push_back(shows_.motion().restingHeading(i));
+  marks.blockadeHeading = shows_.motion().blockadeHeading();
   // The map under the buttons, where they were and are, drawn
   // again, so they're drawn over it once (the map's
   // draw changes only what's changed)
@@ -361,11 +406,11 @@ void ScreenPadd::drawMapWithButtons() {
     auto timing = profile_.time(kProfileMap);
     // Tiles turned over still face down on the map until the stage
     // has shown them, then each fades in (Discovery)
-    marks.faceDown = discovery_.waitingAfterCurrent();
-    if (const auto revealing = discovery_.revealing(showsNow()))
+    marks.faceDown = shows_.discovery().waitingAfterCurrent();
+    if (const auto revealing = shows_.discovery().revealing(showsNow()))
       marks.revealing =
           BoardPicture::Marks::Revealing{.hex = revealing->hex, .shown = revealing->shown};
-    picture_->draw(latest_->state, marks);
+    picture_->draw(shows_.latest()->state, marks);
   }
   auto timing = profile_.time(kProfileButtons);
   Canvas board = Canvas::over(picture_->pixelsToDrawOver(), kTouchWidth, kTouchHeight);
@@ -376,7 +421,7 @@ void ScreenPadd::drawMapWithButtons() {
 // arriving: TradeArrival), rather than shown as it is
 bool ScreenPadd::tradeArriving() const {
   return !menus_.showing() && bottomScreen_ && bottomScreen_->mode() == BottomScreen::Mode::Trade &&
-         tradeArrival_.moving(gameClock_.seconds());
+         shows_.tradeArrival().moving(shows_.gameNow());
 }
 
 // The trade screen coming down over the board (the board as the screen
@@ -388,7 +433,7 @@ bool ScreenPadd::tradeArriving() const {
 void ScreenPadd::presentTradeArriving(std::span<const Scene::Colour> trade) {
   touchDirty_ = true;      // (and again next frame, until it's in place)
   screenShowsMap_ = false; // (the map shown again in full once it's gone)
-  const float down = tradeArrival_.down(gameClock_.seconds());
+  const float down = shows_.tradeArrival().down(shows_.gameNow());
   const int rows = static_cast<int>(down * static_cast<float>(kTouchHeight) + 0.5f);
   if (rows > 0)
     touchScreen_->present(kTouchWidth, kTouchHeight,
