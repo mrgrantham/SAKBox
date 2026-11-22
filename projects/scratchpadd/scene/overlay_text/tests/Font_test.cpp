@@ -3,7 +3,9 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <string>
+#include <string_view>
 #include <vector>
 
 using namespace ScratchPadd::Scene;
@@ -85,18 +87,19 @@ TEST(FontTest, OtherCharactersAreQuestionMarks) {
   }
 }
 
-// Silkscreen is drawn at whole multiples of its own pixels, at or below the
-// scale (never wider than laid out for): 1 to 1.9 are its size, 2 twice
-// it; its H is 6 pixels on, 5 tall
-TEST(FontTest, SilkscreenScalesByWholePixels) {
-  EXPECT_EQ(kSilkscreen.pixelSize(1), 1);
-  EXPECT_EQ(kSilkscreen.pixelSize(1.5f), 1);
-  EXPECT_EQ(kSilkscreen.pixelSize(1.9f), 1);
-  EXPECT_EQ(kSilkscreen.pixelSize(1.9999f), 2);
-  EXPECT_EQ(kSilkscreen.pixelSize(2), 2);
-  EXPECT_EQ(kSilkscreen.pixelSize(0.3f), 1);
+// Silkscreen is drawn at half multiples of its own pixels, at or below the
+// scale (never wider than laid out for): 1 to 1.4 are its size, 1.5 to 1.9
+// half as large again, 2 twice it; its H is 6 pixels on, 5 tall
+TEST(FontTest, SilkscreenScalesByHalfPixels) {
+  EXPECT_EQ(kSilkscreen.pixelHalves(1), 2);
+  EXPECT_EQ(kSilkscreen.pixelHalves(1.4f), 2);
+  EXPECT_EQ(kSilkscreen.pixelHalves(1.5f), 3);
+  EXPECT_EQ(kSilkscreen.pixelHalves(1.9f), 3);
+  EXPECT_EQ(kSilkscreen.pixelHalves(1.9999f), 4);
+  EXPECT_EQ(kSilkscreen.pixelHalves(2), 4);
+  EXPECT_EQ(kSilkscreen.pixelHalves(0.3f), 2);
   EXPECT_FLOAT_EQ(kSilkscreen.width("H"), 6);
-  EXPECT_FLOAT_EQ(kSilkscreen.width("Hi", 1.5f), kSilkscreen.width("Hi"));
+  EXPECT_FLOAT_EQ(kSilkscreen.width("Hi", 1.25f), kSilkscreen.width("Hi"));
   EXPECT_FLOAT_EQ(kSilkscreen.width("Hi", 2), 2 * kSilkscreen.width("Hi"));
   EXPECT_FLOAT_EQ(kSilkscreen.lineHeight(3), 3 * kSilkscreen.lineHeight());
   const Overlay::Ink h = kSilkscreen.ink("H");
@@ -155,6 +158,33 @@ TEST(FontTest, SmallLettersAreSpacedApart) {
   }
   for (const float scale : {1.0f, 2.0f})
     EXPECT_FLOAT_EQ(kSilkscreen.tracking(scale), 0);
+}
+
+// Words asked for at 1.5 (the splash's "Vibe Coding by James", the top
+// screen's card names) drawn half again as large as at 1, as they were
+// before Silkscreen: at whole sizes only it drew them at 1, much smaller
+// (the user's). Each pixel one or two points, alternately, edge to edge,
+// and measuring says what's drawn
+TEST(FontTest, SilkscreenAtOneAndAHalfIsHalfAgainAsLarge) {
+  const std::string_view title = "Vibe Coding by James";
+  EXPECT_FLOAT_EQ(kSilkscreen.width(title, 1.5f), 1.5f * kSilkscreen.width(title));
+  EXPECT_GE(kSilkscreen.ink(title, 1.5f).height, 1.4f * kSilkscreen.ink(title).height);
+  EXPECT_LE(kSilkscreen.width(title, 1.5f), 256 - 16); // (it still fits the DS's screen)
+  EXPECT_GE(kSilkscreen.ink("H", 1.5f).height, 7); // (5 rows: 7 or 8 points, by where they start)
+  EXPECT_LE(kSilkscreen.ink("H", 1.5f).height, 8);
+  EXPECT_FLOAT_EQ(kSilkscreen.lineHeight(1.5f), std::floor(1.5f * kSilkscreen.lineHeight()));
+  std::vector<TextPiece> pieces;
+  kSilkscreen.layOut("H", 1.5f, pieces);
+  for (const TextPiece &piece : pieces) {
+    EXPECT_FLOAT_EQ(piece.x, std::floor(piece.x)); // (on whole points)
+    EXPECT_FLOAT_EQ(piece.y, std::floor(piece.y));
+    EXPECT_GE(piece.height, 1);
+    EXPECT_LE(piece.height, 2);
+  }
+  // (a run's edges where its pixels' edges fall: runs side by side meet)
+  const FontRectangle a = Font::sized({0, 0, 1, 1}, 3), b = Font::sized({1, 0, 1, 1}, 3);
+  EXPECT_EQ(a.x + a.width, b.x);
+  EXPECT_EQ(a.width + b.width, 3);
 }
 
 // Both fonts: a text's ink inside its width and lines, a new line a line

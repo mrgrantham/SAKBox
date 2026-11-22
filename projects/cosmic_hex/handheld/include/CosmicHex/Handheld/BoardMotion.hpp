@@ -22,6 +22,7 @@
 
 #include <ScratchPadd/Scene/Types.hpp>
 
+#include <array>
 #include <optional>
 #include <vector>
 
@@ -57,11 +58,25 @@ struct DustRing {
 };
 DustRing dustRing(float dust, float spreadsTo = 3);
 
+// A ripple of space where the home die leaves its place and where it comes
+// back, as though through a wormhole, `ripple` of the way from its start
+// (0) to gone (1): two rings (the board's hex ring), the second starting a
+// little after the first (overlap), each spreading out from inside the
+// tile's edge and turning as it goes, the two opposite ways (a swirl), a
+// pale violet showing quickly and fading slowly. Each ring's spread (times
+// the ring), turn (radians about the up axis) and look
+struct RippleRing {
+  float spread = 1, turn = 0;
+  ScratchPadd::Scene::Material material;
+};
+std::array<RippleRing, 2> spaceRipple(float ripple);
+
 class BoardMotion {
 public:
   BoardMotion() = default;
   // The moves from `before` to `after`; ships that didn't move keep the
-  // heading they had at the end of `last`
+  // heading they had at the end of `last` (when ships came or went too: a
+  // ship where one of its owner's was keeps that one's)
   BoardMotion(const State &before, const State &after, const BoardMotion *last = nullptr);
 
   // Whether anything moves: a ship flying, a building landing, a tile
@@ -80,6 +95,11 @@ public:
   ScratchPadd::Scene::Vector3 shipAt(std::size_t ship, float t) const {
     return this->ship(ship, t).at;
   }
+  // Which way ship `ship` (of `after`) faces once it's arrived, and the
+  // blockade once it's landed (ShipPose::heading's angle): what the flat
+  // board draws, so both screens point a ship the same way
+  float restingHeading(std::size_t ship) const;
+  float blockadeHeading() const { return blockadeHeading_; }
 
   // Station `station` (of `after`) at `t`: one built (new, or a station
   // become a colony) landing; any other where it is. `t` runs on past 1

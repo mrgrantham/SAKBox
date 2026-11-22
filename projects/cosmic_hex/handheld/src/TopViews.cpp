@@ -244,6 +244,15 @@ Scene::Colour titleInk(const TopFrame &f, Resource resource, float shown = 1) {
   return titleInk(f, static_cast<Art::Card>(resource), shown); // (resources first in Art::Card)
 }
 
+// A resource card's name on its label band (3 to 19 of its 52-unit
+// picture), in its band's ink, `shown` faded in: the card's middle at `x`,
+// its top at `top`, `h` tall
+void resourceCardTitle(const TopFrame &f, Resource resource, float x, float top, float h,
+                       float shown) {
+  f.overlay.textCentred(x, top + h * 11 / 52, GameWords::of(resource), titleInk(f, resource, shown),
+                        1.5f * f.k());
+}
+
 // An action card's face, `w` wide with its top left at (x, y), turned over
 // `turned` of the way (its width through |cos|: past halfway, its face):
 // its picture (sharp when `closeUp` shows it), its body, and once flat its
@@ -742,10 +751,14 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow
                               numberScale);
           break;
         }
+    // (once the first is known, the others' numbers dimmed: they decide
+    // nothing, so a tie among them is left as it is)
     if (const int n = show.shown(round, p))
       odometer(f, x, numbersLine.middle() + hop, n,
                static_cast<float>(f.now - show.shownAt(round, p)),
-               winner ? Palette::kHighlight : Palette::kWords);
+               winner             ? Palette::kHighlight
+               : show.allLanded() ? Palette::kDimWords
+                                  : Palette::kWords);
     std::string before;
     for (std::size_t r = 0; r < round && r < roll.rounds.size(); ++r)
       if (const int n = show.shown(r, p))
@@ -758,9 +771,14 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow
   if (show.round() > 0 && !show.allLanded())
     overlay.textCentred(f.width / 2, tiedLine.middle(), "tied: they throw again",
                         Palette::kHighlight, k);
-  // Once all have landed: the order, by name
+  // Once all have landed: only the highest roll counts, the rest taking
+  // their turns round the table from the first (the user saw two tie on a 3
+  // below the first, nobody throwing again, and took it for a bug), then
+  // the order, by name
   if (!show.allLanded())
     return;
+  overlay.textCentred(f.width / 2, tiedLine.middle(), "the rest follow round the table",
+                      fadedIn(Palette::kSoftWords, sorted, {10, 15, 26}), k);
   std::string homes = "Homes: ", ships = "Ships: ";
   for (int i = 0; i < players; ++i) {
     homes += (i ? ", " : "") + f.names[(roll.first + i) % players];
@@ -872,8 +890,7 @@ void drawPick(const TopFrame &f, const PickShow &show, std::string_view title,
   const float x = midX + dir * travel * (1 - m->in);
   card(m->shown, x);
   if (m->words > 0)
-    f.overlay.textCentred(x, midY - h / 2 + h * 11 / 52, GameWords::of(m->shown),
-                          titleInk(f, m->shown, m->words), 1.5f * k);
+    resourceCardTitle(f, m->shown, x, midY - h / 2, h, m->words);
   f.overlay.textCentred(f.width / 2, 12 * k, title, Palette::kWords, k);
   // What you could build with it: a ship, a station, a colony, a card,
   // each dimmed when you couldn't even with this one
@@ -935,12 +952,11 @@ namespace {
 // Where the home die faces you (a DS's pixels, scaled): up the middle of
 // the screen, `kDieAcross` across its sides; the card held under it
 constexpr float kDieY = 50, kDieAcross = 40, kCardBelowDie = 28;
-// The pit left in the board while the die is out: a little wider than the
-// die (its walls clear of its sides), as deep as it's long and its dip
-constexpr float kPitWide = 0.98f / kTileInset;
-constexpr float kPitDeep = kHomeDieLength * kHomeDieScale + HomePayShow::kDip + 0.1f;
-constexpr Scene::Colour kPit{6, 8, 14};
-constexpr float kColumnTall = 1.6f; // (BoardPieces::column's)
+// The opening onto space left while the die is out: just under where the
+// die seats (its face shows down to its settle's sink, and is gone into
+// space as it dips: HomePayShow's kSeatSink and kDip)
+constexpr float kHoleBelow = HomePayShow::kSeatSink + 0.02f;
+static_assert(kHoleBelow < HomePayShow::kDip);
 
 // The face a planet's tile shows at `hex`, as the board draws it
 std::optional<Art::Face> faceAt(const State &state, Hex hex) {
@@ -950,21 +966,26 @@ std::optional<Art::Face> faceAt(const State &state, Hex hex) {
   return std::nullopt;
 }
 
-// The home's tile's place while its die is out: a dark pit (walls round
-// it and a floor), so the die's lower part hides in it as it rises out,
-// and its place shows empty
-void homeDiePit(const TopFrame &f, Hex hex) {
-  const Scene::Transform at = BoardPieces::onHex(hex);
-  const Scene::Material dark{.shading = Scene::Material::Shading::Unlit, .colour = kPit};
-  if (f.pictures.column)
-    f.renderer.draw(f.pictures.column,
-                    at * Scene::Transform::scaling({kPitWide, -kPitDeep / kColumnTall, kPitWide}),
-                    dark);
+// The home's tile's place while its die is out: empty space, as though no
+// tile had ever been there (homeDieHole: the board's own background colour,
+// so the die's lower part is hidden in it as it rises out)
+void emptyPlace(const TopFrame &f, Hex hex) {
   if (f.pictures.hexTile)
-    f.renderer.draw(f.pictures.hexTile,
-                    at * Scene::Transform::translation({0, -kPitDeep, 0}) *
-                        Scene::Transform::scaling({kPitWide, 1, kPitWide}),
-                    dark);
+    f.renderer.draw(f.pictures.hexTile, homeDieHole(BoardPieces::centre(hex), kHoleBelow),
+                    {.shading = Scene::Material::Shading::Unlit, .colour = BoardColours::kSpace});
+}
+
+// Space rippling at the home's place (spaceRipple: a wormhole opening as
+// the die leaves, and closing as it seats), `ripple` of the way through
+void homeDieRipple(const TopFrame &f, Hex hex, float ripple) {
+  if (!f.pictures.hexRing)
+    return;
+  for (const RippleRing &ring : spaceRipple(ripple))
+    if (ring.material.alpha > 0)
+      f.renderer.draw(f.pictures.hexRing,
+                      BoardPieces::onHex(hex) * Scene::Transform::rotation({0, 1, 0}, ring.turn) *
+                          Scene::Transform::scaling({ring.spread, 1, ring.spread}),
+                      ring.material);
 }
 
 // The die at `pose`: its body, and on its end the home's own tile (the
@@ -983,12 +1004,12 @@ void homeDieAt(const TopFrame &f, const Scene::Transform &pose, Art::Face face) 
                                 .colour = BoardColours::ofFace(face)});
 }
 
-// The die from its place to facing you, as the show has it now (its pit
-// while it's out, the dust where it seats)
+// The die from its place to facing you, as the show has it now (its place
+// empty space while it's out, rippling where it leaves and seats)
 void homeDie(const TopFrame &f, const HomePayShow::Die &die, Hex hex, Art::Face face) {
   const float k = f.k();
   if (die.out) {
-    homeDiePit(f, hex);
+    emptyPlace(f, hex);
     // (bowing up the screen: it leaps up and over, an arc)
     const Scene::Transform pose = homeDiePose(
         homeDieInBoard(BoardPieces::centre(hex)),
@@ -996,14 +1017,8 @@ void homeDie(const TopFrame &f, const HomePayShow::Die &die, Hex hex, Art::Face 
         viewAxes(f.camera).up * 1.2f, die.lifted, die.sink, die.turn);
     homeDieAt(f, pose, face);
   }
-  if (die.dust && f.pictures.hexRing) {
-    // (round the tile: from its edge out a half again)
-    const DustRing dust = dustRing(*die.dust, 1.5f);
-    f.renderer.draw(f.pictures.hexRing,
-                    BoardPieces::onHex(hex) *
-                        Scene::Transform::scaling({dust.spread, 1, dust.spread}),
-                    dust.material);
-  }
+  if (die.ripple)
+    homeDieRipple(f, hex, *die.ripple);
 }
 
 // The card out of the die (a pop: Settle), held big with its name, then
@@ -1032,8 +1047,7 @@ void homePayCard(const TopFrame &f, const HomePayShow::Card &card, const State &
   // (its name on its label band, 3 to 19 of the card's 52-unit picture,
   // and what it gives under it, once it's full size, fading in)
   if (card.away <= 0 && card.words > 0) {
-    f.overlay.textCentred(cx, cy - h / 2 + h * 11 / 52, GameWords::of(card.resource),
-                          titleInk(f, card.resource, card.words), 1.5f * k);
+    resourceCardTitle(f, card.resource, cx, cy - h / 2, h, card.words);
     f.overlay.textCentred(f.width / 2, heldY + bigH / 2 + 10 * k,
                           "+1 " + std::string(GameWords::of(card.resource)),
                           fadedIn(Palette::kWords, card.words), 1.5f * k);

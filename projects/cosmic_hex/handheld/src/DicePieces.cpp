@@ -294,4 +294,9 @@ Scene::Transform homeDieFace(const Scene::Transform &pose) {
   return pose * Scene::Transform::fromAxes({0, 0, 1}, {1, 0, 0}, {0, 1, 0}, {kHomeDieHalf, 0, 0});
 }
 
+Scene::Transform homeDieHole(const Scene::Vector3 &tile, float below) {
+  return Scene::Transform::translation(tile - Scene::Vector3{0, below, 0}) *
+         Scene::Transform::scaling({kHomeDieHoleWide, 1, kHomeDieHoleWide});
+}
+
 } // namespace CosmicHex::Handheld

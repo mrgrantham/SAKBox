@@ -292,8 +292,8 @@ void ScreenPadd::drawTile(CosmicHex::Hex hex, std::optional<float> turn, CosmicH
 // The planets and the zone's finds, `t` of the way through the latest
 // move's animation
 void ScreenPadd::drawTiles(const State &state, const Scene::Transform &placement, float t) {
-  // (a home whose die is out: its place left empty, the die and the pit
-  // under it drawn by its show: HomePayShow)
+  // (a home whose die is out: its place left empty, the die and the space
+  // where the tile was drawn by its show: HomePayShow)
   const auto dieOutOf = homePay_.dieOutOf(showsNow());
   const auto dieOut = dieOutOf ? CardPlaces::homeOf(state, *dieOutOf) : std::nullopt;
   for (std::size_t i = 0; i < state.planets.size(); ++i) {

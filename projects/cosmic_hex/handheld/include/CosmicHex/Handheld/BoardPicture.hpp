@@ -129,6 +129,13 @@ public:
     // shown face down (no copy of the state needed: the DS's main stack is
     // small)
     std::vector<Hex> faceDown;
+    // Which way each of the state's ships faces, and the blockade, as the
+    // top screen's 3D board has them (BoardMotion::restingHeading: radians
+    // about the up axis, 0 along +x, which is the flat board's right; a
+    // quarter turn is its up). A ship not listed faces 0, as a new one
+    // does, and so does the blockade without one
+    std::vector<float> shipHeadings;
+    std::optional<float> blockadeHeading;
   };
   // An area of the picture, in pixels
   struct Area {
@@ -197,6 +204,19 @@ private:
   // `area` drawn from scratch: space, the grid, the pieces over it
   void drawArea(Area area);
   static Area triangleArea(HexGrid::Point a, HexGrid::Point b, HexGrid::Point c);
+  // A ship's dart (or the blockade's) round `centre`: its nose `r` ahead
+  // along heading step `step` (Piece::look's: kHeadingSteps to a turn), its
+  // two back corners `r` behind and `r` to each side
+  struct Dart {
+    HexGrid::Point nose, left, right;
+  };
+  static constexpr int kHeadingSteps = 64;
+  static std::int16_t headingStep(float heading);
+  static Dart dart(HexGrid::Point centre, float r, int step);
+  static Area dartArea(const Dart &dart) { return triangleArea(dart.nose, dart.left, dart.right); }
+  void fillDart(const Dart &dart, ScratchPadd::Scene::Colour colour) {
+    fillTriangle(dart.nose, dart.left, dart.right, colour);
+  }
 
   std::uint8_t fade_ = 255; // (blendSprite's opacity: a face fading in)
   void blendSprite(const std::vector<ScratchPadd::Scene::Colour> &sprite, int size,

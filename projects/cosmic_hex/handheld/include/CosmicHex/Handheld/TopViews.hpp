@@ -137,11 +137,11 @@ void drawFirstRoll(const TopFrame &frame, const FirstRoll &roll, const FirstRoll
 // everyone's when watching: up to their row of the points bars)
 void drawRollPay(const TopFrame &frame, const RollPayShow &show, const State &state, int you);
 // A home's pay: its die, the home's tile on `state`'s board, pulled out
-// of its place (a dark pit left) to face you, spun to its side for each
+// of its place (left empty space, rippling as it goes) to face you, spun to its side for each
 // pay; each card big (sharp from `closeUps`[its order % 2] when that holds
 // it: PictureSlot id, the card), then off to its player (CardPlaces: yours,
 // `yours`, down to the bottom screen; a bot's, to their row of the points
-// bars); then the die set back in its place, its dust where it seats
+// bars); then the die set back in its place, space rippling where it seats
 void drawHomePay(const TopFrame &frame, const HomePayShow &show, const State &state, bool yours,
                  const std::array<ScratchPadd::PictureSlot, 2> &closeUps);
 

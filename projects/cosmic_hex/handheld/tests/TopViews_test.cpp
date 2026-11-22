@@ -118,6 +118,40 @@ TEST_F(TopViewsTest, DealtCardsOtherPlayersAndTheFirstRoll) {
   });
 }
 
+// Who goes first with two tied below the highest (the user's: two on a
+// 3, nobody throwing again, looked like a bug): only the highest counts,
+// so nobody throws again; once all have landed the others' numbers are
+// dimmed and the screen says the rest follow round the table
+TEST_F(TopViewsTest, AFirstRollWithATieBelowTheHighest) {
+  FirstRoll roll;
+  roll.first = 1;
+  roll.rounds = {{3, 6, 3, 2}};
+  FirstRollShow show;
+  show.start(roll, 4, 1.0 / 30, 0);
+  bool saidSo = false, landed = false;
+  frames(every(0, 20, 0.1), [&](const TopFrame &f) {
+    show.update(f.now);
+    if (!show.allLanded())
+      show.hurry(f.now); // (A: each die thrown at once)
+    drawFirstRoll(f, roll, show);
+    if (!show.allLanded() || show.sorted(f.now) <= 0)
+      return;
+    landed = true;
+    for (const Scene::Overlay::Text &text : f.overlay.texts()) {
+      saidSo = saidSo || text.text == "the rest follow round the table";
+      if (text.text == "3" || text.text == "2") {
+        EXPECT_EQ(text.colour, Palette::kDimWords) << text.text;
+      }
+      if (text.text == "6") {
+        EXPECT_EQ(text.colour, Palette::kHighlight);
+      }
+    }
+  });
+  EXPECT_TRUE(landed);
+  EXPECT_TRUE(saidSo);
+  EXPECT_EQ(show.round(), 0); // (no second round)
+}
+
 TEST_F(TopViewsTest, ARollsPayFromStartToEnd) {
   for (Planet &planet : state.planets)
     if (!planet.flipped && planet.homeOf < 0) {

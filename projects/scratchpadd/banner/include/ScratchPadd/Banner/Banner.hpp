@@ -34,8 +34,9 @@ namespace ScratchPadd {
 class Banner {
 public:
   // How a slide moves (seconds): the band in, the words in, held, off, the
-  // band away
-  static constexpr double kBandIn = 0.25, kWordsInAfter = 0.1, kWordsIn = 0.45, kHold = 1.3,
+  // band away. (The words held long enough to read twice over: at 1.3 s
+  // they went before they were read, the user's)
+  static constexpr double kBandIn = 0.25, kWordsInAfter = 0.1, kWordsIn = 0.45, kHold = 2.6,
                           kWordsOut = 0.35, kBandOutAfter = 0.1, kBandOut = 0.3;
 
   struct Slide {

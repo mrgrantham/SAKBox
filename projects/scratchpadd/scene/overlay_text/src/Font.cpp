@@ -44,10 +44,10 @@ const Font &Font::platform() {
 #endif
 }
 
-int Font::pixelSize(float scale) const {
+int Font::pixelHalves(float scale) const {
   // (a sixteenth's leeway, for a scale worked out as 1.9999)
   constexpr float kLeeway = 1.0f / 16;
-  return pixels_ ? std::max(1, static_cast<int>(std::floor(scale + kLeeway))) : 1;
+  return pixels_ ? std::max(2, static_cast<int>(std::floor((scale * 2) + kLeeway))) : 2;
 }
 
 float Font::tracking(float scale) const {
@@ -60,12 +60,14 @@ float Font::tracking(float scale) const {
 
 float Font::lineHeight(float scale) const {
   if (pixels_)
-    return static_cast<float>(pixels_->lineHeight * pixelSize(scale));
+    return static_cast<float>(
+        sized({0, 0, 0, static_cast<std::int16_t>(pixels_->lineHeight)}, pixelHalves(scale))
+            .height);
   return smooth_->lineHeight * scale;
 }
 
 float Font::width(std::string_view text, float scale) const {
-  const float size = pixels_ ? static_cast<float>(pixelSize(scale)) : scale;
+  const float size = pixels_ ? static_cast<float>(pixelHalves(scale)) / 2 : scale;
   const float between = tracking(scale);
   float widest = 0;
   forEachLine(text, [&](std::string_view line) {
@@ -127,10 +129,12 @@ void Font::pixelRectangles(std::string_view text, std::vector<FontRectangle> &ou
 void Font::layOutPixels(std::string_view text, float scale, std::vector<TextPiece> &out) const {
   thread_local std::vector<FontRectangle> runs;
   pixelRectangles(text, runs);
-  const auto size = static_cast<float>(pixelSize(scale));
-  for (const FontRectangle &r : runs)
-    out.push_back({static_cast<float>(r.x) * size, static_cast<float>(r.y) * size,
-                   static_cast<float>(r.width) * size, static_cast<float>(r.height) * size});
+  const int halves = pixelHalves(scale);
+  for (const FontRectangle &run : runs) {
+    const FontRectangle r = sized(run, halves);
+    out.push_back({static_cast<float>(r.x), static_cast<float>(r.y), static_cast<float>(r.width),
+                   static_cast<float>(r.height)});
+  }
 }
 
 // The baked size nearest `scale` (by their ratio: drawn scaled the least)

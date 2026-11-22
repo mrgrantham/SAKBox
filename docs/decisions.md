@@ -169,3 +169,32 @@ Cosmic Hex and Infinifly are their own projects, using ScratchPadd as a library.
 - **Decided:** a home's pay pulls the home's tile up out of the board as the die (its end the board's own tile mesh with the face texture already loaded, its six sides the resources' colours and the star), its place left a dark pit; it spins about its long axis for each pay without going back between, then flies back over its place, drops in and settles with the build's dust. The show learns that more pays are coming from the game's phase (the dealer's home die roll next) and waits out, letting the game go, until the next roll comes.
 - **Why:** the owner's design: the die should be the homeworld, and a home paying two should spin again rather than go in and come out twice.
 - **Not chosen:** a new texture for the die's face (the DS has no texture memory to spare; the board's face is the same picture); the die's lower part hidden by drawing only what's above the board (the scene layer can't clip; the pit's walls and floor hide it instead, and read as the tile's empty place); stretching the die out of the board as it rises (a rigid thing would squash its coloured insets).
+
+## Cosmic Hex: banners held long enough to read (2026-11-22)
+
+- **Decided:** a banner's words hold 2.6 s in the middle (`Banner::kHold`, was 1.3 s); the band's fade and the words' sweeps in and out are as they were. Whatever waits for a banner asks it how long is left (`remaining`, `showing`), so nothing else needed the old total.
+- **Why:** the owner's play-testing: the words went before they were read; the sweeps' speeds were right.
+
+## Cosmic Hex: the flat board's ships face as the 3D board's (2026-11-22)
+
+- **Decided:** the game's idea of a ship's heading is `BoardMotion`'s (the way it flew in, a new ship along +x as its mesh points); the bottom screen's darts, which always pointed up, now take each ship's resting heading (and the blockade's) through `BoardPicture::Marks`, kept as 64 steps a turn in a piece's look so a turn redraws it. A ship keeps its heading when another ship is built (it had snapped back to +x when ships came or went: matched now by owner and corner).
+- **Why:** the owner saw the two screens' ships facing different ways.
+- **Not chosen:** a heading in the rules' `Ship` (the rules don't care which way a ship faces; it's the animation's); pointing the 3D ships up the screen (they'd stop flying nose first).
+
+## Cosmic Hex: Silkscreen drawn at half sizes (2026-11-22)
+
+- **Decided:** Silkscreen draws a scale at the half pixel at or below it (`Font::pixelHalves`; at 1.5 its pixels alternate one and two screen pixels, `Font::sized`, measured as drawn). This supersedes "a scale between whole numbers draws the size below it" in the Silkscreen and Orbitron entry.
+- **Why:** the owner saw the DS's larger words (the top screen's card names, the splash's "Vibe Coding by James", asked for at 1.5) shrink to 1 when Silkscreen came in: stb_easy_font had drawn them at 1.5. Half sizes give back exactly the size the layouts were made for and are never wider than asked. The Orbitron letter spacing (`Font::tracking`) is untouched.
+- **Not chosen:** rounding titles up to 2 when they fit (the longer resource names, "Minerals" and "Crystals", don't fit their cards at 2, so card names would have come in two sizes); bigger cards on the DS (a layout change for the sake of one font).
+
+## Cosmic Hex: who goes first, only the highest roll counts (2026-11-22)
+
+- **Decided:** kept as written (`rollForFirst`, the README): those tied for the highest throw again; a tie below it isn't thrown again, since turns go round the table from the first and the other numbers decide nothing. The screen now says so: once all have landed the other numbers dim and "the rest follow round the table" shows.
+- **Why:** the owner saw two tie on a 3, nobody throw again, and took it for a bug; the order then reads by seat, which numbers left bright made look like a ranking.
+- **Not chosen:** ordering every player by their roll (the rules seat turns round the table; reseating players by roll would change the game, not the screen).
+
+## Cosmic Hex: the home die rises out of space (2026-11-22)
+
+- **Decided:** while the home's tile is out as the die, its place is empty space: the tile mesh in the board's background colour, just under where the die seats (`homeDieHole`), hiding the die's lower part as the pit did; a ripple of space, two hex rings spreading and turning opposite ways (`spaceRipple`), where it leaves and where it seats, in place of the build's dust. The die's motion and timing are unchanged. This supersedes the dark pit in "the home die is the home's own tile".
+- **Why:** the owner's: the place should look as though no tile was ever there, the die pulled out of thin air, a wormhole; the opening is one hexagon where the pit was a column and a floor, and the ripple reuses the hex ring mesh, so it's cheaper on the DS.
+- **Not chosen:** no opening at all (the die's sides below the board would show through the empty place); a new mesh or texture for the swirl (the DS has no texture memory to spare).

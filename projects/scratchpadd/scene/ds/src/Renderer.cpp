@@ -374,17 +374,19 @@ void Renderer::Backend::drawOverlayText(const Overlay &overlay) {
       found = colours.end() - 1;
     }
     const auto entry = static_cast<std::uint8_t>(found - colours.begin() + 1);
-    // Silkscreen's pixels (Font.hpp), each a square of whole pixels, placed
-    // in whole numbers: three floats a text rather than a dozen a stroke
-    // (no floating point hardware here: the text took up to 40 ms a frame)
+    // Silkscreen's pixels (Font.hpp), sized to whole pixels (Font::sized),
+    // placed in whole numbers: three floats a text rather than a dozen a
+    // stroke (no floating point hardware here: the text took up to 40 ms a
+    // frame)
     const Font &font = Font::platform();
     font.pixelRectangles(text.text, textStrokes);
-    const int size = font.pixelSize(text.scale);
+    const int halves = font.pixelHalves(text.scale);
     const auto left = static_cast<int>(std::lround(text.x)),
                top = static_cast<int>(std::lround(text.y));
-    for (const FontRectangle &r : textStrokes) {
-      const int x0 = left + r.x * size, y0 = top + r.y * size;
-      const int x1 = x0 + r.width * size, y1 = y0 + r.height * size;
+    for (const FontRectangle &run : textStrokes) {
+      const FontRectangle r = Font::sized(run, halves);
+      const int x0 = left + r.x, y0 = top + r.y;
+      const int x1 = x0 + r.width, y1 = y0 + r.height;
       // (cut to the text's clip, and the layer)
       const int fromY = std::max({0, y0, static_cast<int>(std::ceil(text.clip.top))});
       const int toY = std::min({y1, kTextHeight, static_cast<int>(std::floor(text.clip.bottom))});

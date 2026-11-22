@@ -89,7 +89,7 @@ struct TextPiece {
 
 // A pixel font's run in its own pixels, the text starting at (0, 0): whole
 // numbers, for a backend without floating point hardware (the DS), which
-// multiplies them by pixelSize itself
+// sizes them itself (Font::sized)
 struct FontRectangle {
   std::int16_t x, y, width, height;
 };
@@ -121,11 +121,22 @@ public:
   // allocation once it's grown)
   void layOut(std::string_view text, float scale, std::vector<TextPiece> &out) const;
 
-  // A pixel font's size at `scale`: each of its pixels this many points
-  // square (the whole number at or below the scale, at least 1: Silkscreen's
-  // letters are as wide as stb_easy_font's were at the same scale, so text
-  // is never wider than it was laid out for). A smooth font's is 1
-  int pixelSize(float scale) const;
+  // A pixel font's size at `scale`, in half points: each of its pixels this
+  // many halves of a point across and down (the half at or below the
+  // scale, at least a whole point). Silkscreen's letters are as wide as
+  // stb_easy_font's were at the same scale, so text is never wider than it
+  // was laid out for, and as large: at whole points only, a title asking
+  // for 1.5 was drawn at 1 (the user's). A smooth font's is 2
+  int pixelHalves(float scale) const;
+  // A pixel font's run at `halves` (pixelHalves'), on whole points from the
+  // text's top left: at a half size its pixels alternate one and two points
+  // (as stb_easy_font's strokes did at 1.5), each edge where the half
+  // rounds down, so neighbouring runs meet. Whole numbers, for the DS
+  static FontRectangle sized(const FontRectangle &run, int halves) {
+    const auto at = [halves](int v) { return static_cast<std::int16_t>((v * halves) >> 1); };
+    return {at(run.x), at(run.y), static_cast<std::int16_t>(at(run.x + run.width) - at(run.x)),
+            static_cast<std::int16_t>(at(run.y + run.height) - at(run.y))};
+  }
   // A pixel font's runs for `text` in its own pixels into `out` (cleared
   // first); none for a smooth font
   void pixelRectangles(std::string_view text, std::vector<FontRectangle> &out) const;

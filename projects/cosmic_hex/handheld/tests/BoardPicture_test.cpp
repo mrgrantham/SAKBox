@@ -1,6 +1,7 @@
 // The flat board: tiles where the hex grid puts them, each touch finding its
 // hex (and a corner, close to one), zooming and panning kept in bounds. The
 // picture is also written out (bazel's test outputs) to look at.
+#include <CosmicHex/Handheld/BoardMotion.hpp>
 #include <CosmicHex/Handheld/BoardPicture.hpp>
 #include <CosmicHex/Handheld/BoardPieces.hpp>
 #include <CosmicHex/Handheld/PlatformProfile.hpp>
@@ -19,6 +20,7 @@
 
 using namespace CosmicHex;
 using namespace CosmicHex::Handheld;
+namespace Scene = ScratchPadd::Scene;
 
 namespace {
 State aGame() { return newGame(4, agreedRules(boardR3())); }
@@ -267,6 +269,47 @@ TEST(BoardPictureTest, MarksAnywhereStayInsideThePicture) {
       }
     }
   SUCCEED();
+}
+
+// A ship points the same way on the flat board as on the top screen's 3D
+// board: nose first the way it flew in (BoardMotion's heading at rest), its
+// dart's back corners behind it. The flat board's darts all pointed up,
+// whatever the 3D ships did (the user's); the blockade the same
+TEST(BoardPictureTest, ShipsFaceTheWayThe3DBoardHasThem) {
+  State before = aGame();
+  const Corner from = HexGrid::corner(Hex{0, 0}, 0), to = HexGrid::corner(Hex{0, 0}, 1);
+  before.ships = {Ship{1, Hex{}, false, from}};
+  State after = before;
+  after.ships[0].corner = to;
+  const BoardMotion motion(before, after);
+  const float heading = motion.restingHeading(0);
+  // (the 3D heading points along the flight, near enough: the arc bows)
+  const auto way = BoardPieces::at(to) - BoardPieces::at(from);
+  const float along =
+      (std::cos(heading) * way.x - std::sin(heading) * way.z) / std::hypot(way.x, way.z);
+  ASSERT_GT(along, 0.9f);
+  BoardPicture picture(320, 240);
+  picture.setZoom(BoardPicture::kMostZoom);
+  picture.draw(after, {.shipHeadings = {motion.restingHeading(0)}});
+  writeOut(picture, "ship_heading.ppm");
+  // On the flat board, x is the 3D board's x and y its z: ahead is
+  // (cos, -sin). Ahead of the middle and off to its side is outside the
+  // dart; behind it and as far to the side is inside, by its back corners
+  const HexGrid::Point c = picture.where(to);
+  const float r =
+      0.3f * (picture.where(Hex{1, 0}).x - picture.where(Hex{0, 0}).x) / std::sqrt(3.0f);
+  const HexGrid::Point ahead{std::cos(heading), -std::sin(heading)}, side{-ahead.y, ahead.x};
+  const auto colourAt = [&](float forward, float across) {
+    const auto x = static_cast<int>(std::floor(c.x + (ahead.x * forward + side.x * across) * r));
+    const auto y = static_cast<int>(std::floor(c.y + (ahead.y * forward + side.y * across) * r));
+    return picture.pixels()[(static_cast<std::size_t>(y) * 320) + static_cast<std::size_t>(x)];
+  };
+  const Scene::Colour ship = BoardColours::ofPlayer(1);
+  for (const float across : {-0.6f, 0.6f}) {
+    EXPECT_EQ(colourAt(-0.6f, across), ship) << across;
+    EXPECT_NE(colourAt(0.6f, across), ship) << across;
+  }
+  EXPECT_EQ(colourAt(0.6f, 0), ship); // (its nose)
 }
 
 // The flat pointer: a white chevron drawn just above the corner in focus

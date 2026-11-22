@@ -536,6 +536,9 @@ std::optional<HomePayShow::Die> HomePayShow::die(double now) const {
   using Motion::Curve;
   const Timeline t = timeline();
   Die die{.turn = turnAt(t, now), .out = true};
+  // (space rippling where it leaves, from the wind-up into the lift)
+  if (now < t.outAt + kSecondsRipple)
+    die.ripple = partOf(now, t.outAt, kSecondsRipple);
   const double lifting = t.outAt + kSecondsWindUp;
   if (now < lifting) {
     // Anticipation: down into the board first, slow in and out, held a
@@ -569,12 +572,12 @@ std::optional<HomePayShow::Die> HomePayShow::die(double now) const {
     return die;
   }
   // Follow-through: a sink a hair past its place and back (a thud, not a
-  // bounce: it's heavy), and the build's dust where it seats
+  // bounce: it's heavy), and space rippling where it seats
   const float seated = partOf(now, touches, kSecondsSeat);
   die.sink = kSeatSink * std::sin(3.14159265f * seated);
   die.out = seated < 1;
-  if (now < touches + kSecondsDust)
-    die.dust = partOf(now, touches, kSecondsDust);
+  if (now < touches + kSecondsRipple)
+    die.ripple = partOf(now, touches, kSecondsRipple);
   return die;
 }
 

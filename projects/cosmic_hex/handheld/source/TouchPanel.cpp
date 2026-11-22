@@ -332,6 +332,10 @@ void ScreenPadd::drawMapWithButtons() {
   if (chosen)
     marks.preview = BoardPicture::Marks::Preview{
         *chosenAt, latest_->state.turn, chosen->kind == CosmicHex::Action::Kind::PlaceShip};
+  // (the ships and the blockade facing the way the top screen's do)
+  for (std::size_t i = 0; i < latest_->state.ships.size(); ++i)
+    marks.shipHeadings.push_back(motion_.restingHeading(i));
+  marks.blockadeHeading = motion_.blockadeHeading();
   // The map under the buttons, where they were and are, drawn
   // again, so they're drawn over it once (the map's
   // draw changes only what's changed)

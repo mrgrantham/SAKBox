@@ -254,13 +254,14 @@ private:
 // ---------------------------------------------------------------------------
 // A home's pay, when the home die is on (Settings::homeDie). The die is
 // the home's own tile: it dips into the board (a wind-up), is pulled up out
-// of its place (left a dark pit) and along an arc to face you; it spins
+// of its place, as out of a hole in space (its place left empty space, a
+// ripple of space where it leaves), and along an arc to face you; it spins
 // about its long axis, winding up first and slowing to the side chosen (a
 // resource, or the star: the player's choice), a little past and back;
 // the resource's card grows out of it, big, with what it is, then flies to
 // its player (CardPlaces). A home paying more than one stays out and spins
 // again as the card leaves; after the last it flies back over its place,
-// turning face up, drops in and settles, the build's dust where it seats.
+// turning face up, drops in and settles, space rippling where it seats.
 // Grounded in docs/research/animation-whimsy.md (Lasseter: anticipation,
 // arcs, slow in and out, follow-through, overlap, timing)
 
@@ -277,14 +278,14 @@ public:
   static constexpr float kSecondsBack = 0.6f;    // back along the arc, over its place, face up
   static constexpr float kSecondsDrop = 0.14f;   // dropping in, faster and faster
   static constexpr float kSecondsSeat = 0.25f;   // a sink a hair past its place, and back
-  static constexpr float kSecondsDust = 0.45f;   // the dust where it seats
+  static constexpr float kSecondsRipple = 0.45f; // space rippling where it leaves, and seats
   // The die out; a pay, from its spin until its card leaves (the next spin,
   // or the die's way back, starts as it does: overlap); and the die back
   static constexpr float kSecondsOut = kSecondsWindUp + kSecondsLift;
   static constexpr float kSecondsPay = kSecondsSpin + kSecondsCard + kSecondsHold;
   static constexpr float kSecondsHome =
-      kSecondsBack + kSecondsDrop + std::max(kSecondsSeat, kSecondsDust);
-  // A home paying `pays` in a row, from the die's wind-up to its dust gone
+      kSecondsBack + kSecondsDrop + std::max(kSecondsSeat, kSecondsRipple);
+  // A home paying `pays` in a row, from the die's wind-up to its ripple gone
   static constexpr float seconds(int pays) {
     return kSecondsOut + kSecondsPay * static_cast<float>(pays) +
            std::max(kSecondsAway, kSecondsHome);
@@ -331,12 +332,13 @@ public:
   // The die at `now`: how far it's lifted (0 in its place, kHomeDieRisen
   // risen out, 1 facing you: homeDiePose's), how far it's sunk (the
   // wind-up's dip, the seat's settle), its turn about its long axis
-  // (radians, 0 as it lies in the board), and once it's seated its dust (0
-  // to 1); `out` while it's off its place (else only the dust shows)
+  // (radians, 0 as it lies in the board), and space rippling at its place
+  // as it leaves and once it's seated (0 to 1: spaceRipple's); `out` while
+  // it's off its place (else only the ripple shows)
   struct Die {
     float lifted = 0, sink = 0, turn = 0;
     bool out = false;
-    std::optional<float> dust;
+    std::optional<float> ripple;
   };
   std::optional<Die> die(double now) const;
   // The card showing (one at a time: a spin outlasts a card's way off):

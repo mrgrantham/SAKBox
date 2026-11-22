@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <numbers>
 #include <string_view>
 
 namespace CosmicHex::Handheld {
@@ -407,6 +408,25 @@ BoardPicture::Area BoardPicture::triangleArea(HexGrid::Point a, HexGrid::Point b
   return {x0, y0, x1 - x0 + 1, y1 - y0 + 1};
 }
 
+std::int16_t BoardPicture::headingStep(float heading) {
+  const float turns = heading / (2 * std::numbers::pi_v<float>);
+  const auto step = static_cast<int>(std::lround(turns * kHeadingSteps)) % kHeadingSteps;
+  return static_cast<std::int16_t>(step < 0 ? step + kHeadingSteps : step);
+}
+
+BoardPicture::Dart BoardPicture::dart(HexGrid::Point centre, float r, int step) {
+  // (ahead: the 3D board's (cos, -sin) in x and z, the flat board's x and
+  // y; its right side a quarter turn clockwise on the screen)
+  const float heading = 2 * std::numbers::pi_v<float> * static_cast<float>(step) / kHeadingSteps;
+  const HexGrid::Point ahead{std::cos(heading), -std::sin(heading)};
+  const HexGrid::Point right{-ahead.y, ahead.x};
+  const auto at = [&](float forward, float across) {
+    return HexGrid::Point{centre.x + (ahead.x * forward + right.x * across) * r,
+                          centre.y + (ahead.y * forward + right.y * across) * r};
+  };
+  return {at(1, 0), at(-1, -1), at(-1, 1)};
+}
+
 void BoardPicture::fillTriangle(HexGrid::Point a, HexGrid::Point b, HexGrid::Point c,
                                 Colour colour) {
   // Each pixel's middle tested against the three sides, in whole numbers
@@ -515,24 +535,24 @@ void BoardPicture::listPieces(const State &state, const Marks &marks,
                    {static_cast<std::int16_t>(station.owner), station.colony},
                    rectArea(c.x - half - 1, c.y - half - 1, 2 * half + 2, 2 * half + 2)});
   }
-  for (const Ship &ship : state.ships) {
-    const HexGrid::Point c = pixelMiddle(where(ship.corner));
-    const float r = 0.3f * s;
-    out.push_back(
-        {Piece::Kind::Ship,
-         at(ship.corner),
-         {static_cast<std::int16_t>(ship.owner), 0},
-         triangleArea({c.x, c.y - r - 1}, {c.x - r - 1, c.y + r + 1}, {c.x + r + 1, c.y + r + 1})});
+  // (ships and the blockade facing as the 3D board has them: their darts'
+  // areas with their outlines)
+  for (std::size_t i = 0; i < state.ships.size(); ++i) {
+    const Ship &ship = state.ships[i];
+    const std::int16_t step =
+        headingStep(i < marks.shipHeadings.size() ? marks.shipHeadings[i] : 0);
+    out.push_back({Piece::Kind::Ship,
+                   at(ship.corner),
+                   {static_cast<std::int16_t>(ship.owner), step},
+                   dartArea(dart(pixelMiddle(where(ship.corner)), 0.3f * s + 1, step))});
   }
   if (state.blockade >= 0) {
     const Hex hex = state.planets[static_cast<std::size_t>(state.blockade)].hex;
-    const HexGrid::Point c = where(hex);
-    const float r = 0.4f * s;
-    out.push_back(
-        {Piece::Kind::Blockade,
-         on(hex),
-         {0, 0},
-         triangleArea({c.x, c.y - r - 2}, {c.x - r - 2, c.y + r + 2}, {c.x + r + 2, c.y + r + 2})});
+    const std::int16_t step = headingStep(marks.blockadeHeading.value_or(0));
+    out.push_back({Piece::Kind::Blockade,
+                   on(hex),
+                   {step, 0},
+                   dartArea(dart(where(hex), 0.4f * s + 2, step))});
   }
   if (marks.hex) {
     // (its outline two pixels thick: a pixel's room round its corners)
@@ -568,12 +588,11 @@ void BoardPicture::listPieces(const State &state, const Marks &marks,
     const HexGrid::Point c = pixelMiddle(where(marks.preview->corner));
     const auto owner = static_cast<std::int16_t>(marks.preview->owner);
     if (marks.preview->ship) {
-      const float r = 0.3f * s;
+      // (facing as a new ship does)
       out.push_back({Piece::Kind::Ship,
                      at(marks.preview->corner),
                      {owner, 0},
-                     triangleArea({c.x, c.y - r - 1}, {c.x - r - 1, c.y + r + 1},
-                                  {c.x + r + 1, c.y + r + 1})});
+                     dartArea(dart(c, 0.3f * s + 1, 0))});
     } else {
       const float half = wholeHalf(0.26f * s);
       out.push_back({Piece::Kind::Station,
@@ -639,21 +658,19 @@ void BoardPicture::drawPiece(const Piece &piece) {
     break;
   }
   case Piece::Kind::Ship: {
-    // a dart pointing up
+    // a dart, nose first the way it faces, outlined dark
     const HexGrid::Point c = pixelMiddle(where(corner));
     const float r = 0.3f * s;
-    fillTriangle({c.x, c.y - r - 1}, {c.x - r - 1, c.y + r + 1}, {c.x + r + 1, c.y + r + 1}, kDark);
-    fillTriangle({c.x, c.y - r}, {c.x - r, c.y + r}, {c.x + r, c.y + r},
-                 BoardColours::ofPlayer(piece.look[0]));
+    fillDart(dart(c, r + 1, piece.look[1]), kDark);
+    fillDart(dart(c, r, piece.look[1]), BoardColours::ofPlayer(piece.look[0]));
     break;
   }
   case Piece::Kind::Blockade: {
     // a dark dart with a light rim, on its planet
     const HexGrid::Point c = where(hex);
     const float r = 0.4f * s;
-    fillTriangle({c.x, c.y - r - 2}, {c.x - r - 2, c.y + r + 2}, {c.x + r + 2, c.y + r + 2},
-                 {220, 70, 70, 255});
-    fillTriangle({c.x, c.y - r}, {c.x - r, c.y + r}, {c.x + r, c.y + r}, BoardColours::kBlockade);
+    fillDart(dart(c, r + 2, piece.look[0]), {220, 70, 70, 255});
+    fillDart(dart(c, r, piece.look[0]), BoardColours::kBlockade);
     break;
   }
   case Piece::Kind::MarkHex:

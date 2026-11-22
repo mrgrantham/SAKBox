@@ -182,8 +182,9 @@ constexpr double kJustAfter = 1e-4;
 
 // A home's pay, one card: the die dips into the board (the wind-up),
 // lifts out to face you, spins to its side; the card big, then away; the
-// die back over its place, dropped in and settled with its dust; the game
-// held meanwhile and let go after, the board's tile gone while it's out
+// die back over its place, dropped in and settled, space rippling where it
+// leaves and where it seats; the game held meanwhile and let go after, the
+// board's tile gone while it's out
 TEST(TopShowsTest, AHomePaysOnItsDie) {
   using S = HomePayShow;
   HomePayShow show;
@@ -194,6 +195,10 @@ TEST(TopShowsTest, AHomePaysOnItsDie) {
   EXPECT_EQ(show.current()->resource, Resource::Water);
   EXPECT_TRUE(show.update(10).hold);
   EXPECT_EQ(show.dieOutOf(10), 2);
+  // (space rippling where it leaves, gone before it faces you)
+  ASSERT_TRUE(show.die(10.1)->ripple.has_value());
+  EXPECT_GT(*show.die(10.1)->ripple, 0);
+  EXPECT_FALSE(show.die(10 + S::kSecondsOut)->ripple.has_value());
   // (the wind-up: down into the board, not lifted yet)
   const auto dipping = show.die(10 + S::kSecondsWindUp * 0.9);
   ASSERT_TRUE(dipping.has_value());
@@ -220,9 +225,10 @@ TEST(TopShowsTest, AHomePaysOnItsDie) {
   const double touches = leaves + S::kSecondsBack + S::kSecondsDrop;
   EXPECT_NEAR(show.die(touches)->lifted, 0, 1e-4);
   EXPECT_NEAR(std::remainder(show.die(touches)->turn, 6.2831853f), 0, 1e-4); // (its tile as it lay)
-  ASSERT_TRUE(show.die(touches + 0.1)->dust.has_value());
+  EXPECT_FALSE(show.die(touches - 0.01)->ripple.has_value());
+  ASSERT_TRUE(show.die(touches + 0.1)->ripple.has_value()); // (space rippling where it seats)
   EXPECT_FALSE(show.dieOutOf(touches + S::kSecondsSeat + kJustAfter).has_value()); // (tile back)
-  // (the dust gone: done, the game let go)
+  // (the ripple gone: done, the game let go)
   const double end = 10 + HomePayShow::seconds(1) + kJustAfter;
   EXPECT_TRUE(show.moving(end - 0.01));
   EXPECT_FALSE(show.update(end - 0.01).letGo);

@@ -27,8 +27,23 @@ TEST(BannerTest, InHoldOut) {
   EXPECT_LT(going->wordsX, 0);
   EXPECT_LT(going->bandAlpha, 1);
   EXPECT_FALSE(banner.at(10 + banner.seconds() + 0.01).has_value());
-  EXPECT_GT(banner.seconds(), 2.0f);
-  EXPECT_LT(banner.seconds(), 3.0f);
+  EXPECT_GT(banner.seconds(), 3.0f);
+  EXPECT_LT(banner.seconds(), 4.0f);
+}
+
+// The words held still in the middle about two and a half seconds once
+// they're in (the user's: at 1.3 s they went before they were read); the
+// sweeps in and out as quick as they were
+TEST(BannerTest, TheWordsHoldLongEnoughToRead) {
+  Banner banner(256);
+  banner.start(0, "YOUR TURN", "", {235, 70, 70});
+  const double settled = Banner::kWordsInAfter + Banner::kWordsIn;
+  EXPECT_FLOAT_EQ(banner.at(settled)->wordsX, 128);
+  EXPECT_FLOAT_EQ(banner.at(settled + 2.5)->wordsX, 128);           // (still held)
+  EXPECT_LT(banner.at(settled + Banner::kHold + 0.1)->wordsX, 128); // (going)
+  EXPECT_GE(Banner::kHold, 2.5);
+  EXPECT_DOUBLE_EQ(Banner::kWordsIn, 0.45);
+  EXPECT_DOUBLE_EQ(Banner::kWordsOut, 0.35);
 }
 
 // Slides on one band: the first's words go off as the second's come in; a

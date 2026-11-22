@@ -65,6 +65,43 @@ TEST(BoardMotionTest, AShipBurnsThenCoastsAndKeepsItsHeading) {
   EXPECT_FLOAT_EQ(then.ship(0, 0.5f).heading, arrived.heading);
 }
 
+// A ship keeps facing the way it flew when a ship is built elsewhere (ships
+// came, so they're not matched one for one): it had snapped back to +x; a
+// new ship faces +x, as its mesh points
+TEST(BoardMotionTest, AShipKeepsItsHeadingWhenAnotherIsBuilt) {
+  const State before = twoShips();
+  State after = before;
+  after.ships[0].corner = Corner{{0, 1}, 0};
+  const BoardMotion flown(before, after);
+  const float heading = flown.restingHeading(0);
+  ASSERT_GT(std::abs(heading), 0.1f); // (it turned to fly there)
+  State built = after;
+  built.ships.push_back(Ship{0, Hex{}, false, Corner{{-1, 0}, 2}});
+  const BoardMotion then(after, built, &flown);
+  EXPECT_FLOAT_EQ(then.restingHeading(0), heading);
+  EXPECT_FLOAT_EQ(then.ship(0, 1).heading, heading);
+  EXPECT_FLOAT_EQ(then.restingHeading(2), 0);
+  EXPECT_FLOAT_EQ(then.restingHeading(7), 0); // (no such ship)
+}
+
+// Space rippling where the home die leaves and seats: two rings spreading
+// out from inside the tile's edge past it, turning opposite ways (a
+// swirl), the second after the first; unseen at the start and the end
+TEST(BoardMotionTest, SpaceRipplesAsAWormhole) {
+  const auto start = spaceRipple(0), middle = spaceRipple(0.5f), end = spaceRipple(1);
+  for (std::size_t i = 0; i < 2; ++i) {
+    EXPECT_EQ(start[i].material.alpha, 0) << i;
+    EXPECT_EQ(end[i].material.alpha, 0) << i;
+    EXPECT_LT(start[i].spread, 1) << i;  // (inside the tile's edge)
+    EXPECT_GT(end[i].spread, 1.2f) << i; // (out past it)
+    EXPECT_GT(middle[i].material.alpha, 0) << i;
+  }
+  EXPECT_GT(middle[0].spread, middle[1].spread); // (the second behind)
+  EXPECT_GT(middle[0].turn, 0);
+  EXPECT_LT(middle[1].turn, 0);
+  EXPECT_EQ(middle[0].material.shading, ScratchPadd::Scene::Material::Shading::Unlit);
+}
+
 TEST(BoardMotionTest, AShipThatCameOrWentDoesntSlide) {
   const State before = twoShips();
   State after = before;

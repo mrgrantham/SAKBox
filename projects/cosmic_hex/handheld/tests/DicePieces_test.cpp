@@ -217,6 +217,21 @@ TEST(DicePiecesTest, TheHomeDieFacesYou) {
   EXPECT_NEAR(std::hypot((*top)[0] - (*bottom)[0], (*top)[1] - (*bottom)[1]), 40, 2);
 }
 
+// While the die is out its place is an opening onto space, not a pit: a
+// flat hexagon `below` under the tile's place, wider than the die (its
+// corners past the die's, kTileInset from its middle), so none of the die
+// below the board shows past it
+TEST(DicePiecesTest, TheHomeDiesPlaceIsAnOpeningOntoSpace) {
+  const Scene::Vector3 tile = BoardPieces::centre({1, -1});
+  const Scene::Transform hole = homeDieHole(tile, 0.07f);
+  EXPECT_NEAR(hole.position().y, tile.y - 0.07f, 1e-5);
+  EXPECT_NEAR(hole.position().x, tile.x, 1e-5);
+  // (a tile mesh's corner, kTileInset out: the hole's further than the die's)
+  const Scene::Vector3 corner = hole.apply({kTileInset, 0, 0}) - hole.position();
+  EXPECT_GT(corner.length(), kTileInset);
+  EXPECT_NEAR(corner.y, 0, 1e-6); // (flat)
+}
+
 // On its way: straight up out of its place first, upright, till its bottom
 // clears the board; then turning as it arcs to face you; rigid throughout
 // (its axes square and unit), and `sink` lowers it

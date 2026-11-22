@@ -73,6 +73,16 @@ Scene::Transform homeDiePose(const Scene::Transform &inBoard, const Scene::Trans
 // does on the board when the die is in it
 Scene::Transform homeDieBody(const Scene::Transform &pose);
 Scene::Transform homeDieFace(const Scene::Transform &pose);
+// The home's place while its die is out: an opening onto empty space (the
+// board's tile mesh, drawn in the background's colour), a little wider
+// than the die so its sides never show past it, `below` under where the
+// tile lies (`tile`: its middle). Lower than the die's settle sinks and
+// higher than its dip, so the die sinks into space and rises out of it, as
+// through a wormhole, and the place reads as never having had a tile (the
+// user's: no dark pit walls)
+Scene::Transform homeDieHole(const Scene::Vector3 &tile, float below);
+inline constexpr float kHomeDieHoleWide =
+    0.98f / kTileInset; // (the tile mesh scaled: 0.98 of the hex)
 
 // The container's coordinates (x across the screen, y towards the viewer,
 // z down the screen; DiceTray's, looking down from above) to the world's: in

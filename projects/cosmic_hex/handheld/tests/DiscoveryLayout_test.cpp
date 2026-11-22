@@ -1,6 +1,8 @@
-// The discovery's words and tile, laid out on each handheld's top screen in
-// its own font: no two may overlap, and all stay on the screen
+// The top screen's words, laid out on each handheld's screen in its own
+// font: the discovery's words and tile (no two may overlap, and all stay
+// on the screen), and the resource cards' names
 #include <CosmicHex/Handheld/BoardView.hpp>
+#include <CosmicHex/Handheld/GameWords.hpp>
 #include <CosmicHex/Handheld/TopViews.hpp>
 
 #include <ScratchPadd/Scene/Font.hpp>
@@ -92,6 +94,22 @@ TEST_P(DiscoveryLayoutTest, TheBackdropIsBehindTheTileAndInFrontOfTheBoard) {
   EXPECT_GT(depths.backdrop, depths.tile + 1);
   constexpr float kBoardNearest = 9; // (BoardView.hpp: the board is nearer nowhere)
   EXPECT_LT(depths.backdrop, kBoardNearest);
+}
+
+// A resource card's name on the top screen (asked for at 1.5, scaled) as
+// large as its card was laid out for, and inside the card: on the DS half
+// again Silkscreen's size, as before Silkscreen (drawn at 1, it was much
+// smaller: the user's)
+TEST_P(DiscoveryLayoutTest, ResourceCardNamesAreAsLargeAsTheirCards) {
+  const Screen &screen = GetParam();
+  const float k = screen.width / 256;
+  constexpr float kHomePayCard = 70; // (the smaller of the two big cards; choosing one is 84)
+  for (int r = 0; r < CosmicHex::kResources; ++r) {
+    const std::string_view name = GameWords::of(static_cast<CosmicHex::Resource>(r));
+    EXPECT_LE(screen.font.ink(name, 1.5f * k).width, kHomePayCard * k) << name;
+    EXPECT_GE(screen.font.ink(name, 1.5f * k).height, 1.4f * screen.font.ink(name, k).height)
+        << name;
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(OnEachHandheld, DiscoveryLayoutTest, testing::Values(kDs, k3ds),

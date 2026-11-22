@@ -18,14 +18,28 @@ BoardMotion::BoardMotion(const State &before, const State &after, const BoardMot
       std::equal(before.ships.begin(), before.ships.end(), after.ships.begin(),
                  [](const Ship &a, const Ship &b) { return a.owner == b.owner; });
   shipsCameOrWent_ = !sameShips;
+  // The heading ship `i` of `after` had at the end of `last`: the same
+  // ship's; when ships came or went, that of the ship of its owner's that
+  // stood where it stands (a new ship, none: as its mesh points)
+  const auto headingBefore = [&](std::size_t i) -> float {
+    if (!last)
+      return 0;
+    std::optional<std::size_t> was;
+    if (sameShips)
+      was = i;
+    else
+      for (std::size_t j = 0; j < before.ships.size(); ++j)
+        if (before.ships[j].owner == after.ships[i].owner &&
+            before.ships[j].corner == after.ships[i].corner)
+          was = j;
+    return was && *was < last->headingAtRest_.size() ? last->headingAtRest_[*was] : 0;
+  };
   for (std::size_t i = 0; i < after.ships.size(); ++i) {
     shipTo_.push_back(BoardPieces::at(after.ships[i].corner));
     shipFrom_.push_back(sameShips ? BoardPieces::at(before.ships[i].corner) : shipTo_.back());
     // Facing the way it was flying as it arrived, else as it was
-    const float was =
-        sameShips && last && i < last->headingAtRest_.size() ? last->headingAtRest_[i] : 0;
     headingAtRest_.push_back(
-        Flight{shipFrom_.back(), shipTo_.back(), 0}.arrivingHeading().value_or(was));
+        Flight{shipFrom_.back(), shipTo_.back(), 0}.arrivingHeading().value_or(headingBefore(i)));
   }
   // The blockade: swooping from the planet it was on to the next (or
   // dropping onto the first, from above)
@@ -110,6 +124,10 @@ ShipPose BoardMotion::ship(std::size_t ship, float t) const {
   return Flight{shipFrom_[ship], shipTo_[ship], 0}.pose(t, headingAtRest_[ship]);
 }
 
+float BoardMotion::restingHeading(std::size_t ship) const {
+  return ship < headingAtRest_.size() ? headingAtRest_[ship] : 0;
+}
+
 std::optional<ShipPose> BoardMotion::blockade(float t) const {
   if (!blockade_)
     return std::nullopt;
@@ -137,6 +155,24 @@ DustRing dustRing(float dust, float spreadsTo) {
       .material = {.shading = ScratchPadd::Scene::Material::Shading::Unlit,
                    .colour = {236, 226, 204},
                    .alpha = static_cast<std::uint8_t>(26 * (1 - std::clamp(dust, 0.0f, 1.0f)))}};
+}
+
+std::array<RippleRing, 2> spaceRipple(float ripple) {
+  constexpr float kSecondAfter = 0.3f;                   // (of the ripple's time)
+  constexpr float kTurn = std::numbers::pi_v<float> / 3; // (a sixth: the hexagon turns visibly)
+  std::array<RippleRing, 2> rings{};
+  for (std::size_t i = 0; i < rings.size(); ++i) {
+    const float after = kSecondAfter * static_cast<float>(i);
+    const float t = std::clamp((ripple - after) / (1 - kSecondAfter), 0.0f, 1.0f);
+    const float out = ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::EaseOut, t);
+    const float shows = std::min(1.0f, t * 6) * (1 - t); // (quickly in, slowly out)
+    rings[i] = {.spread = 0.55f + 0.75f * out,
+                .turn = (i == 0 ? kTurn : -kTurn) * out,
+                .material = {.shading = ScratchPadd::Scene::Material::Shading::Unlit,
+                             .colour = {176, 160, 255},
+                             .alpha = static_cast<std::uint8_t>(std::lround(28 * shows))}};
+  }
+  return rings;
 }
 
 Landing BoardMotion::landing(std::size_t station, float t) const {
