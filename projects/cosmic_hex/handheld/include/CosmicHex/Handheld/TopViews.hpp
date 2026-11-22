@@ -26,6 +26,8 @@
 #include <ScratchPadd/Scene/Scene.hpp>
 
 #include <array>
+#include <string>
+#include <string_view>
 
 namespace CosmicHex::Handheld {
 
@@ -107,8 +109,68 @@ void drawDealtCards(const TopFrame &frame, const DealtShow &show, int chosen,
 // for each, five at most, a count past five), their action cards across
 // the top, each card coming in as `show` has it
 void drawResources(const TopFrame &frame, const Player &player, const CardsShow &show);
+// How wide a line of text is at a scale, in points
+using TextWidth = float (*)(std::string_view text, float scale);
+// How a layout worked out before drawing measures text: the platform's
+// font (the overlay's) unless another is asked for (a test's)
+struct TextMeasure {
+  ScratchPadd::Scene::LineHeight lineHeight = ScratchPadd::Scene::Overlay::lineHeight;
+  TextWidth width = ScratchPadd::Scene::Overlay::textWidth;
+};
+
+// Where another player's panel puts what it shows on a screen `width` x
+// `height` (points from the panel's top), worked out from the screen's
+// size and the font's lines the same way on every screen: `name` and
+// their points down the left; their resource and action cards face down
+// in two columns beside them, fanned, six a row, a second row under the
+// first past six; their badges and pieces under the cards; their planets,
+// the label beside the first row; their Charters along the bottom. The
+// words, the pieces and the planets keep their size; the cards take the
+// room left between the header and the pieces (as big as a DS's 36 at
+// most), and a row fans out when it's short, closing up as it fills.
+struct OtherPlayerLayout {
+  static constexpr int kCardsARow = 6, kCardsShown = 12, kPlanetRows = 2;
+  float textScale = 1, nameScale = 1.5f, labelScale = 1, chartersScale = 1;
+  float unit = 1;   // (a DS's point for shapes and room: the screen's scale both ways)
+  float margin = 0; // (the panel's lines in from the screen's edges)
+  float frameTop = 0, frameBottom = 0; // (the panel's two lines)
+  float left = 0, right = 0;           // (what's on it, across)
+  ScratchPadd::Scene::LineBox name, points;
+  // The cards: each column's left, the room each has across, the labels'
+  // line over them, the first row's top, a card's size and the rows' step
+  float resourcesX = 0, actionsX = 0, columnWidth = 0;
+  std::string resourcesLabel, actionsLabel; // ("RESOURCES 9"; a shorter word where that won't fit)
+  ScratchPadd::Scene::LineBox cardLabels;
+  float cardsTop = 0, cardWidth = 0, cardHeight = 0, rowStep = 0;
+  int cardRows = 1;
+  float cardsBottom() const;
+  // How far apart a row of `inRow` cards fans: wide when there are few,
+  // closer as it fills, never past the column
+  float fanStep(int inRow) const;
+  // The pieces: each group's left (badges, ships, stations, colonies), the
+  // icons' middle and half their height, a count's line on them, the
+  // groups' names under them
+  std::array<float, 4> piecesX{};
+  float piecesMiddle = 0, pieceHalf = 0;
+  ScratchPadd::Scene::LineBox pieceCounts, pieceNames;
+  // The planets: their label (on the first row), the first hexagon's
+  // middle, the hexagons' corner radius and steps, how many a row and
+  // how many show (past what fits, the last place says how many more)
+  ScratchPadd::Scene::LineBox planetsLabel;
+  float planetsX = 0, planetsY = 0, planetRadius = 0, planetStep = 0, planetRowStep = 0;
+  int planetsARow = 1, planetsShown = 0;
+  float planetsBottom() const;
+  // The Charters' line (none: an empty box at the bottom)
+  ScratchPadd::Scene::LineBox charters;
+};
+OtherPlayerLayout otherPlayerLayout(const PlayerView &view, std::string_view name, float width,
+                                    float height, TextMeasure measure = {});
+// "Charters: ..." for the Charters a player has revealed (empty for none)
+std::string chartersLine(const PlayerView &view);
+
 // What everyone can see of a player, on a panel sliding down from the top
-// (`across`: how far it's slid sideways, in screen widths: the carousel)
+// (`across`: how far it's slid sideways, in screen widths: the carousel),
+// laid out by otherPlayerLayout
 void drawOtherPlayer(const TopFrame &frame, const PlayerView &view, float down, float across = 0);
 // An action card played or a Charter revealed (CardPlayShow): rising from
 // its player, turning over, held big to be read, then away

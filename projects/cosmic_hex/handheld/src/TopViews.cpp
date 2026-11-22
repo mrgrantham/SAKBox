@@ -43,12 +43,13 @@ Scene::Colour fadedIn(Scene::Colour colour, float amount, Scene::Colour under = 
 constexpr float kPi = 3.14159265f;
 
 // The largest scale from `largest` down to `smallest`, in four steps, that
-// `text` fits `width` at as drawn (its letters' spacing included);
-// `smallest` if none does
-float scaleToFit(std::string_view text, float width, float largest, float smallest) {
+// `text` fits `width` at as drawn (its letters' spacing included), as
+// `textWidth` measures it; `smallest` if none does
+float scaleToFit(std::string_view text, float width, float largest, float smallest,
+                 TextWidth textWidth = Scene::Overlay::textWidth) {
   const float step = (largest - smallest) / 4;
   float scale = largest;
-  while (scale > smallest && Scene::Overlay::textWidth(text, scale) > width)
+  while (scale > smallest && textWidth(text, scale) > width)
     scale = std::max(smallest, scale - step);
   return scale;
 }
@@ -534,9 +535,147 @@ void drawGained(const TopFrame &f, const Resources &held, const HandShow &show) 
 
 // ------------------------------------------------------------ Other player
 
+float OtherPlayerLayout::cardsBottom() const {
+  return cardsTop + rowStep * static_cast<float>(cardRows - 1) + cardHeight;
+}
+
+float OtherPlayerLayout::fanStep(int inRow) const {
+  if (inRow <= 1)
+    return 0;
+  // (at most two fifths of a card apart, so the backs read as a hand)
+  constexpr float kWidest = 0.4f;
+  return std::min(kWidest * cardWidth, (columnWidth - cardWidth) / static_cast<float>(inRow - 1));
+}
+
+float OtherPlayerLayout::planetsBottom() const {
+  if (planetsShown == 0)
+    return planetsLabel.bottom;
+  const int rows = (planetsShown + planetsARow - 1) / planetsARow;
+  return planetsY + planetRowStep * static_cast<float>(rows - 1) + planetRadius;
+}
+
+std::string chartersLine(const PlayerView &view) {
+  if (view.charters.empty())
+    return {};
+  std::string line = "Charters:";
+  for (const Art::Card card : view.charters)
+    line += " " + std::string(Art::wordsOf(card).shortTitle);
+  return line;
+}
+
+OtherPlayerLayout otherPlayerLayout(const PlayerView &view, std::string_view name, float width,
+                                    float height, TextMeasure measure) {
+  OtherPlayerLayout l;
+  // Words the size every view's are (the screen's width over a DS's);
+  // shapes and room in a DS's points scaled as far as the screen goes both
+  // ways (the 3DS's is wider for its height)
+  const float k = width / 256, u = std::min(k, height / 192);
+  l.textScale = k;
+  l.unit = u;
+  const auto line = [&](float scale) { return measure.lineHeight(scale); };
+  const float margin = 3 * u, inside = 7 * u, gap = 2 * u, between = 5 * u;
+  l.margin = margin;
+  l.frameTop = margin;
+  l.frameBottom = height - margin - 1;
+  l.left = margin + inside;
+  l.right = width - margin - inside;
+  const float top = l.frameTop + inside, bottom = l.frameBottom - margin;
+
+  // The cards' columns, where a DS's were (84 and 170 of its 256), as
+  // wide as the narrower leaves; the name fitted to the room left of them
+  l.resourcesX = width * 84 / 256;
+  l.actionsX = width * 170 / 256;
+  l.columnWidth = std::min(l.actionsX - l.resourcesX - gap, l.right - l.actionsX);
+  l.nameScale = scaleToFit(name, l.resourcesX - gap - l.left, 1.5f * k, k, measure.width);
+  const auto header = Scene::stackDown(top, std::array{l.nameScale, k}, gap, measure.lineHeight);
+  l.name = header[0];
+  l.points = header[1];
+  // (both labels at one scale, the longer fitting its column; where it
+  // won't at the smallest, a shorter word: a pixel font shrinks only so far)
+  const auto labelScale = [&](const std::string &a, const std::string &b) {
+    const std::string &longer = measure.width(a, k) < measure.width(b, k) ? b : a;
+    return scaleToFit(longer, l.columnWidth, k, 0.6f * k, measure.width);
+  };
+  const auto fits = [&](const std::string &text, float scale) {
+    return measure.width(text, scale) <= l.columnWidth;
+  };
+  const std::string cards = std::to_string(view.actionCards);
+  for (const std::string_view word : {"RESOURCES", "RES"}) {
+    l.resourcesLabel = std::string(word) + " " + std::to_string(view.resourceCards);
+    l.actionsLabel = "CARDS " + cards;
+    l.labelScale = labelScale(l.resourcesLabel, l.actionsLabel);
+    if (fits(l.resourcesLabel, l.labelScale) && fits(l.actionsLabel, l.labelScale))
+      break;
+  }
+  l.cardLabels = Scene::stackDown(top, std::array{l.labelScale}, 0, measure.lineHeight)[0];
+  l.cardsTop = l.cardLabels.bottom + gap;
+
+  // The Charters along the bottom, fitted across
+  const std::string charters = chartersLine(view);
+  l.chartersScale =
+      charters.empty() ? k : scaleToFit(charters, l.right - l.left, k, 0.6f * k, measure.width);
+  l.charters = charters.empty()
+                   ? Scene::LineBox{bottom, bottom}
+                   : Scene::stackUp(bottom, std::array{l.chartersScale}, 0, measure.lineHeight)[0];
+
+  // The planets: hexagons a DS's size, or big enough for two digits in
+  // this font; as many a row as fit right of their label, two rows
+  constexpr float kSqrt3 = 1.7320508f; // (a pointy hexagon's width over its radius)
+  l.planetRadius = std::max(12 * u, (measure.width("88", k) + 2 * gap) / kSqrt3);
+  l.planetStep = kSqrt3 * l.planetRadius + 4 * u;
+  l.planetRowStep = 2 * l.planetRadius + u;
+  const float labelWide = measure.width("PLANETS", k);
+  l.planetsX = l.left + labelWide + 3 * gap + kSqrt3 * l.planetRadius / 2;
+  l.planetsARow = std::max(
+      1, 1 + static_cast<int>((l.right - kSqrt3 * l.planetRadius / 2 - l.planetsX) / l.planetStep));
+  const int planets = static_cast<int>(view.planets.size());
+  l.planetsShown = std::min(planets, OtherPlayerLayout::kPlanetRows * l.planetsARow);
+  const int planetRows = std::max(1, (l.planetsShown + l.planetsARow - 1) / l.planetsARow);
+  const float planetsHigh =
+      planets == 0 ? line(k)
+                   : 2 * l.planetRadius + l.planetRowStep * static_cast<float>(planetRows - 1);
+  // The pieces: icons a DS's size, a count's line on them, names under
+  l.pieceHalf = 6 * u;
+  const float piecesHigh = std::max(2 * l.pieceHalf, l.pieceHalf + line(k) / 2) + gap + line(k);
+
+  // The cards take what's left between the header and the pieces: as big
+  // as a DS's (36 wide) at most, half their column's room at most (six
+  // still fan), the second row showing the first's top band
+  constexpr float kRowShows = 0.36f; // (of a card's height: its band and a little)
+  const auto rowsOf = [](int count) {
+    const int shown = std::min(count, OtherPlayerLayout::kCardsShown);
+    return std::max(1, (shown + OtherPlayerLayout::kCardsARow - 1) / OtherPlayerLayout::kCardsARow);
+  };
+  l.cardRows = std::max(rowsOf(view.resourceCards), rowsOf(view.actionCards));
+  const float sectionsBelow = between + piecesHigh + between + planetsHigh +
+                              (charters.empty() ? 0 : between + l.charters.height());
+  const float room = bottom - sectionsBelow - l.cardsTop;
+  constexpr float kCardShape = 88.0f / 63; // (height over width)
+  const float tallest = room / (1 + kRowShows * static_cast<float>(l.cardRows - 1));
+  l.cardWidth = std::max(0.0f, std::min({36 * u, l.columnWidth / 2, tallest / kCardShape}));
+  l.cardHeight = l.cardWidth * kCardShape;
+  l.rowStep = kRowShows * l.cardHeight;
+
+  // Each under the one before; what room's spare left at the bottom
+  const float piecesTop = std::max(l.cardsBottom(), l.points.bottom) + between;
+  l.piecesMiddle = piecesTop + l.pieceHalf;
+  for (std::size_t i = 0; i < l.piecesX.size(); ++i)
+    l.piecesX[i] = l.left + static_cast<float>(i) * (l.right - l.left) / 4;
+  l.pieceCounts = Scene::stackAround(l.piecesMiddle, std::array{k}, 0, measure.lineHeight)[0];
+  l.pieceNames =
+      Scene::stackDown(std::max(l.piecesMiddle + l.pieceHalf, l.pieceCounts.bottom) + gap,
+                       std::array{k}, 0, measure.lineHeight)[0];
+  const float planetsTop = l.pieceNames.bottom + between;
+  l.planetsY = planetsTop + (planets == 0 ? line(k) / 2 : l.planetRadius);
+  l.planetsLabel = Scene::stackAround(l.planetsY, std::array{k}, 0, measure.lineHeight)[0];
+  return l;
+}
+
 void drawOtherPlayer(const TopFrame &f, const PlayerView &view, float down, float across) {
-  const float k = f.k();
   Scene::Overlay &overlay = f.overlay;
+  const std::string name = f.names.shortOf(view.player);
+  const OtherPlayerLayout l = otherPlayerLayout(view, name, f.width, f.height);
+  const float k = l.textScale, u = l.unit;
   const float top = -f.height * (1 - down);
   const Scene::Colour colour = BoardColours::ofPlayer(view.player);
   // (the backdrop once, behind both panels while they slide past)
@@ -544,87 +683,90 @@ void drawOtherPlayer(const TopFrame &f, const PlayerView &view, float down, floa
     backdrop(f, top, {12, 18, 32}, 29);
   // (everything on it slid sideways together, for the carousel)
   const Scene::Overlay::Mark start = overlay.mark();
-  overlay.rectangle(3 * k, top + 3 * k, f.width - 6 * k, 1, colour);
-  overlay.rectangle(3 * k, top + f.height - 4 * k, f.width - 6 * k, 1, colour);
+  overlay.rectangle(l.margin, top + l.frameTop, f.width - 2 * l.margin, 1, colour);
+  overlay.rectangle(l.margin, top + l.frameBottom, f.width - 2 * l.margin, 1, colour);
   // Name and points
-  overlay.text(10 * k, top + 10 * k, f.names.shortOf(view.player), colour, 1.5f * k);
-  overlay.text(10 * k, top + 32 * k,
+  overlay.text(l.left, top + l.name.top, name, colour, l.nameScale);
+  overlay.text(l.left, top + l.points.top,
                std::to_string(view.points) + (view.points == 1 ? " point" : " points"),
                Palette::kWords, k);
   // Their cards, face down, in the agreed backs: fanned, six a row, a
   // second row under the first when there are more (up to 12 shown), the
-  // count by the label. What's under them moves down to make room
-  constexpr int kBacksARow = 6, kBacksShown = 12;
-  // (36 wide, the user's: bigger; fanned closer, 8 apart, so six still fit
-  // in each column: 36 + 5 x 8 = 76, the columns at 84 and 170)
-  const float backW = 36 * k, backH = backW * 88 / 63, backStep = 8 * k, rowStep = 18 * k;
-  const auto rowsOf = [&](int count) {
-    return std::max(1, (std::min(count, kBacksShown) + kBacksARow - 1) / kBacksARow);
-  };
-  const int rows = std::max(rowsOf(view.resourceCards), rowsOf(view.actionCards));
-  const float extra = backH - 34 * k + rowStep * static_cast<float>(rows - 1);
-  const auto backs = [&](float x, float y, int count, std::string_view label,
-                         Art::CardBack design) {
-    overlay.text(x, y, std::string(label) + " " + std::to_string(count), Palette::kDimWords, k);
+  // count by the label
+  const auto backs = [&](float x, int count, const std::string &label, Art::CardBack design) {
+    overlay.text(x, top + l.cardLabels.top, label, Palette::kDimWords, l.labelScale);
     const Scene::Texture back = f.pictures.backs[static_cast<std::size_t>(design)];
     if (!f.pictures.backSquare || !back)
       return;
-    for (int i = 0; i < std::min(count, kBacksShown); ++i)
+    const int shown = std::min(count, OtherPlayerLayout::kCardsShown);
+    for (int i = 0; i < shown; ++i) {
+      const int row = i / OtherPlayerLayout::kCardsARow;
+      const int inRow =
+          std::min(shown - row * OtherPlayerLayout::kCardsARow, OtherPlayerLayout::kCardsARow);
       // (the cards slide with the panel: they're pictures, not the overlay's)
       picture(f, f.pictures.backSquare, back,
-              x + (across * f.width) + static_cast<float>(i % kBacksARow) * backStep,
-              y + 11 * k + static_cast<float>(static_cast<int>(i / kBacksARow)) * rowStep, backW,
-              backH, kPictureDistance * (1 - 0.002f * static_cast<float>(i)));
+              x + (across * f.width) +
+                  static_cast<float>(i % OtherPlayerLayout::kCardsARow) * l.fanStep(inRow),
+              top + l.cardsTop + static_cast<float>(row) * l.rowStep, l.cardWidth, l.cardHeight,
+              kPictureDistance * (1 - 0.002f * static_cast<float>(i)));
+    }
   };
-  backs(84 * k, top + 10 * k, view.resourceCards, "RESOURCES", Art::kResourceBack);
-  backs(170 * k, top + 10 * k, view.actionCards, "CARDS", Art::kActionBack);
+  backs(l.resourcesX, view.resourceCards, l.resourcesLabel, Art::kResourceBack);
+  backs(l.actionsX, view.actionCards, l.actionsLabel, Art::kActionBack);
   // Badges, ships, stations and colonies as the board draws them (the
   // user's): each a group of its pieces, up to four, or one and how many;
   // its name small under it
-  const auto pieces = [&](float x, int count, std::string_view name, auto &&drawOne) {
-    const float y = top + 66 * k + extra;
+  const float y = top + l.piecesMiddle, h = l.pieceHalf;
+  const auto pieces = [&](std::size_t group, int count, std::string_view name, auto &&drawOne) {
+    const float x = l.piecesX[group];
     constexpr int kMostDrawn = 4;
     for (int i = 0; i < (count > kMostDrawn ? 1 : count); ++i)
-      drawOne(x + 5 * k + static_cast<float>(i) * 11 * k, y);
+      drawOne(x + h + static_cast<float>(i) * 2 * (h - 0.5f * u), y);
     if (count > kMostDrawn)
-      overlay.text(x + 12 * k, y - 4 * k, "x" + std::to_string(count), Palette::kWords, k);
+      overlay.text(x + 2 * h + 2 * u, top + l.pieceCounts.top, "x" + std::to_string(count),
+                   Palette::kWords, k);
     if (count == 0)
-      overlay.text(x + 1 * k, y - 4 * k, "none", Palette::kDimWords, k);
-    overlay.text(x, y + 8 * k, name, Palette::kDimWords, k);
+      overlay.text(x, top + l.pieceCounts.top, "none", Palette::kDimWords, k);
+    overlay.text(x, top + l.pieceNames.top, name, Palette::kDimWords, k);
   };
-  pieces(10 * k, view.badges, "badges",
-         [&](float x, float y) { drawBadge(overlay, x, y, 5.5f * k, true); });
-  pieces(72 * k, view.ships, "ships", [&](float x, float y) {
-    overlay.triangle(x, y - 5 * k, x - 4.5f * k, y + 4 * k, x + 4.5f * k, y + 4 * k, colour);
+  pieces(0, view.badges, "badges",
+         [&](float x, float yy) { drawBadge(overlay, x, yy, 0.9f * h, true); });
+  pieces(1, view.ships, "ships", [&](float x, float yy) {
+    overlay.triangle(x, yy - 0.8f * h, x - 0.75f * h, yy + 0.7f * h, x + 0.75f * h, yy + 0.7f * h,
+                     colour);
   });
-  pieces(134 * k, view.stations, "stations", [&](float x, float y) {
-    overlay.rectangle(x - 3.5f * k, y - 3.5f * k, 7 * k, 7 * k, colour);
+  pieces(2, view.stations, "stations", [&](float x, float yy) {
+    overlay.rectangle(x - 0.6f * h, yy - 0.6f * h, 1.2f * h, 1.2f * h, colour);
   });
-  pieces(196 * k, view.colonies, "colonies", [&](float x, float y) {
-    overlay.rectangle(x - 4.5f * k, y - 4.5f * k, 9 * k, 9 * k, colour);
-    overlay.rectangle(x - 1.5f * k, y - 1.5f * k, 3 * k, 3 * k, {20, 22, 30});
+  pieces(3, view.colonies, "colonies", [&](float x, float yy) {
+    overlay.rectangle(x - 0.75f * h, yy - 0.75f * h, 1.5f * h, 1.5f * h, colour);
+    overlay.rectangle(x - 0.25f * h, yy - 0.25f * h, 0.5f * h, 0.5f * h, {20, 22, 30});
   });
-  // Their planets: a hexagon each in its kind's colour, its number on it
-  overlay.text(10 * k, top + 88 * k + extra, "PLANETS", Palette::kDimWords, k);
+  // Their planets: a hexagon each in its kind's colour, its number on it;
+  // past what fits, the last place says how many more
+  overlay.text(l.left, top + l.planetsLabel.top, "PLANETS", Palette::kDimWords, k);
   if (view.planets.empty())
-    overlay.text(64 * k, top + 88 * k + extra, "none yet", Palette::kDimWords, k);
-  for (std::size_t i = 0; i < view.planets.size() && i < 16; ++i) {
-    const float x = (22 + 26 * static_cast<float>(i % 8)) * k;
-    const float y = top + (110 + 25 * static_cast<float>(static_cast<int>(i / 8))) * k + extra;
-    const PlayerView::Planet &planet = view.planets[i];
-    overlay.hexagon(x, y, 12 * k, BoardColours::ofKind(planet.kind), true);
+    overlay.text(l.planetsX - l.planetRadius, top + l.planetsLabel.top, "none yet",
+                 Palette::kDimWords, k);
+  const int planets = static_cast<int>(view.planets.size());
+  for (int i = 0; i < l.planetsShown; ++i) {
+    const int row = i / l.planetsARow, column = i % l.planetsARow;
+    const float x = l.planetsX + static_cast<float>(column) * l.planetStep;
+    const float py = top + l.planetsY + static_cast<float>(row) * l.planetRowStep;
+    if (i == l.planetsShown - 1 && planets > l.planetsShown) {
+      overlay.textCentred(x, py, "+" + std::to_string(planets - i), Palette::kWords, k);
+      continue;
+    }
+    const PlayerView::Planet &planet = view.planets[static_cast<std::size_t>(i)];
+    overlay.hexagon(x, py, l.planetRadius, BoardColours::ofKind(planet.kind), true);
     if (planet.colony)
-      overlay.hexagon(x, y, 8 * k, colour, true);
-    overlay.textCentred(x, y, std::to_string(planet.number), {20, 22, 30}, k);
+      overlay.hexagon(x, py, 2 * l.planetRadius / 3, colour, true);
+    overlay.textCentred(x, py, std::to_string(planet.number), {20, 22, 30}, k);
   }
   // Their revealed Charters
-  if (!view.charters.empty()) {
-    std::string charters = "Charters:";
-    for (const Art::Card card : view.charters)
-      charters += " " + std::string(Art::wordsOf(card).shortTitle);
-    overlay.text(10 * k, std::min(top + 156 * k + extra, top + f.height - 14 * k), charters,
-                 Palette::kWords, k);
-  }
+  if (!view.charters.empty())
+    overlay.text(l.left, top + l.charters.top, chartersLine(view), Palette::kWords,
+                 l.chartersScale);
   overlay.moveSince(start, across * f.width, 0);
 }
 

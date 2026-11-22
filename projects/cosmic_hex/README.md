@@ -293,6 +293,10 @@ Each tile shows its face, and a turned-over planet its number on a round chip ([
 - **Opening and closing:** it slides down and back up (0.45 s, the Gentle curve); on a DS the board under it holds frames near 20 a second while it moves, and once it covers the screen the board isn't drawn.
 - **Another player:** chosen with the tabs, or left and right (whoever's turn it is: a screen to look at takes the D-pad any time), the views slide sideways like a carousel, the next player's in from the right and the one before from the left (0.3 s, slow in and out; `PanelShow::drawn`).
 - **Badges:** the ones held (0 to 2); every 3 become a point at once, counted in the points.
+- **Laid out from the screen** (`otherPlayerLayout`): the same code on every screen, no console's own numbers. Words are the size every view's are (the screen's width over a DS's); shapes and gaps are a DS's points scaled as far as the screen goes both ways (the 3DS's is wider for its height); each line is as tall as the screen's font draws it (`LineStack.hpp`).
+- **The cards take the room left:** the header, the pieces, the planets and the Charters keep their size, and the cards get what's between the header and the pieces: a DS's 36 wide at most, smaller with two rows on a 3DS (Orbitron's taller lines), the second row showing the first's title band.
+- **A row fans out when it's short** and closes up as it fills, six a row at most, a second row past six, twelve shown (the count by the label); a label that won't fit its column shrinks, or says RES.
+- **Planets:** the label beside the first row, as many a row as fit across, two rows; past those, the last place says how many more. A hexagon is big enough for two digits in the screen's font.
 - **Paused while open:** Show resources and this panel hold the game, and a grey PAUSED tag at the top says so ("close to go on").
 
 ### Animation
@@ -457,7 +461,7 @@ bazel test //projects/cosmic_hex/...
 - the text of the starting state and of every action;
 - two bots playing a whole game to a winner, whose action log replays exactly.
 
-`handheld/`'s tests check what the app plays and draws, each part on its own (`BoardPicture_test`, `BottomScreen_test`, `TopViews_test` and the rest; `DiscoveryLayout_test` lays out a discovery on the DS's screen in Silkscreen and the 3DS's in Orbitron, and checks its words and tile don't overlap or leave the screen, and its backdrop stays behind the tile; `CardPlaces_test` checks every card flying to another player lands on their row of the points bars, for 2 to 4 players on both screens; `Hud_test` that a badge's star is inside its hexagon).
+`handheld/`'s tests check what the app plays and draws, each part on its own (`BoardPicture_test`, `BottomScreen_test`, `TopViews_test` and the rest; `DiscoveryLayout_test` lays out a discovery on the DS's screen in Silkscreen and the 3DS's in Orbitron, and checks its words and tile don't overlap or leave the screen, and its backdrop stays behind the tile; `OtherPlayerLayout_test` lays out another player's panel on both handhelds' screens and on screens of other shapes, for hands from none to a thousand cards and up to forty planets, and checks no two parts overlap and all stay on the screen; `CardPlaces_test` checks every card flying to another player lands on their row of the points bars, for 2 to 4 players on both screens; `Hud_test` that a badge's star is inside its hexagon).
 
 ## Dice
 

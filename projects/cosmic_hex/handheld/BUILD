@@ -460,6 +460,21 @@ cc_test(
 
 # The views over the board drawn through their timelines on a desktop's
 # renderer (it needs a window): none may crash at any moment
+# Another player's panel laid out on each handheld's screen in its font,
+# and on screens of other shapes (no window needed), for hands from none to
+# far more than show: nothing overlaps or leaves the screen
+cc_test(
+    name = "OtherPlayerLayout_test",
+    size = "small",
+    srcs = ["tests/OtherPlayerLayout_test.cpp"],
+    deps = [
+        ":handheld",
+        "//projects/scratchpadd/scene/desktop",  # (links a renderer; draws nothing)
+        "//projects/scratchpadd/scene/overlay_text",
+        "@gtest//:gtest_main",
+    ],
+)
+
 cc_test(
     name = "TopViews_test",
     size = "small",
