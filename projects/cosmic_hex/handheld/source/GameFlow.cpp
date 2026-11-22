@@ -88,7 +88,8 @@ void ScreenPadd::startBanners(const TableSnapshot &snapshot) {
 // cards dealt, the points bars' outline moving
 void ScreenPadd::startShows(const TableSnapshot &snapshot) {
   // A home's pay on its die: after the turn's banner (HomePayShow)
-  homePay_.saw(snapshot.played, showsNow() + banner_.remaining(gameClock_.seconds()));
+  homePay_.saw(snapshot.played, snapshot.state,
+               showsNow() + banner_.remaining(gameClock_.seconds()));
   // A roll's pay: once the dice are pulled away (RollPayShow)
   if (latest_)
     rollPay_.saw(snapshot.played, latest_->state);

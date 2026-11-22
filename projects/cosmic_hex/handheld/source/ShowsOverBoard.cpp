@@ -51,7 +51,7 @@ void ScreenPadd::drawShowsOverBoard(const TopFrame &frame) {
     drawBanner(renderer_->overlay());
   } else if (homePay_.moving(showsNow()) && latest_)
     drawHomePay(frame, homePay_, latest_->state,
-                mode_ == Mode::Playing && homePay_.current()->player == 0, closeUps_.cards[0]);
+                mode_ == Mode::Playing && homePay_.current()->player == 0, closeUps_.cards);
   else if (cardPlay_.moving(showsNow()) && latest_)
     drawCardPlay(frame, cardPlay_, latest_->state, mode_ == Mode::Playing ? 0 : -1);
   else if (dealt_.on())
@@ -278,28 +278,31 @@ void ScreenPadd::closeUpTileInto(ScratchPadd::PictureSlot &slot, CosmicHex::Art:
 }
 
 void ScreenPadd::closeUpCards(const std::vector<CosmicHex::Art::Card> &cards) {
+  for (std::size_t i = 0; i < cards.size() && i < closeUps_.cards.size(); ++i)
+    closeUpCardInto(closeUps_.cards[i], cards[i]);
+}
+
+void ScreenPadd::closeUpCardInto(ScratchPadd::PictureSlot &slot, CosmicHex::Art::Card card) {
   const int size = kThisPlatform.closeUpSize, height = size * 52 / 63;
-  for (std::size_t i = 0; i < cards.size() && i < closeUps_.cards.size(); ++i) {
-    const auto recipe = ScratchPadd::TextureRecipe::read(CosmicHex::Art::cardRecipeOf(cards[i]));
-    if (!recipe)
-      continue;
-    closeUps_.cards[i].show(
-        *renderer_, static_cast<int>(cards[i]),
-        [&](int first, int rows) {
-          // (the card's picture: its drawing (the card's 63 x 88) down to
-          // the picture's foot, `height`; the slot's rows below it clear)
-          std::vector<Scene::Colour> band(static_cast<std::size_t>(size) *
-                                          static_cast<std::size_t>(rows));
-          const int drawn = std::clamp(height - first, 0, rows);
-          if (drawn > 0) {
-            const auto pixels = recipePixels(*recipe, size, size * 88 / 63,
-                                             kThisPlatform.recipeSmoothing, {first, drawn});
-            std::copy(pixels.begin(), pixels.end(), band.begin());
-          }
-          return band;
-        },
-        kThisPlatform.closeUpBandRows);
-  }
+  const auto recipe = ScratchPadd::TextureRecipe::read(CosmicHex::Art::cardRecipeOf(card));
+  if (!recipe)
+    return;
+  slot.show(
+      *renderer_, static_cast<int>(card),
+      [&](int first, int rows) {
+        // (the card's picture: its drawing (the card's 63 x 88) down to
+        // the picture's foot, `height`; the slot's rows below it clear)
+        std::vector<Scene::Colour> band(static_cast<std::size_t>(size) *
+                                        static_cast<std::size_t>(rows));
+        const int drawn = std::clamp(height - first, 0, rows);
+        if (drawn > 0) {
+          const auto pixels = recipePixels(*recipe, size, size * 88 / 63,
+                                           kThisPlatform.recipeSmoothing, {first, drawn});
+          std::copy(pixels.begin(), pixels.end(), band.begin());
+        }
+        return band;
+      },
+      kThisPlatform.closeUpBandRows);
 }
 
 // Each frame: the game held while a roll's pay flies
@@ -360,14 +363,16 @@ void ScreenPadd::updateCardPlay() {
     holdFor(Hold::CardPlay, step.hold);
 }
 
-// Each frame: the home's pay held over the game; its card drawn sharp
-// (into the first dealt card's slot: the two never show together, and
-// the DS has no texture memory for another)
+// Each frame: the home's pay held over the game; its cards drawn sharp,
+// before they show, into the dealt cards' two slots by turns (the dealt
+// cards never show with it, and the DS has no texture memory for more):
+// the next drawn while the last still shows
 void ScreenPadd::updateHomePay() {
-  if (const HomePayShow::Pay *pay = homePay_.current(); pay && pay->resource) {
-    const auto card = static_cast<CosmicHex::Art::Card>(*pay->resource);
-    if (!closeUps_.cards[0].showing(static_cast<int>(card)))
-      closeUpCards({card});
+  for (const HomePayShow::Card &ahead : homePay_.cardsAhead(showsNow())) {
+    const auto card = static_cast<CosmicHex::Art::Card>(ahead.resource);
+    ScratchPadd::PictureSlot &slot = closeUps_.cards[static_cast<std::size_t>(ahead.order % 2)];
+    if (!slot.showing(static_cast<int>(card)))
+      closeUpCardInto(slot, card);
   }
   const HomePayShow::Step step = homePay_.update(showsNow());
   if (step.hold || step.letGo)

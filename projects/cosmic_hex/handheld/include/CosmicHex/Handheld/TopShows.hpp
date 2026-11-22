@@ -11,8 +11,9 @@
 //   CardsShow      Show resources: your cards coming in one after another,
 //                  and going back off the same way
 //   FirstRollShow  who goes first: every player's die thrown, ties again
-//   HomePayShow    a home's pay on the home die: the die out of the home,
-//                  its face, the card big, then off to the player's hand
+//   HomePayShow    a home's pay on the home die: the home's tile pulled out
+//                  of the board, spun to its side, the card big then off to
+//                  its player; spun again for each pay, then set back
 //   RollPayShow    what a roll pays: a card from each paying planet to its
 //                  owner, one a little after another; and other cards
 //                  changing hands: the starting hand dealt from the bank,
@@ -28,6 +29,7 @@
 
 #include <ScratchPadd/Motion/Motion.hpp>
 
+#include <algorithm>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -250,24 +252,49 @@ private:
 };
 
 // ---------------------------------------------------------------------------
-// A home's pay, when the home die is on (Settings::homeDie): its die springs
-// out of the home (a wind-up, then up along an arc), tumbles, settles on a
-// face (a resource, or the star: the player's choice); the resource's card
-// grows out of it, big, with what it is; then flies to the player's hand.
-// Grounded in docs/research/animation-whimsy.md (anticipation, arcs,
-// follow-through, timing)
+// A home's pay, when the home die is on (Settings::homeDie). The die is
+// the home's own tile: it dips into the board (a wind-up), is pulled up out
+// of its place (left a dark pit) and along an arc to face you; it spins
+// about its long axis, winding up first and slowing to the side chosen (a
+// resource, or the star: the player's choice), a little past and back;
+// the resource's card grows out of it, big, with what it is, then flies to
+// its player (CardPlaces). A home paying more than one stays out and spins
+// again as the card leaves; after the last it flies back over its place,
+// turning face up, drops in and settles, the build's dust where it seats.
+// Grounded in docs/research/animation-whimsy.md (Lasseter: anticipation,
+// arcs, slow in and out, follow-through, overlap, timing)
 
 class HomePayShow {
 public:
-  // The parts, in seconds
-  static constexpr float kSecondsUp = 0.55f;     // out of the home, along an arc
-  static constexpr float kSecondsTumble = 0.8f;  // turning, faces flickering
-  static constexpr float kSecondsSettle = 0.35f; // landing on its face (Settle)
+  // The parts, in seconds (timing says weight: the die a solid thing, slow
+  // to start and to stop; the card a light one)
+  static constexpr float kSecondsWindUp = 0.18f; // a dip into the board, held a moment
+  static constexpr float kSecondsLift = 0.65f;   // up out of it and along an arc to face you
+  static constexpr float kSecondsSpin = 1.2f;    // about its long axis to the side chosen
   static constexpr float kSecondsCard = 0.4f;    // the card growing out of the die
-  static constexpr float kSecondsHold = 1.1f;    // read it
-  static constexpr float kSecondsAway = 0.5f;    // the card off to the hand
-  static constexpr float kDieSeconds = kSecondsUp + kSecondsTumble + kSecondsSettle;
-  static constexpr float kSeconds = kDieSeconds + kSecondsCard + kSecondsHold + kSecondsAway;
+  static constexpr float kSecondsHold = 1.0f;    // read it
+  static constexpr float kSecondsAway = 0.5f;    // the card off to its player
+  static constexpr float kSecondsBack = 0.6f;    // back along the arc, over its place, face up
+  static constexpr float kSecondsDrop = 0.14f;   // dropping in, faster and faster
+  static constexpr float kSecondsSeat = 0.25f;   // a sink a hair past its place, and back
+  static constexpr float kSecondsDust = 0.45f;   // the dust where it seats
+  // The die out; a pay, from its spin until its card leaves (the next spin,
+  // or the die's way back, starts as it does: overlap); and the die back
+  static constexpr float kSecondsOut = kSecondsWindUp + kSecondsLift;
+  static constexpr float kSecondsPay = kSecondsSpin + kSecondsCard + kSecondsHold;
+  static constexpr float kSecondsHome =
+      kSecondsBack + kSecondsDrop + std::max(kSecondsSeat, kSecondsDust);
+  // A home paying `pays` in a row, from the die's wind-up to its dust gone
+  static constexpr float seconds(int pays) {
+    return kSecondsOut + kSecondsPay * static_cast<float>(pays) +
+           std::max(kSecondsAway, kSecondsHome);
+  }
+  // How far it dips into the board before it lifts, and sinks past its
+  // place as it seats (board units)
+  static constexpr float kDip = 0.12f, kSeatSink = 0.05f;
+  // Its spin: back this far first (radians), at least a whole turn, and
+  // this far past the side before it settles back
+  static constexpr float kWindTurn = 0.35f, kOvershoot = 0.2f;
 
   // A pay: whose home, the die's face (0 to kResources - 1 a resource,
   // kResources the star), and the resource once known (the star's: when
@@ -276,34 +303,90 @@ public:
     int player = 0;
     int face = 0;
     std::optional<Resource> resource;
+    double seenAt = 0;              // (when it came, on the shows' clock)
+    std::optional<double> chosenAt; // (the star's resource: when it was chosen)
+    bool moreAfter = false;         // (the game said this home pays again)
+    double paidUpAt = 0;            // (when the game last said it doesn't)
   };
-  // The moves made since the last look (TableGame::played): home die rolls
-  // queued, a choice after the star filling it in
-  void saw(const std::vector<TableGame::Played> &moves, double now);
+  // The moves made since the last look, and the game they made: home die
+  // rolls queued, a choice after the star filling it in; whether the home
+  // that paid last pays again (its die then waits out for the next roll)
+  void saw(const std::vector<TableGame::Played> &moves, const State &state, double now);
 
-  // Each frame: what the app should do (hold the game while one shows,
-  // let it go after the last)
+  // Each frame: what the app should do (hold the game while the die moves
+  // and its cards show; let it go while it waits for the game, the star's
+  // choice or the next roll, and once it's back)
   struct Step {
     bool hold = false, letGo = false;
   };
   Step update(double now);
 
-  const Pay *current() const { return queue_.empty() ? nullptr : &queue_.front(); }
-  // Where the show is: seconds since it started; nothing when none shows
-  std::optional<float> seconds(double now) const;
-  bool moving(double now) const { return seconds(now).has_value(); }
+  // The first pay of the home showing (its player's); nothing when none
+  const Pay *current() const { return pays_.empty() ? nullptr : &pays_.front(); }
+  bool moving(double now) const;
+  // The player whose home's tile is off the board now (out as the die),
+  // so the board leaves its place empty
+  std::optional<int> dieOutOf(double now) const;
 
-  // The parts' progress at `seconds`, each 0 to 1
-  struct Moment {
-    float up, tumble, settle, card, away;
-    bool waitingForChoice; // (the star, its resource not chosen yet: held)
-    float words;           // (the card's words fading in once it's full size)
+  // The die at `now`: how far it's lifted (0 in its place, kHomeDieRisen
+  // risen out, 1 facing you: homeDiePose's), how far it's sunk (the
+  // wind-up's dip, the seat's settle), its turn about its long axis
+  // (radians, 0 as it lies in the board), and once it's seated its dust (0
+  // to 1); `out` while it's off its place (else only the dust shows)
+  struct Die {
+    float lifted = 0, sink = 0, turn = 0;
+    bool out = false;
+    std::optional<float> dust;
   };
-  Moment at(float seconds) const;
+  std::optional<Die> die(double now) const;
+  // The card showing (one at a time: a spin outlasts a card's way off):
+  // which pay of the home's (0 the first: its close-up's slot is order %
+  // 2), its resource, how far grown (0 to 1), held, off to its player (0 to
+  // 1) and its words faded in
+  struct Card {
+    int order = 0;
+    Resource resource{};
+    float grown = 0, away = 0, words = 0;
+  };
+  std::optional<Card> card(double now) const;
+  // The cards still to show or showing, the next two at most, so their
+  // close-ups can be drawn before they show (each in slot order % 2)
+  std::vector<Card> cardsAhead(double now) const;
+  // The star landed and the player's choice not made yet
+  bool waitingForChoice(double now) const;
+
+  // Where a spin from `from` (radians) ends for side `face`: past at
+  // least a whole turn, the way it turns (towards negative, as
+  // homeDieTurn's sides come)
+  static float spinEnd(float from, int face);
+  // The turn `seconds` into a spin from `from` to side `face`: back a
+  // little first (anticipation), off fast and slowing to the side (slow
+  // in), a little past it and back (follow-through)
+  static float spinAt(float from, int face, float seconds);
 
 private:
-  std::vector<Pay> queue_;
-  std::optional<double> startedAt_;
+  // The home showing's timeline, worked out from its pays and when what
+  // they wait for came: each spin's start and, once known, its card's;
+  // the die's way back once it's known no more come
+  struct Spin {
+    double at = 0;
+    std::optional<double> cardAt;
+  };
+  struct Timeline {
+    double outAt = 0;
+    std::size_t pays = 0; // (the home's: the first of pays_)
+    std::vector<Spin> spins;
+    std::optional<double> backAt;
+    std::optional<double> leavesAt() const; // (the last spin's card leaving)
+    std::optional<double> endAt() const;
+  };
+  Timeline timeline() const;
+  // The turn after the spins started by `now`, and where the last ended
+  float turnAt(const Timeline &t, double now) const;
+  bool waitingForGame(const Timeline &t, double now) const;
+
+  std::vector<Pay> pays_;
+  double outAt_ = 0; // (the home showing's die leaving its place)
   bool held_ = false;
 };
 

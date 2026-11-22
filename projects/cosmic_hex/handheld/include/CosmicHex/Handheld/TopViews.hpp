@@ -31,8 +31,8 @@ namespace CosmicHex::Handheld {
 
 // The pictures the views draw with, loaded once by the app
 struct TopPictures {
-  ScratchPadd::Scene::Mesh hexTile, numberChip, column; // (the board's own pieces)
-  ScratchPadd::Scene::Mesh die, homeDie;                // (the dice's, DicePieces)
+  ScratchPadd::Scene::Mesh hexTile, numberChip, column, hexRing; // (the board's own pieces)
+  ScratchPadd::Scene::Mesh die, homeDie;                         // (the dice's, DicePieces)
   // Flat squares, each with its pictures' texture corners (ScreenPictures)
   ScratchPadd::Scene::Mesh pictureSquare, backSquare, closeUpCardSquare;
   std::array<ScratchPadd::Scene::Texture, Art::kFaces> faces{};
@@ -136,11 +136,13 @@ void drawFirstRoll(const TopFrame &frame, const FirstRoll &roll, const FirstRoll
 // its owner (`you`, playing: down to the bottom screen; a bot's, or
 // everyone's when watching: up to their row of the points bars)
 void drawRollPay(const TopFrame &frame, const RollPayShow &show, const State &state, int you);
-// A home's pay: its die out of the home on `state`'s board, its face, the
-// card big (`closeUp` when it holds the resource's card: PictureSlot id,
-// the card), then off to the hand (yours: `yours`, down to the bottom
-// screen; a bot's, up and away)
+// A home's pay: its die, the home's tile on `state`'s board, pulled out
+// of its place (a dark pit left) to face you, spun to its side for each
+// pay; each card big (sharp from `closeUps`[its order % 2] when that holds
+// it: PictureSlot id, the card), then off to its player (CardPlaces: yours,
+// `yours`, down to the bottom screen; a bot's, to their row of the points
+// bars); then the die set back in its place, its dust where it seats
 void drawHomePay(const TopFrame &frame, const HomePayShow &show, const State &state, bool yours,
-                 const ScratchPadd::PictureSlot &closeUp);
+                 const std::array<ScratchPadd::PictureSlot, 2> &closeUps);
 
 } // namespace CosmicHex::Handheld

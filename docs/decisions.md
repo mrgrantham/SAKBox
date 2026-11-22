@@ -163,3 +163,9 @@ Cosmic Hex and Infinifly are their own projects, using ScratchPadd as a library.
 
 - **Decided:** an earned badge is a yellow star inside a yellow hexagon's outline (`drawBadge`, shared by the HUD and another player's panel); the HUD's hexagons a pixel larger (radius 6) and 13 apart so the star reads on a DS.
 - **Why:** the star was in the mockup but never built; both places drew a plain filled hexagon.
+
+## Cosmic Hex: the home die is the home's own tile (2026-11-21)
+
+- **Decided:** a home's pay pulls the home's tile up out of the board as the die (its end the board's own tile mesh with the face texture already loaded, its six sides the resources' colours and the star), its place left a dark pit; it spins about its long axis for each pay without going back between, then flies back over its place, drops in and settles with the build's dust. The show learns that more pays are coming from the game's phase (the dealer's home die roll next) and waits out, letting the game go, until the next roll comes.
+- **Why:** the owner's design: the die should be the homeworld, and a home paying two should spin again rather than go in and come out twice.
+- **Not chosen:** a new texture for the die's face (the DS has no texture memory to spare; the board's face is the same picture); the die's lower part hidden by drawing only what's above the board (the scene layer can't clip; the pit's walls and floor hide it instead, and read as the tile's empty place); stretching the die out of the board as it rises (a rigid thing would squash its coloured insets).

@@ -130,6 +130,15 @@ bool BoardMotion::anything() const {
   return any(stationBuilt_) || any(planetFlipping_) || any(siteFlipping_);
 }
 
+DustRing dustRing(float dust, float spreadsTo) {
+  const float spreading = ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::EaseOut, dust);
+  return {
+      .spread = 1 + (spreadsTo - 1) * spreading,
+      .material = {.shading = ScratchPadd::Scene::Material::Shading::Unlit,
+                   .colour = {236, 226, 204},
+                   .alpha = static_cast<std::uint8_t>(26 * (1 - std::clamp(dust, 0.0f, 1.0f)))}};
+}
+
 Landing BoardMotion::landing(std::size_t station, float t) const {
   Landing landing;
   if (station >= stationBuilt_.size() || !stationBuilt_[station] || t >= kLandingEnds)

@@ -1,4 +1,5 @@
 #include <CosmicHex/Handheld/DicePieces.hpp>
+#include <CosmicHex/Handheld/ScreenPictures.hpp>
 
 #include <ScratchPadd/Motion/Motion.hpp>
 
@@ -188,11 +189,10 @@ Scene::MeshBuilder homeDie(const std::array<Scene::Colour, 5> &resources, Scene:
   constexpr float kPi = 3.14159265f, kSixth = kPi / 3;
   constexpr float kApothem = 0.5f;                      // (1 across its sides)
   const float corner = kApothem / std::cos(kSixth / 2); // (its corners' radius)
-  constexpr float kLength = 1.3f;                       // (along x)
   // (a warm grey, not white, the user's: in the light, white washed out the
   // yellow star and the paler sides)
   constexpr Scene::Colour kBody{196, 188, 172};
-  const float a = kLength / 2;
+  const float a = kHomeDieLength / 2;
   Scene::MeshBuilder m;
   for (int side = 0; side < 6; ++side) {
     const float mid = static_cast<float>(side) * kSixth;
@@ -200,8 +200,8 @@ Scene::MeshBuilder homeDie(const std::array<Scene::Colour, 5> &resources, Scene:
     // The side: a long white quad, facing out (its normal at `mid`)
     m.quad(aroundX(-a, r, corner), aroundX(a, r, corner), aroundX(a, l, corner),
            aroundX(-a, l, corner), kBody);
-    // The ends: a triangle of each white hexagon cap
-    m.triangle({a, 0, 0}, aroundX(a, l, corner), aroundX(a, r, corner), kBody);
+    // The far end's cap: a triangle of its hexagon (the near end, +x, is
+    // the home's tile: homeDieFace)
     m.triangle({-a, 0, 0}, aroundX(-a, r, corner), aroundX(-a, l, corner), kBody);
     // On the side, just proud of it: a coloured hexagon (a resource) or the
     // star, in the side's own plane
@@ -231,6 +231,67 @@ Scene::MeshBuilder homeDie(const std::array<Scene::Colour, 5> &resources, Scene:
     }
   }
   return m;
+}
+
+// ------------------------------------------------------- The home die's poses
+
+namespace {
+constexpr float kPi = 3.14159265f;
+// Half its length, in the board's units
+constexpr float kHomeDieHalf = kHomeDieLength / 2 * kHomeDieScale;
+// How far its bottom rises clear of the board before it turns: room for
+// its corners as it tips
+constexpr float kClearOfTheBoard = 0.3f;
+// How far it's turned from straight across the screen, its face towards
+// you (radians): enough for the face to show beside the side facing you
+constexpr float kFaceShows = 0.5f;
+} // namespace
+
+Scene::Transform homeDieInBoard(const Scene::Vector3 &tile) {
+  // (its x, the long axis, up; its z, side 0's way, along the board's x:
+  // its hexagon's sides then face as the tile's do, pointy-topped)
+  return Scene::Transform::fromAxes({0, 1, 0}, {0, 0, 1}, {1, 0, 0},
+                                    tile - Scene::Vector3{0, kHomeDieHalf, 0});
+}
+
+Scene::Transform homeDieFacing(const Scene::Camera &camera, float width, float height, float x,
+                               float y, float across) {
+  // (as far from the camera as puts its sides `across` pixels apart)
+  const float distance =
+      kHomeDieScale * height /
+      (across * 2 * std::tan(static_cast<float>(camera.fieldOfView) * kPi / 360));
+  const Scene::Vector3 at = solidOnScreen(camera, width, height, x, y, 1, distance).position();
+  const auto [forward, right, up] = viewAxes(camera);
+  const Scene::Vector3 back = -forward;
+  const float c = std::cos(kFaceShows), s = std::sin(kFaceShows);
+  const Scene::Vector3 along = right * c + back * s, side = back * c - right * s;
+  return Scene::Transform::fromAxes(along, side.cross(along), side, at);
+}
+
+Scene::Transform homeDiePose(const Scene::Transform &inBoard, const Scene::Transform &facing,
+                             const Scene::Vector3 &bow, float lifted, float sink, float turn) {
+  const Scene::Vector3 inPlace = inBoard.position();
+  const Scene::Vector3 risen = inPlace + Scene::Vector3{0, 2 * kHomeDieHalf + kClearOfTheBoard, 0};
+  const Scene::Vector3 lowered{0, -sink, 0};
+  const Scene::Transform spin = Scene::Transform::rotation({1, 0, 0}, turn);
+  if (lifted <= kHomeDieRisen) {
+    const float up = std::max(0.0f, lifted) / kHomeDieRisen;
+    return rigidBetween(inBoard, facing, 0, inPlace + (risen - inPlace) * up + lowered) * spin;
+  }
+  const float across = (lifted - kHomeDieRisen) / (1 - kHomeDieRisen);
+  const Scene::Vector3 place =
+      ScratchPadd::Motion::arc(risen, facing.position(), bow, across) + lowered;
+  return rigidBetween(inBoard, facing, across, place) * spin;
+}
+
+Scene::Transform homeDieBody(const Scene::Transform &pose) {
+  return pose * Scene::Transform::scaling({kHomeDieScale, kHomeDieScale, kHomeDieScale});
+}
+
+Scene::Transform homeDieFace(const Scene::Transform &pose) {
+  // (the tile's own axes as the die's, standing in the board: its up the
+  // die's x, its x the die's z, its z the die's y; homeDieInBoard)
+  return pose * Scene::Transform::fromAxes({0, 0, 1}, {1, 0, 0}, {0, 1, 0}, {kHomeDieHalf, 0, 0});
 }
 
 } // namespace CosmicHex::Handheld

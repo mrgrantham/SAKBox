@@ -1,5 +1,6 @@
 #include <CosmicHex/Handheld/ScreenPictures.hpp>
 
+#include <algorithm>
 #include <cmath>
 
 namespace CosmicHex::Handheld {
@@ -14,11 +15,28 @@ Scene::MeshBuilder pictureSquare(float uMax, float vMax) {
   return square;
 }
 
-Scene::Transform onScreenAt(const Scene::Camera &camera, float screenWidth, float screenHeight,
-                            float x, float y, float w, float h, float distance) {
+ViewAxes viewAxes(const Scene::Camera &camera) {
   const Scene::Vector3 forward = (camera.target - camera.eye).normalised();
   const Scene::Vector3 right = forward.cross(camera.up).normalised();
-  const Scene::Vector3 up = right.cross(forward);
+  return {.forward = forward, .right = right, .up = right.cross(forward)};
+}
+
+Scene::Transform rigidBetween(const Scene::Transform &from, const Scene::Transform &to,
+                              float turned, const Scene::Vector3 &place) {
+  const float t = std::clamp(turned, 0.0f, 1.0f);
+  const auto between = [&](const Scene::Vector3 &axis) {
+    const Scene::Vector3 a = from.applyToDirection(axis), b = to.applyToDirection(axis);
+    return a + (b - a) * t;
+  };
+  const Scene::Vector3 y = between({0, 1, 0}).normalised();
+  Scene::Vector3 z = between({0, 0, 1});
+  z = (z - y * z.dot(y)).normalised();
+  return Scene::Transform::fromAxes(y.cross(z), y, z, place);
+}
+
+Scene::Transform onScreenAt(const Scene::Camera &camera, float screenWidth, float screenHeight,
+                            float x, float y, float w, float h, float distance) {
+  const auto [forward, right, up] = viewAxes(camera);
   // The screen at that distance: its height in the world, so a pixel's size
   const float tall =
       2 * distance * std::tan(static_cast<float>(camera.fieldOfView) * 3.14159265f / 360);
@@ -33,9 +51,7 @@ Scene::Transform onScreenAt(const Scene::Camera &camera, float screenWidth, floa
 
 Scene::Transform solidOnScreen(const Scene::Camera &camera, float screenWidth, float screenHeight,
                                float x, float y, float pixels, float distance) {
-  const Scene::Vector3 forward = (camera.target - camera.eye).normalised();
-  const Scene::Vector3 right = forward.cross(camera.up).normalised();
-  const Scene::Vector3 up = right.cross(forward);
+  const auto [forward, right, up] = viewAxes(camera);
   const float tall =
       2 * distance * std::tan(static_cast<float>(camera.fieldOfView) * 3.14159265f / 360);
   const float pixel = tall / screenHeight;

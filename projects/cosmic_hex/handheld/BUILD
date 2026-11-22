@@ -424,6 +424,7 @@ cc_test(
     srcs = ["tests/TopShows_test.cpp"],
     deps = [
         ":handheld",
+        "//projects/scratchpadd/utilities",  # (GameClock: Animations Quick)
         "@gtest//:gtest_main",
     ],
 )

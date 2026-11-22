@@ -1,8 +1,14 @@
 // The top screen's shows on their own: when each starts, moves and ends,
 // and what it asks of the app (hold the game, let it go, redraw the map)
+#include <CosmicHex/Handheld/DicePieces.hpp>
 #include <CosmicHex/Handheld/TopShows.hpp>
 
+#include <ScratchPadd/GameClock.hpp>
+
 #include <gtest/gtest.h>
+
+#include <chrono>
+#include <cmath>
 
 using namespace CosmicHex;
 using namespace CosmicHex::Handheld;
@@ -170,38 +176,195 @@ TEST(TopShowsTest, TheFirstRollThrowsInTurn) {
   EXPECT_LT(t, 2.0);
 }
 
-// A home's pay: the die out, tumbling, settled; the card big, then away;
-// the game held meanwhile and let go after
+// A moment after a part's end (the shows' times are sums of float
+// constants, a hair off when added up in another order)
+constexpr double kJustAfter = 1e-4;
+
+// A home's pay, one card: the die dips into the board (the wind-up),
+// lifts out to face you, spins to its side; the card big, then away; the
+// die back over its place, dropped in and settled with its dust; the game
+// held meanwhile and let go after, the board's tile gone while it's out
 TEST(TopShowsTest, AHomePaysOnItsDie) {
+  using S = HomePayShow;
   HomePayShow show;
-  show.saw({{2, Action{Action::Kind::RollHomeDie, 3}}}, 10);
+  const State paid = newGame(4, agreedRules(boardR3())); // (not the home die's phase: paid)
+  show.saw({{2, Action{Action::Kind::RollHomeDie, 3}}}, paid, 10);
   ASSERT_NE(show.current(), nullptr);
   EXPECT_EQ(show.current()->player, 2);
   EXPECT_EQ(show.current()->resource, Resource::Water);
   EXPECT_TRUE(show.update(10).hold);
-  const auto settled = show.at(HomePayShow::kDieSeconds);
-  EXPECT_FLOAT_EQ(settled.settle, 1);
-  EXPECT_FLOAT_EQ(settled.card, 0);
-  EXPECT_FLOAT_EQ(show.at(HomePayShow::kSeconds).away, 1);
-  EXPECT_TRUE(show.update(10 + HomePayShow::kSeconds).letGo);
-  EXPECT_FALSE(show.moving(10 + HomePayShow::kSeconds));
+  EXPECT_EQ(show.dieOutOf(10), 2);
+  // (the wind-up: down into the board, not lifted yet)
+  const auto dipping = show.die(10 + S::kSecondsWindUp * 0.9);
+  ASSERT_TRUE(dipping.has_value());
+  EXPECT_GT(dipping->sink, S::kDip * 0.9f);
+  EXPECT_FLOAT_EQ(dipping->lifted, 0);
+  // (out and facing you before it spins; turned to its side once it has)
+  const double spins = 10 + S::kSecondsOut;
+  EXPECT_NEAR(show.die(spins)->lifted, 1, 1e-5);
+  EXPECT_NEAR(show.die(spins)->sink, 0, 1e-5);
+  const float landed = show.die(spins + S::kSecondsSpin)->turn;
+  EXPECT_NEAR(std::remainder(landed - homeDieTurn(3), 6.2831853f), 0, 1e-4);
+  EXPECT_FALSE(show.card(spins + S::kSecondsSpin - 0.01).has_value());
+  // (its card, grown and held, then off)
+  const auto held = show.card(spins + S::kSecondsSpin + S::kSecondsCard);
+  ASSERT_TRUE(held.has_value());
+  EXPECT_EQ(held->resource, Resource::Water);
+  EXPECT_NEAR(held->grown, 1, 1e-4);
+  EXPECT_FLOAT_EQ(held->away, 0);
+  const double leaves = spins + S::kSecondsPay;
+  EXPECT_GT(show.card(leaves + S::kSecondsAway / 2)->away, 0);
+  // (back as the card leaves: over its place, then dropped in, seated)
+  EXPECT_LT(show.die(leaves + S::kSecondsBack / 2)->lifted, 1);
+  EXPECT_NEAR(show.die(leaves + S::kSecondsBack)->lifted, kHomeDieRisen, 1e-5);
+  const double touches = leaves + S::kSecondsBack + S::kSecondsDrop;
+  EXPECT_NEAR(show.die(touches)->lifted, 0, 1e-4);
+  EXPECT_NEAR(std::remainder(show.die(touches)->turn, 6.2831853f), 0, 1e-4); // (its tile as it lay)
+  ASSERT_TRUE(show.die(touches + 0.1)->dust.has_value());
+  EXPECT_FALSE(show.dieOutOf(touches + S::kSecondsSeat + kJustAfter).has_value()); // (tile back)
+  // (the dust gone: done, the game let go)
+  const double end = 10 + HomePayShow::seconds(1) + kJustAfter;
+  EXPECT_TRUE(show.moving(end - 0.01));
+  EXPECT_FALSE(show.update(end - 0.01).letGo);
+  EXPECT_TRUE(show.update(end).letGo);
+  EXPECT_FALSE(show.moving(end));
+  EXPECT_EQ(show.current(), nullptr);
 }
 
-// The star: held at the settled die until the choice is made, then its card
-TEST(TopShowsTest, TheStarWaitsForTheChoice) {
+// A home paying two: the die comes out once, spins for the first, spins
+// again as its card leaves (never back in between), and goes back only
+// after the second's card
+TEST(TopShowsTest, AHomePayingTwoStaysOutForBoth) {
+  using S = HomePayShow;
   HomePayShow show;
-  show.saw({{0, Action{Action::Kind::RollHomeDie, kResources}}}, 0);
+  const State paid = newGame(4, agreedRules(boardR3()));
+  show.saw({{1, Action{Action::Kind::RollHomeDie, 0}}, {1, Action{Action::Kind::RollHomeDie, 4}}},
+           paid, 0);
+  EXPECT_TRUE(show.update(0).hold);
+  // (both cards' close-ups wanted from the start, each in its own slot)
+  const auto ahead = show.cardsAhead(0);
+  ASSERT_EQ(ahead.size(), 2u);
+  EXPECT_EQ(ahead[0].order, 0);
+  EXPECT_EQ(ahead[1].resource, Resource::Crystals);
+  // (out and facing you from the first spin to the second's card leaving)
+  const double second = S::kSecondsOut + S::kSecondsPay;
+  for (double t = S::kSecondsOut; t < second + S::kSecondsPay; t += 0.05) {
+    EXPECT_NEAR(show.die(t)->lifted, 1, 1e-5) << t;
+    EXPECT_FALSE(show.update(t).letGo) << t;
+  }
+  EXPECT_NEAR(std::remainder(show.die(second)->turn - homeDieTurn(0), 6.2831853f), 0, 1e-4);
+  EXPECT_EQ(show.card(second + 0.1)->order, 0); // (the first card leaving as it spins again)
+  EXPECT_EQ(show.card(second + S::kSecondsSpin + 0.1)->order, 1);
+  EXPECT_NEAR(std::remainder(show.die(second + S::kSecondsSpin)->turn - homeDieTurn(4), 6.2831853f),
+              0, 1e-4);
+  EXPECT_EQ(show.cardsAhead(second + S::kSecondsSpin).size(), 1u);
+  // (then back, once)
+  EXPECT_LT(show.die(second + S::kSecondsPay + 0.1)->lifted, 1);
+  EXPECT_TRUE(show.update(HomePayShow::seconds(2) + kJustAfter).letGo);
+  EXPECT_FALSE(show.moving(HomePayShow::seconds(2) + kJustAfter));
+}
+
+// The game saying the home pays again (the dealer rolls next): the die
+// waits out after the card, the game let go to roll; the next roll spins
+// it again where it is
+TEST(TopShowsTest, TheDieWaitsOutForTheNextRoll) {
+  using S = HomePayShow;
+  HomePayShow show;
+  State more = newGame(4, agreedRules(boardR3()));
+  more.turn = 0;
+  more.phase = Phase::HomeDieDraw;
+  show.saw({{0, Action{Action::Kind::RollHomeDie, 2}}}, more, 0);
+  EXPECT_TRUE(show.update(0).hold);
+  const double leaves = S::kSecondsOut + S::kSecondsPay;
+  EXPECT_FALSE(show.update(leaves - 0.01).letGo);
+  EXPECT_TRUE(show.update(leaves + kJustAfter).letGo); // (waiting for the roll)
+  EXPECT_TRUE(show.moving(leaves + 3));
+  EXPECT_FLOAT_EQ(show.die(leaves + 3)->lifted, 1);
+  const float waitingTurn = show.die(leaves + 3)->turn;
+  State paid = more;
+  paid.phase = Phase::RollDraw;
+  show.saw({{0, Action{Action::Kind::RollHomeDie, 1}}}, paid, leaves + 3);
+  EXPECT_TRUE(show.update(leaves + 3).hold);
+  EXPECT_FLOAT_EQ(show.die(leaves + 3)->turn, waitingTurn); // (spun from where it waited)
+  EXPECT_FLOAT_EQ(show.die(leaves + 3 + S::kSecondsPay)->lifted, 1);
+  const double end = leaves + 3 + S::kSecondsPay + S::kSecondsHome + kJustAfter;
+  EXPECT_TRUE(show.update(end).letGo);
+  EXPECT_FALSE(show.moving(end));
+}
+
+// The star: held at the landed die until the choice is made (the game let
+// go to make it), then its card
+TEST(TopShowsTest, TheStarWaitsForTheChoice) {
+  using S = HomePayShow;
+  HomePayShow show;
+  State choosing = newGame(4, agreedRules(boardR3()));
+  choosing.phase = Phase::HomeIncome;
+  show.saw({{0, Action{Action::Kind::RollHomeDie, kResources}}}, choosing, 0);
   EXPECT_FALSE(show.current()->resource.has_value());
   EXPECT_TRUE(show.update(0).hold);
   EXPECT_TRUE(show.update(5).letGo); // (waiting for the choice: the game goes on, to make it)
-  const auto waiting = show.at(*show.seconds(5));
-  EXPECT_TRUE(waiting.waitingForChoice);
-  EXPECT_FLOAT_EQ(waiting.card, 0);
-  show.saw({{0, Action{Action::Kind::ChooseHome, 1}}}, 6);
+  EXPECT_TRUE(show.waitingForChoice(5));
+  EXPECT_FALSE(show.card(5).has_value());
+  EXPECT_NEAR(std::remainder(show.die(5)->turn - homeDieTurn(kResources), 6.2831853f), 0, 1e-4);
+  State paid = choosing;
+  paid.phase = Phase::RollDraw;
+  show.saw({{0, Action{Action::Kind::ChooseHome, 1}}}, paid, 6);
   EXPECT_EQ(show.current()->resource, Resource::Food);
-  EXPECT_FALSE(show.at(*show.seconds(6)).waitingForChoice);
+  EXPECT_FALSE(show.waitingForChoice(6));
   EXPECT_TRUE(show.update(6).hold); // (held again for its card)
-  EXPECT_TRUE(show.update(6 + HomePayShow::kSeconds).letGo);
+  EXPECT_EQ(show.card(6.1)->resource, Resource::Food);
+  EXPECT_TRUE(
+      show.update(6 + S::kSecondsCard + S::kSecondsHold + S::kSecondsHome + kJustAfter).letGo);
+}
+
+// B, or Animations Off: the shows' clock skipped on past any end, the
+// whole pay done in one update (two spins included), the game let go
+TEST(TopShowsTest, SkippingAHomesPay) {
+  HomePayShow show;
+  const State paid = newGame(4, agreedRules(boardR3()));
+  show.saw({{1, Action{Action::Kind::RollHomeDie, 0}}, {1, Action{Action::Kind::RollHomeDie, 2}}},
+           paid, 0);
+  EXPECT_TRUE(show.update(0.5).hold);
+  EXPECT_TRUE(show.update(0.5 + 30).letGo);
+  EXPECT_FALSE(show.moving(0.5 + 30));
+  EXPECT_FALSE(show.dieOutOf(0.5 + 30).has_value());
+}
+
+// Animations Quick: the shows' clock runs twice as fast, so a pay takes
+// half the real time, every part in its place
+TEST(TopShowsTest, AQuickHomesPayTakesHalfTheTime) {
+  using Clock = ScratchPadd::GameClock::RealClock;
+  const Clock::time_point start{};
+  ScratchPadd::GameClock shows(start);
+  shows.setRate(2, start);
+  HomePayShow show;
+  show.saw({{1, Action{Action::Kind::RollHomeDie, 0}}}, newGame(4, agreedRules(boardR3())),
+           shows.seconds(start));
+  const auto at = [&](double realSeconds) {
+    return shows.seconds(start + std::chrono::duration_cast<Clock::duration>(
+                                     std::chrono::duration<double>(realSeconds)));
+  };
+  EXPECT_TRUE(show.update(at(0)).hold);
+  const double half = HomePayShow::seconds(1) / 2;
+  EXPECT_FALSE(show.update(at(half - 0.01)).letGo);
+  EXPECT_TRUE(show.update(at(half + kJustAfter)).letGo);
+}
+
+// A spin: back a little first, off past its side and back to it, at least
+// a whole turn on
+TEST(TopShowsTest, ASpinWindsUpAndSettles) {
+  using S = HomePayShow;
+  for (const float from : {0.0f, -2.0f, -9.0f})
+    for (int face = 0; face <= kResources; ++face) {
+      const float to = S::spinEnd(from, face);
+      EXPECT_LE(to, from - 6.2831853f + 1e-4f);
+      EXPECT_GT(to, from - 2 * 6.2831853f);
+      EXPECT_NEAR(std::remainder(to - homeDieTurn(face), 6.2831853f), 0, 1e-4);
+      EXPECT_FLOAT_EQ(S::spinAt(from, face, 0), from);
+      EXPECT_NEAR(S::spinAt(from, face, S::kSecondsSpin * 0.15f), from + S::kWindTurn, 1e-4);
+      EXPECT_NEAR(S::spinAt(from, face, S::kSecondsSpin * 0.85f), to - S::kOvershoot, 1e-4);
+      EXPECT_FLOAT_EQ(S::spinAt(from, face, S::kSecondsSpin), to);
+    }
 }
 
 // Show resources: each card in a little after the last; off the same way,

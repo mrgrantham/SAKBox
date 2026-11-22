@@ -4,6 +4,7 @@
 
 #include <CosmicHex/Handheld/BoardPieces.hpp>
 #include <CosmicHex/Handheld/BoardView.hpp>
+#include <CosmicHex/Handheld/CardPlaces.hpp>
 #include <CosmicHex/Handheld/DicePieces.hpp>
 #include <CosmicHex/Handheld/Palette.hpp>
 #include <ScratchPadd/Motion/Motion.hpp>
@@ -291,10 +292,16 @@ void ScreenPadd::drawTile(CosmicHex::Hex hex, std::optional<float> turn, CosmicH
 // The planets and the zone's finds, `t` of the way through the latest
 // move's animation
 void ScreenPadd::drawTiles(const State &state, const Scene::Transform &placement, float t) {
+  // (a home whose die is out: its place left empty, the die and the pit
+  // under it drawn by its show: HomePayShow)
+  const auto dieOutOf = homePay_.dieOutOf(showsNow());
+  const auto dieOut = dieOutOf ? CardPlaces::homeOf(state, *dieOutOf) : std::nullopt;
   for (std::size_t i = 0; i < state.planets.size(); ++i) {
     // (one turned over is shown big first: face down here till it's
     // back, then simply face up: Discovery)
     const CosmicHex::Hex hex = state.planets[i].hex;
+    if (hex == dieOut)
+      continue;
     if (discovery_.stillToShow(hex, showsNow())) {
       if (!discovery_.flying(hex, showsNow()))
         drawTile(hex, std::nullopt, CosmicHex::Art::Face::PlanetFaceDown,
@@ -351,12 +358,10 @@ void ScreenPadd::drawStations(const State &state, const Scene::Transform &placem
                     toon(BoardColours::ofPlayer(station.owner)));
     if (landing.dust) {
       // (from under it out to three times a ring's size)
-      const float spread =
-          1 + 2 * ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::EaseOut, *landing.dust);
-      renderer_->draw(cornerRing_, corner * Scene::Transform::scaling({spread, 1, spread}),
-                      {.shading = Scene::Material::Shading::Unlit,
-                       .colour = {236, 226, 204},
-                       .alpha = static_cast<std::uint8_t>(26 * (1 - *landing.dust))});
+      const DustRing dust = dustRing(*landing.dust);
+      renderer_->draw(cornerRing_,
+                      corner * Scene::Transform::scaling({dust.spread, 1, dust.spread}),
+                      dust.material);
     }
   }
 }
@@ -416,14 +421,11 @@ void ScreenPadd::drawSelectedShip() {
   const float hover = between(1) + kHover + bob * (1 - std::clamp(look->dip, 0.0f, 1.0f));
   const float height = hover + (between(1) + surface - hover) * look->dip;
   if (look->dust) {
-    const float spread =
-        1 + 2 * ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::EaseOut, *look->dust);
+    const DustRing dust = dustRing(*look->dust);
     renderer_->draw(cornerRing_,
                     Scene::Transform::translation({between(0), between(1) + surface, between(2)}) *
-                        Scene::Transform::scaling({spread, 1, spread}),
-                    {.shading = Scene::Material::Shading::Unlit,
-                     .colour = {236, 226, 204},
-                     .alpha = static_cast<std::uint8_t>(26 * (1 - *look->dust))});
+                        Scene::Transform::scaling({dust.spread, 1, dust.spread}),
+                    dust.material);
   }
   renderer_->draw(chevron_,
                   Scene::Transform::translation({between(0), height, between(2)}) *

@@ -197,6 +197,7 @@ private:
   void closeUpTile(CosmicHex::Art::Face face);
   void closeUpTileInto(ScratchPadd::PictureSlot &slot, CosmicHex::Art::Face face, int size);
   void closeUpCards(const std::vector<CosmicHex::Art::Card> &cards);
+  void closeUpCardInto(ScratchPadd::PictureSlot &slot, CosmicHex::Art::Card card);
   void updateRollPay();
   void updatePick();
   void updateHand();

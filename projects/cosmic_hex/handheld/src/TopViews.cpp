@@ -1,6 +1,7 @@
 #include <CosmicHex/Handheld/TopViews.hpp>
 
 #include <CosmicHex/Dice/DiceTray.hpp>
+#include <CosmicHex/Handheld/BoardMotion.hpp>
 #include <CosmicHex/Handheld/BoardPieces.hpp>
 #include <CosmicHex/Handheld/CardPlaces.hpp>
 #include <CosmicHex/Handheld/CardsHeld.hpp>
@@ -17,6 +18,7 @@
 #include <array>
 #include <cmath>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -173,23 +175,16 @@ void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
   const float dim = moment->turn * std::max(0.0f, 1 - 4 * moment->down);
   if (dim > 0)
     backdrop(f, 0, {8, 12, 22}, 24 * dim, depths.backdrop);
-  const Scene::Vector3 forward = (camera.target - camera.eye).normalised();
-  const Scene::Vector3 right = forward.cross(camera.up).normalised();
-  const Scene::Vector3 screenUp = right.cross(forward);
+  const auto [forward, right, screenUp] = viewAxes(camera);
   const Scene::Vector3 facing = camera.eye + forward * depths.tile;
-  // Between: its axes carried from one to the other (made square again:
-  // Gram-Schmidt; flat while it dips or settles: it stays rigid), its
-  // place along an arc bowing up the screen (not a straight line)
-  const float turned = std::clamp(lifted, 0.0f, 1.0f);
-  const auto between = [turned](const Scene::Vector3 &a, const Scene::Vector3 &b) {
-    return a + (b - a) * turned;
-  };
-  const Scene::Vector3 y = between({0, 1, 0}, forward * -1).normalised();
-  Scene::Vector3 z = between({0, 0, 1}, screenUp * -1);
-  z = (z - y * z.dot(y)).normalised();
-  const Scene::Vector3 x = y.cross(z);
+  const Scene::Transform facingYou =
+      Scene::Transform::fromAxes(forward.cross(screenUp), forward * -1, screenUp * -1, facing);
+  // Between: its axes carried from one to the other (rigidBetween: flat
+  // while it dips or settles, it stays rigid), its place along an arc
+  // bowing up the screen (not a straight line)
   const Scene::Vector3 place = Motion::arc(onBoard, facing, screenUp * (0.8f * radius), lifted);
-  const Scene::Transform pose = Scene::Transform::fromAxes(x, y, z, place);
+  const Scene::Transform pose =
+      rigidBetween(Scene::Transform::translation(onBoard), facingYou, lifted, place);
   // Turning over about its x axis, as on the board: face down till halfway
   const float turn = moment->turn * kPi;
   const bool faceUp = turn > kPi / 2;
@@ -936,90 +931,147 @@ void drawPick(const TopFrame &f, const PickShow &show, std::string_view title,
 
 // ---------------------------------------------------------------- Home pay
 
-namespace {} // namespace
+namespace {
+// Where the home die faces you (a DS's pixels, scaled): up the middle of
+// the screen, `kDieAcross` across its sides; the card held under it
+constexpr float kDieY = 50, kDieAcross = 40, kCardBelowDie = 28;
+// The pit left in the board while the die is out: a little wider than the
+// die (its walls clear of its sides), as deep as it's long and its dip
+constexpr float kPitWide = 0.98f / kTileInset;
+constexpr float kPitDeep = kHomeDieLength * kHomeDieScale + HomePayShow::kDip + 0.1f;
+constexpr Scene::Colour kPit{6, 8, 14};
+constexpr float kColumnTall = 1.6f; // (BoardPieces::column's)
 
-void drawHomePay(const TopFrame &f, const HomePayShow &show, const State &state, bool yours,
-                 const ScratchPadd::PictureSlot &closeUp) {
-  const auto seconds = show.seconds(f.now);
-  const HomePayShow::Pay *pay = show.current();
-  if (!seconds || !pay)
-    return;
-  const float k = f.k();
-  const HomePayShow::Moment m = show.at(*seconds);
-  Scene::Overlay &overlay = f.overlay;
-  // Where the die starts: the home on the board, on the screen
-  float homeX = f.width / 2, homeY = f.height * 0.7f;
-  if (const std::optional<Hex> home = CardPlaces::homeOf(state, pay->player))
-    f.renderer.toScreen(BoardPieces::centre(*home), homeX, homeY);
-  backdrop(f, 0, {8, 12, 22}, 12 * std::min(1.0f, m.up * 2) * (1 - m.away));
-  // The die: out of the home along an arc, winding up first (Anticipate:
-  // it dips into the home before it leaps), growing as it comes
-  const float topX = f.width / 2, topY = 46 * k;
-  const float rise = Motion::along(Motion::Curve::Anticipate, m.up);
-  const float dieX = Motion::arc(homeX, topX, -10 * k, rise);
-  const float dieY = Motion::arc(homeY, topY, -26 * k, rise);
-  // The die (the user's: an extruded white hexagon, a resource's colour on
-  // each side, the star on the sixth) rolling about its long axis as it
-  // flies, slowing, landing with the side chosen facing you, a small
-  // wobble as it settles (Settle: a small thing may squash a little)
-  if (m.away < 1 && f.pictures.homeDie) {
-    constexpr float kTurn = 6.2831853f;
-    const float flown = (m.up * HomePayShow::kSecondsUp + m.tumble * HomePayShow::kSecondsTumble) /
-                        (HomePayShow::kSecondsUp + HomePayShow::kSecondsTumble);
-    const float slowing = 1 - (1 - flown) * (1 - flown) * (1 - flown); // (fast, then slower)
-    const float wobble = std::sin(m.settle * kTurn) * (1 - m.settle) * 0.35f;
-    const float roll = homeDieTurn(pay->face) - (1 - slowing) * 3 * kTurn + wobble;
-    const float landed = Motion::along(Motion::Curve::Settle, m.settle);
-    const float size =
-        (12 + 18 * std::min(1.0f, m.up)) * k * (m.settle > 0 ? 0.9f + 0.1f * landed : 1);
-    // (turned a little about the vertical, so an end shows: a prism, not a
-    // flat hexagon; less once it's landed)
-    const float tilt = 0.25f + 0.35f * (1 - slowing);
-    f.renderer.draw(f.pictures.homeDie,
-                    solidOnScreen(f.camera, f.width, f.height, dieX, dieY, size) *
-                        Scene::Transform::rotation({0, 1, 0}, tilt) *
-                        Scene::Transform::rotation({1, 0, 0}, roll),
+// The face a planet's tile shows at `hex`, as the board draws it
+std::optional<Art::Face> faceAt(const State &state, Hex hex) {
+  for (const Planet &planet : state.planets)
+    if (planet.hex == hex)
+      return faceOf(planet);
+  return std::nullopt;
+}
+
+// The home's tile's place while its die is out: a dark pit (walls round
+// it and a floor), so the die's lower part hides in it as it rises out,
+// and its place shows empty
+void homeDiePit(const TopFrame &f, Hex hex) {
+  const Scene::Transform at = BoardPieces::onHex(hex);
+  const Scene::Material dark{.shading = Scene::Material::Shading::Unlit, .colour = kPit};
+  if (f.pictures.column)
+    f.renderer.draw(f.pictures.column,
+                    at * Scene::Transform::scaling({kPitWide, -kPitDeep / kColumnTall, kPitWide}),
+                    dark);
+  if (f.pictures.hexTile)
+    f.renderer.draw(f.pictures.hexTile,
+                    at * Scene::Transform::translation({0, -kPitDeep, 0}) *
+                        Scene::Transform::scaling({kPitWide, 1, kPitWide}),
+                    dark);
+}
+
+// The die at `pose`: its body, and on its end the home's own tile (the
+// board's tile mesh, with the face texture the board already has loaded)
+void homeDieAt(const TopFrame &f, const Scene::Transform &pose, Art::Face face) {
+  if (f.pictures.homeDie)
+    f.renderer.draw(f.pictures.homeDie, homeDieBody(pose),
                     {.shading = Scene::Material::Shading::Lit});
-  }
-  const std::string whose = yours ? "Your home" : f.names[pay->player] + "'s home";
-  if (m.up > 0 && m.away <= 0)
-    overlay.textCentred(f.width / 2, 8 * k, whose + " pays", BoardColours::ofPlayer(pay->player),
-                        k);
-  if (m.waitingForChoice) {
-    overlay.textCentred(f.width / 2, topY + 28 * k, yours ? "Your choice: below" : "Choosing...",
-                        Palette::kHighlight, 1.5f * k);
+  if (!f.pictures.hexTile)
     return;
+  const Scene::Texture texture = f.pictures.faces[static_cast<std::size_t>(face)];
+  f.renderer.draw(
+      f.pictures.hexTile, homeDieFace(pose),
+      texture ? Scene::Material{.shading = Scene::Material::Shading::Toon, .texture = texture}
+              : Scene::Material{.shading = Scene::Material::Shading::Toon,
+                                .colour = BoardColours::ofFace(face)});
+}
+
+// The die from its place to facing you, as the show has it now (its pit
+// while it's out, the dust where it seats)
+void homeDie(const TopFrame &f, const HomePayShow::Die &die, Hex hex, Art::Face face) {
+  const float k = f.k();
+  if (die.out) {
+    homeDiePit(f, hex);
+    // (bowing up the screen: it leaps up and over, an arc)
+    const Scene::Transform pose = homeDiePose(
+        homeDieInBoard(BoardPieces::centre(hex)),
+        homeDieFacing(f.camera, f.width, f.height, f.width / 2, kDieY * k, kDieAcross * k),
+        viewAxes(f.camera).up * 1.2f, die.lifted, die.sink, die.turn);
+    homeDieAt(f, pose, face);
   }
-  if (m.card <= 0 || !pay->resource)
-    return;
-  // The card: out of the die with a pop (Settle), held big with its name,
-  // then winding up and off along an arc to the hand, shrinking
-  const auto r = static_cast<std::size_t>(*pay->resource);
-  const float grown = Motion::along(Motion::Curve::Settle, m.card);
-  const float leave = Motion::along(Motion::Curve::Anticipate, m.away);
-  const float bigW = 70 * k, bigH = bigW * 52 / 63;
-  const float w = bigW * grown * (1 - 0.8f * std::max(0.0f, leave));
-  const float h = w * 52 / 63;
-  const float heldX = f.width / 2, heldY = topY + 22 * k + bigH / 2;
-  // (to your hand, or into the player's row of the points bars)
-  const auto [toX, toY] = yours ? CardPlaces::yourHand(f.width, f.height)
-                                : CardPlaces::playerRow(state, f.width, pay->player);
-  const float cx = Motion::arc(heldX, toX, yours ? 18 * k : -24 * k, leave);
-  const float cy = Motion::arc(heldY, toY, yours ? -30 * k : 0, leave);
-  const bool sharp = closeUp.showing(static_cast<int>(*pay->resource));
-  if (w > 1)
-    picture(f, sharp ? f.pictures.closeUpCardSquare : f.pictures.resourceSquare,
-            sharp ? closeUp.texture() : f.pictures.resources[r], cx - w / 2, cy - h / 2, w, h);
-  // (its name on its label band, 3 to 19 of the card's 52-unit picture,
-  // once it's full size)
-  // (its words once it's full size, fading in)
-  if (m.away <= 0 && m.words > 0) {
-    overlay.textCentred(cx, cy - h / 2 + h * 11 / 52, GameWords::of(*pay->resource),
-                        titleInk(f, *pay->resource, m.words), 1.5f * k);
-    overlay.textCentred(f.width / 2, heldY + bigH / 2 + 10 * k,
-                        "+1 " + std::string(GameWords::of(*pay->resource)),
-                        fadedIn(Palette::kWords, m.words), 1.5f * k);
+  if (die.dust && f.pictures.hexRing) {
+    // (round the tile: from its edge out a half again)
+    const DustRing dust = dustRing(*die.dust, 1.5f);
+    f.renderer.draw(f.pictures.hexRing,
+                    BoardPieces::onHex(hex) *
+                        Scene::Transform::scaling({dust.spread, 1, dust.spread}),
+                    dust.material);
   }
 }
 
+// The card out of the die (a pop: Settle), held big with its name, then
+// winding up and off along an arc to its player (CardPlaces), shrinking;
+// sharp from its close-up slot (order % 2) once that holds it
+void homePayCard(const TopFrame &f, const HomePayShow::Card &card, const State &state, int player,
+                 bool yours, const std::array<ScratchPadd::PictureSlot, 2> &closeUps) {
+  const float k = f.k();
+  const float grown = Motion::along(Motion::Curve::Settle, card.grown);
+  const float leave = Motion::along(Motion::Curve::Anticipate, card.away);
+  const float bigW = 70 * k, bigH = bigW * 52 / 63;
+  const float w = bigW * grown * (1 - 0.8f * std::max(0.0f, leave));
+  const float h = w * 52 / 63;
+  // (rising out of the die to under it as it grows)
+  const float dieY = kDieY * k, heldX = f.width / 2, heldY = dieY + kCardBelowDie * k + bigH / 2;
+  const float riseY = dieY + (heldY - dieY) * std::min(1.0f, grown);
+  const auto [toX, toY] = CardPlaces::at(f, state, player, yours ? player : -1);
+  const float cx = Motion::arc(heldX, toX, yours ? 18 * k : -24 * k, leave);
+  const float cy = Motion::arc(riseY, toY, yours ? -30 * k : 0, leave);
+  const ScratchPadd::PictureSlot &slot = closeUps[static_cast<std::size_t>(card.order % 2)];
+  const bool sharp = slot.showing(static_cast<int>(card.resource));
+  if (w > 1)
+    picture(f, sharp ? f.pictures.closeUpCardSquare : f.pictures.resourceSquare,
+            sharp ? slot.texture() : f.pictures.resources[static_cast<std::size_t>(card.resource)],
+            cx - w / 2, cy - h / 2, w, h);
+  // (its name on its label band, 3 to 19 of the card's 52-unit picture,
+  // and what it gives under it, once it's full size, fading in)
+  if (card.away <= 0 && card.words > 0) {
+    f.overlay.textCentred(cx, cy - h / 2 + h * 11 / 52, GameWords::of(card.resource),
+                          titleInk(f, card.resource, card.words), 1.5f * k);
+    f.overlay.textCentred(f.width / 2, heldY + bigH / 2 + 10 * k,
+                          "+1 " + std::string(GameWords::of(card.resource)),
+                          fadedIn(Palette::kWords, card.words), 1.5f * k);
+  }
+}
+} // namespace
+
+void drawHomePay(const TopFrame &f, const HomePayShow &show, const State &state, bool yours,
+                 const std::array<ScratchPadd::PictureSlot, 2> &closeUps) {
+  const HomePayShow::Pay *pay = show.current();
+  const auto die = show.die(f.now);
+  if (!pay || !die)
+    return;
+  const float k = f.k();
+  // A dim backdrop once it faces you, behind it (it rises through its
+  // plane on the way up and back, so only near the end)
+  const float facing = std::clamp((die->lifted - 0.85f) / 0.15f, 0.0f, 1.0f);
+  if (facing > 0) {
+    const Scene::Vector3 at =
+        homeDieFacing(f.camera, f.width, f.height, f.width / 2, kDieY * k, kDieAcross * k)
+            .position();
+    constexpr float kBehindIt = 1.6f; // (clear of its corners as it spins)
+    backdrop(f, 0, {8, 12, 22}, 12 * facing, (at - f.camera.eye).length() + kBehindIt);
+  }
+  const std::optional<Hex> home = CardPlaces::homeOf(state, pay->player);
+  const std::optional<Art::Face> face = home ? faceAt(state, *home) : std::nullopt;
+  if (home && face)
+    homeDie(f, *die, *home, *face);
+  if (facing > 0.5f) {
+    const std::string whose = yours ? "Your home" : f.names[pay->player] + "'s home";
+    f.overlay.textCentred(f.width / 2, 8 * k, whose + " pays", BoardColours::ofPlayer(pay->player),
+                          k);
+  }
+  if (show.waitingForChoice(f.now))
+    f.overlay.textCentred(f.width / 2, (kDieY + kCardBelowDie + 8) * k,
+                          yours ? "Your choice: below" : "Choosing...", Palette::kHighlight,
+                          1.5f * k);
+  if (const auto card = show.card(f.now))
+    homePayCard(f, *card, state, pay->player, yours, closeUps);
+}
 } // namespace CosmicHex::Handheld

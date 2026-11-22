@@ -99,6 +99,7 @@ void ScreenPadd::loadPieces() {
   flame_ = renderer_->load(pieces.flame.data());
   stars_ = renderer_->load(pieces.stars.data());
   hexRing_ = renderer_->load(pieces.hexRing.data());
+  pictures_.hexRing = hexRing_;
   cornerRing_ = renderer_->load(pieces.cornerRing.data());
   chevron_ = renderer_->load(pieces.chevron.data());
   die_ = renderer_->load(DicePieces(static_cast<float>(Dice::DiceTray::kDieSize)).die.data());

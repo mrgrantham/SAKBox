@@ -26,6 +26,23 @@ inline constexpr float kPictureDistance = 3.4f;
 // the DS's power-of-two sizes uses only part of its texture)
 ScratchPadd::Scene::MeshBuilder pictureSquare(float uMax = 1, float vMax = 1);
 
+// The camera's own axes in the world: the way it looks, its right, and up
+// its screen (every placement in front of it starts from these)
+struct ViewAxes {
+  ScratchPadd::Scene::Vector3 forward, right, up;
+};
+ViewAxes viewAxes(const ScratchPadd::Scene::Camera &camera);
+
+// A rigid piece `turned` of the way (0 to 1, clamped: it stays square while
+// its place dips below or carries past its ends) from the axes of one pose
+// to another's, at `place`: its y and z axes carried across and made square
+// again (Gram-Schmidt), so it turns without stretching (Lasseter's rigid
+// things stay rigid: a tile lifted off the board to face you, the home
+// die). The two poses' y axes mustn't point opposite ways
+ScratchPadd::Scene::Transform rigidBetween(const ScratchPadd::Scene::Transform &from,
+                                           const ScratchPadd::Scene::Transform &to, float turned,
+                                           const ScratchPadd::Scene::Vector3 &place);
+
 // Where to draw pictureSquare so it covers the pixels (x, y) to (x + w,
 // y + h) of a `screenWidth` x `screenHeight` screen (y down from the top),
 // `distance` in front of the camera, facing it

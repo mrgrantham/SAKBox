@@ -1,8 +1,10 @@
 #include <CosmicHex/Handheld/TopShows.hpp>
 
 #include <CosmicHex/Handheld/CardsHeld.hpp>
+#include <CosmicHex/Handheld/DicePieces.hpp>
 
 #include <algorithm>
+#include <cmath>
 
 namespace CosmicHex::Handheld {
 
@@ -363,79 +365,256 @@ int FirstRollShow::shown(std::size_t round, int player) const {
 
 // --------------------------------------------------------------- Home pay
 
-void HomePayShow::saw(const std::vector<TableGame::Played> &moves, double now) {
+namespace {
+constexpr float kWholeTurn = 6.2831853f;
+// A part's progress at `seconds`: 0 before `from`, 1 after `from + length`
+float partOf(double seconds, double from, float length) {
+  return std::clamp(static_cast<float>((seconds - from) / length), 0.0f, 1.0f);
+}
+} // namespace
+
+void HomePayShow::saw(const std::vector<TableGame::Played> &moves, const State &state, double now) {
   for (const TableGame::Played &move : moves) {
     if (move.action.kind == Action::Kind::RollHomeDie) {
-      Pay pay{.player = move.player, .face = move.action.a};
+      Pay pay{.player = move.player, .face = move.action.a, .seenAt = now, .paidUpAt = now};
       if (move.action.a >= 0 && move.action.a < kResources)
         pay.resource = static_cast<Resource>(move.action.a);
-      queue_.push_back(pay);
+      if (pays_.empty())
+        outAt_ = now;
+      pays_.push_back(pay);
     } else if (move.action.kind == Action::Kind::ChooseHome) {
       // (the star's choice, made: the latest of the player's still open)
-      for (auto it = queue_.rbegin(); it != queue_.rend(); ++it)
+      for (auto it = pays_.rbegin(); it != pays_.rend(); ++it)
         if (it->player == move.player && !it->resource) {
           it->resource = static_cast<Resource>(move.action.a);
+          it->chosenAt = now;
           break;
         }
     }
   }
-  if (!queue_.empty() && !startedAt_)
-    startedAt_ = now;
+  if (pays_.empty())
+    return;
+  // Whether the home that paid last pays again: the dealer rolls its die
+  // next (its die then waits out for it)
+  Pay &last = pays_.back();
+  const bool more = state.phase == Phase::HomeDieDraw && state.turn == last.player;
+  if (last.moreAfter && !more)
+    last.paidUpAt = now;
+  last.moreAfter = more;
 }
 
-std::optional<float> HomePayShow::seconds(double now) const {
-  if (queue_.empty() || !startedAt_ || now < *startedAt_)
+std::optional<double> HomePayShow::Timeline::leavesAt() const {
+  if (spins.size() < pays || spins.empty() || !spins.back().cardAt)
     return std::nullopt;
-  return static_cast<float>(now - *startedAt_);
+  return *spins.back().cardAt + kSecondsCard + kSecondsHold;
 }
 
-HomePayShow::Moment HomePayShow::at(float s) const {
-  const auto part = [s](float from, float length) {
-    return std::clamp((s - from) / length, 0.0f, 1.0f);
-  };
-  const bool choosing = current() && !current()->resource;
-  // (waiting for the star's choice: the die stays settled until it's made)
-  const float cardFrom = kDieSeconds;
-  return {.up = part(0, kSecondsUp),
-          .tumble = part(kSecondsUp, kSecondsTumble),
-          .settle = part(kSecondsUp + kSecondsTumble, kSecondsSettle),
-          .card = choosing ? 0 : part(cardFrom, kSecondsCard),
-          .away = choosing ? 0 : part(cardFrom + kSecondsCard + kSecondsHold, kSecondsAway),
-          .waitingForChoice = choosing && s >= kDieSeconds,
-          .words = choosing ? 0 : part(cardFrom + kSecondsCard, kSecondsWordsIn)};
+std::optional<double> HomePayShow::Timeline::endAt() const {
+  if (!backAt)
+    return std::nullopt;
+  return *backAt + kSecondsHome;
+}
+
+HomePayShow::Timeline HomePayShow::timeline() const {
+  Timeline t{.outAt = outAt_};
+  if (pays_.empty())
+    return t;
+  const int player = pays_.front().player;
+  while (t.pays < pays_.size() && pays_[t.pays].player == player)
+    ++t.pays;
+  // Each spin once the one before's card leaves (the first once the die's
+  // out), and not before its roll came; its card once it's landed and its
+  // resource is known
+  std::optional<double> due = outAt_ + kSecondsOut;
+  for (std::size_t i = 0; i < t.pays && due; ++i) {
+    const Pay &pay = pays_[i];
+    Spin spin{.at = std::max(*due, pay.seenAt)};
+    const double landed = spin.at + kSecondsSpin;
+    if (pay.resource)
+      spin.cardAt = pay.chosenAt ? std::max(landed, *pay.chosenAt) : landed;
+    t.spins.push_back(spin);
+    due = spin.cardAt ? std::optional(*spin.cardAt + kSecondsCard + kSecondsHold) : std::nullopt;
+  }
+  // Back as the last card leaves, once it's known no more come: another
+  // home's pay queued, or the game said so
+  const std::optional<double> leaves = t.leavesAt();
+  if (!leaves)
+    return t;
+  const Pay &last = pays_[t.pays - 1];
+  if (t.pays < pays_.size())
+    t.backAt = std::max(*leaves, pays_[t.pays].seenAt);
+  else if (!last.moreAfter)
+    t.backAt = std::max(*leaves, last.paidUpAt);
+  return t;
+}
+
+bool HomePayShow::waitingForGame(const Timeline &t, double now) const {
+  // (the star landed, its choice to make)
+  for (const Spin &spin : t.spins)
+    if (!spin.cardAt)
+      return now >= spin.at + kSecondsSpin;
+  // (the last card gone, the next roll to come)
+  const std::optional<double> leaves = t.leavesAt();
+  return !t.backAt && leaves && now >= *leaves;
 }
 
 HomePayShow::Step HomePayShow::update(double now) {
+  // The homes whose dice are back and settled, done with (the next home's
+  // die out once the last is back)
+  for (Timeline t = timeline(); !pays_.empty(); t = timeline()) {
+    const std::optional<double> end = t.endAt();
+    if (!end || now < *end)
+      break;
+    pays_.erase(pays_.begin(), pays_.begin() + static_cast<std::ptrdiff_t>(t.pays));
+    if (!pays_.empty())
+      outAt_ = std::max(*end, pays_.front().seenAt);
+  }
   Step step;
-  const auto s = seconds(now);
-  if (!s)
-    return step;
-  // The star waiting for its choice: the clock stops at the die settled,
-  // and the game goes on meanwhile (the player has to choose: a game held
-  // couldn't)
-  if (!current()->resource && *s > kDieSeconds) {
-    startedAt_ = now - kDieSeconds;
-    if (held_) {
-      held_ = false;
-      step.letGo = true;
-    }
-    return step;
+  const bool busy = moving(now) && !waitingForGame(timeline(), now);
+  if (busy != held_) {
+    held_ = busy;
+    (busy ? step.hold : step.letGo) = true;
   }
-  if (!held_) {
-    held_ = true;
-    step.hold = true;
-  }
-  if (*s < kSeconds)
-    return step;
-  queue_.erase(queue_.begin());
-  if (!queue_.empty()) {
-    startedAt_ = now;
-    return step;
-  }
-  startedAt_.reset();
-  held_ = false;
-  step.letGo = true;
   return step;
+}
+
+bool HomePayShow::moving(double now) const {
+  if (pays_.empty() || now < outAt_)
+    return false;
+  const std::optional<double> end = timeline().endAt();
+  return !end || now < *end;
+}
+
+std::optional<int> HomePayShow::dieOutOf(double now) const {
+  const auto die = this->die(now);
+  return die && die->out ? std::optional(pays_.front().player) : std::nullopt;
+}
+
+float HomePayShow::spinEnd(float from, int face) {
+  // (the side's turn, a whole turn at a time below where it's from, till
+  // it's at least a whole turn on)
+  float to = homeDieTurn(face);
+  while (to > from - kWholeTurn)
+    to -= kWholeTurn;
+  while (to < from - 2 * kWholeTurn)
+    to += kWholeTurn;
+  return to;
+}
+
+float HomePayShow::spinAt(float from, int face, float seconds) {
+  using Motion::Curve;
+  const float to = spinEnd(from, face);
+  const float t = seconds / kSecondsSpin;
+  constexpr float kWindUpEnds = 0.15f, kLandsAt = 0.85f;
+  // Anticipation: back a little first, slowly, and held a moment
+  const float wound = from + kWindTurn;
+  if (t <= 0)
+    return from;
+  if (t < kWindUpEnds)
+    return from + kWindTurn * Motion::along(Curve::EaseInOut, t / kWindUpEnds);
+  // Off fast, slowing to the side (slow in) and carried past it a little
+  const float past = to - kOvershoot;
+  if (t < kLandsAt)
+    return wound + (past - wound) *
+                       Motion::along(Curve::EaseOut, (t - kWindUpEnds) / (kLandsAt - kWindUpEnds));
+  // Follow-through: back to it, settling
+  if (t < 1)
+    return past + kOvershoot * Motion::along(Curve::EaseInOut, (t - kLandsAt) / (1 - kLandsAt));
+  return to;
+}
+
+float HomePayShow::turnAt(const Timeline &t, double now) const {
+  float turn = 0;
+  for (std::size_t i = 0; i < t.spins.size() && now >= t.spins[i].at; ++i)
+    turn = spinAt(turn, pays_[i].face, static_cast<float>(now - t.spins[i].at));
+  return turn;
+}
+
+std::optional<HomePayShow::Die> HomePayShow::die(double now) const {
+  if (!moving(now))
+    return std::nullopt;
+  using Motion::Curve;
+  const Timeline t = timeline();
+  Die die{.turn = turnAt(t, now), .out = true};
+  const double lifting = t.outAt + kSecondsWindUp;
+  if (now < lifting) {
+    // Anticipation: down into the board first, slow in and out, held a
+    // moment at the bottom before it leaps (a crouch)
+    die.sink = kDip * Motion::along(Curve::EaseInOut, partOf(now, t.outAt, kSecondsWindUp));
+    return die;
+  }
+  if (!t.backAt || now < *t.backAt) {
+    // Up out of its place and along its arc to face you, slow out and slow
+    // in (Gentle); the dip taken back up as it rises
+    die.lifted = Motion::along(Curve::Gentle, partOf(now, lifting, kSecondsLift));
+    die.sink = kDip * (1 - std::min(1.0f, die.lifted / kHomeDieRisen));
+    return die;
+  }
+  // Back: along the arc to over its place, turning face up, its spin
+  // unwound to the nearest whole turn (its tile lies as it did); slow out
+  // and in
+  const double dropping = *t.backAt + kSecondsBack, touches = dropping + kSecondsDrop;
+  if (now < dropping) {
+    const float back = Motion::along(Curve::Gentle, partOf(now, *t.backAt, kSecondsBack));
+    const float home = std::round(die.turn / kWholeTurn) * kWholeTurn;
+    die.lifted = 1 - (1 - kHomeDieRisen) * back;
+    die.turn += (home - die.turn) * back;
+    return die;
+  }
+  die.turn = std::round(die.turn / kWholeTurn) * kWholeTurn;
+  if (now < touches) {
+    // Dropping into its place, faster and faster (timing: a heavy thing falls)
+    die.lifted =
+        kHomeDieRisen * (1 - Motion::along(Curve::EaseIn, partOf(now, dropping, kSecondsDrop)));
+    return die;
+  }
+  // Follow-through: a sink a hair past its place and back (a thud, not a
+  // bounce: it's heavy), and the build's dust where it seats
+  const float seated = partOf(now, touches, kSecondsSeat);
+  die.sink = kSeatSink * std::sin(3.14159265f * seated);
+  die.out = seated < 1;
+  if (now < touches + kSecondsDust)
+    die.dust = partOf(now, touches, kSecondsDust);
+  return die;
+}
+
+std::optional<HomePayShow::Card> HomePayShow::card(double now) const {
+  const Timeline t = timeline();
+  for (std::size_t i = 0; i < t.spins.size(); ++i) {
+    const std::optional<double> at = t.spins[i].cardAt;
+    const std::optional<Resource> resource = pays_[i].resource; // (known: it has a card)
+    if (!at || !resource)
+      continue;
+    const double leaves = *at + kSecondsCard + kSecondsHold;
+    if (now < *at || now >= leaves + kSecondsAway)
+      continue;
+    return Card{.order = static_cast<int>(i),
+                .resource = *resource,
+                .grown = partOf(now, *at, kSecondsCard),
+                .away = partOf(now, leaves, kSecondsAway),
+                .words = partOf(now, *at + kSecondsCard, kSecondsWordsIn)};
+  }
+  return std::nullopt;
+}
+
+std::vector<HomePayShow::Card> HomePayShow::cardsAhead(double now) const {
+  std::vector<Card> ahead;
+  const Timeline t = timeline();
+  for (std::size_t i = 0; i < t.pays && ahead.size() < 2; ++i) {
+    const std::optional<double> at = i < t.spins.size() ? t.spins[i].cardAt : std::nullopt;
+    const bool gone = at && now >= *at + kSecondsCard + kSecondsHold + kSecondsAway;
+    const std::optional<Resource> resource = pays_[i].resource;
+    if (!gone && resource)
+      ahead.push_back({.order = static_cast<int>(i), .resource = *resource});
+  }
+  return ahead;
+}
+
+bool HomePayShow::waitingForChoice(double now) const {
+  for (const Spin &spin : timeline().spins)
+    if (!spin.cardAt)
+      return now >= spin.at + kSecondsSpin;
+  return false;
 }
 
 // --------------------------------------------------------------- Roll pay

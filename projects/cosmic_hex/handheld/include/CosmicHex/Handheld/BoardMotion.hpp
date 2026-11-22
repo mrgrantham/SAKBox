@@ -47,6 +47,16 @@ struct Landing {
   std::optional<float> dust;
 };
 
+// A ring of dust where something lands on the board (a building, the
+// pointer's tap, the home die set back in its place), `dust` of the way
+// from the touch (0) to gone (1): spreading out fast then slowing, to
+// `spreadsTo` times its ring's size, a pale dust fading as it goes
+struct DustRing {
+  float spread = 1;
+  ScratchPadd::Scene::Material material;
+};
+DustRing dustRing(float dust, float spreadsTo = 3);
+
 class BoardMotion {
 public:
   BoardMotion() = default;

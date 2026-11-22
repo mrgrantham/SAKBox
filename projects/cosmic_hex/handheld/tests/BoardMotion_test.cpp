@@ -149,3 +149,15 @@ TEST(BoardMotionTest, TheBlockadeSwoops) {
   EXPECT_GT(first.blockade(0)->at.y, 1.0f);
   EXPECT_FALSE(BoardMotion(none, none).blockade(0).has_value());
 }
+
+// A landing's dust ring: from the ring's size out to as far as asked, fast
+// then slowing, fading to nothing
+TEST(BoardMotionTest, DustSpreadsAndFades) {
+  EXPECT_FLOAT_EQ(dustRing(0).spread, 1);
+  EXPECT_FLOAT_EQ(dustRing(1).spread, 3);
+  EXPECT_FLOAT_EQ(dustRing(1, 1.5f).spread, 1.5f);
+  EXPECT_GT(dustRing(0.5f).spread, 2); // (more than halfway by half the time)
+  EXPECT_EQ(dustRing(0).material.alpha, 26);
+  EXPECT_EQ(dustRing(1).material.alpha, 0);
+  EXPECT_LT(dustRing(0.5f).material.alpha, dustRing(0.2f).material.alpha);
+}

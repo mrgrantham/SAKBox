@@ -58,17 +58,25 @@ protected:
 
 } // namespace
 
+// A home paying one, and two in a row (the die out once), for you and for
+// a bot, the star's choice made at once
 TEST_F(TopViewsTest, AHomePayFromStartToEnd) {
+  pictures.homeDie = pictures.column = pictures.hexRing = pictures.hexTile;
+  const std::array<ScratchPadd::PictureSlot, 2> slots{};
   for (const int face : {0, 3, kResources}) {
     for (const int player : {0, 2}) {
-      HomePayShow show;
-      show.saw({{player, Action{Action::Kind::RollHomeDie, face}}}, 0);
-      if (face == kResources)
-        show.saw({{player, Action{Action::Kind::ChooseHome, 2}}}, 0);
-      frames(every(-0.5, HomePayShow::kSeconds + 0.5), [&](const TopFrame &f) {
-        show.update(f.now);
-        drawHomePay(f, show, state, player == 0, noCloseUp);
-      });
+      for (const int pays : {1, 2}) {
+        HomePayShow show;
+        std::vector<TableGame::Played> rolls(static_cast<std::size_t>(pays),
+                                             {player, Action{Action::Kind::RollHomeDie, face}});
+        show.saw(rolls, state, 0);
+        if (face == kResources)
+          show.saw({{player, Action{Action::Kind::ChooseHome, 2}}}, state, 0);
+        frames(every(-0.5, HomePayShow::seconds(pays) + 0.5), [&](const TopFrame &f) {
+          show.update(f.now);
+          drawHomePay(f, show, state, player == 0, slots);
+        });
+      }
     }
   }
 }

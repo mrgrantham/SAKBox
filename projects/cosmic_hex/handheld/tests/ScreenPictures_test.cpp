@@ -37,3 +37,36 @@ TEST(ScreenPicturesTest, PaddedToPowersOfTwo) {
   EXPECT_EQ(out.pixels[static_cast<std::size_t>(38 * 64 + 48)].a, 0); // (the padding: see-through)
   EXPECT_EQ(pictureSquare().triangleCount(), 2u);
 }
+
+// A rigid piece between two poses: each at its end, square and unit
+// between, and kept at its ends past them
+TEST(ScreenPicturesTest, RigidBetweenTwoPoses) {
+  const Scene::Transform from = Scene::Transform::identity();
+  const Scene::Transform to =
+      Scene::Transform::rotation({1, 0, 0}, -1.2f) * Scene::Transform::rotation({0, 1, 0}, 0.7f);
+  const auto same = [](const Scene::Transform &a, const Scene::Transform &b) {
+    for (const Scene::Vector3 axis : {Scene::Vector3{1, 0, 0}, {0, 1, 0}, {0, 0, 1}})
+      EXPECT_NEAR((a.applyToDirection(axis) - b.applyToDirection(axis)).length(), 0, 1e-4);
+  };
+  same(rigidBetween(from, to, 0, {}), from);
+  same(rigidBetween(from, to, 1, {}), to);
+  same(rigidBetween(from, to, -0.2f, {}), from);
+  same(rigidBetween(from, to, 1.1f, {}), to);
+  const Scene::Transform half = rigidBetween(from, to, 0.5f, {1, 2, 3});
+  EXPECT_NEAR((half.position() - Scene::Vector3{1, 2, 3}).length(), 0, 1e-5);
+  const Scene::Vector3 x = half.applyToDirection({1, 0, 0}), y = half.applyToDirection({0, 1, 0}),
+                       z = half.applyToDirection({0, 0, 1});
+  EXPECT_NEAR(x.length(), 1, 1e-4);
+  EXPECT_NEAR(y.length(), 1, 1e-4);
+  EXPECT_NEAR(x.dot(y), 0, 1e-4);
+  EXPECT_NEAR(y.dot(z), 0, 1e-4);
+  EXPECT_NEAR((x.cross(y) - z).length(), 0, 1e-4); // (right-handed: not mirrored)
+}
+
+TEST(ScreenPicturesTest, TheCamerasAxes) {
+  const auto [forward, right, up] = viewAxes(gameCamera(0));
+  EXPECT_NEAR(forward.dot(right), 0, 1e-5);
+  EXPECT_NEAR(forward.dot(up), 0, 1e-5);
+  EXPECT_GT(up.y, 0); // (up the screen is up, more or less)
+  EXPECT_GT(right.x, 0.99f);
+}
