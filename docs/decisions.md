@@ -301,3 +301,8 @@ Cosmic Hex and Infinifly are their own projects, using ScratchPadd as a library.
 - **Decided:** a round is counted from the first player (`State::first`), so the first round, with no fuel boost in the agreed rules, is everyone's first turn; a pirate hideout's steals during the deep-space start go back to the setup, not on to trading.
 - **Why:** the written rules. Counted from player 0, with another player first, player 0 could boost in their first turn; and a hideout found by a starting ship sent the setup into trading, marked trading done and never reset it, so the first player had no trading in their first turn.
 - **Effect on the simulator:** it shares the rules, so its games change: the bots' search plays through these rules, and every game but one of the first 40 played differently. Over 400 four-player games of the agreed rules (60 iterations) seat wins went from 24/24/24/28% to 26/22/26/24% and the average game from 19.4 rounds to 19.6, within what 400 games can tell; the balance lab's tests pass.
+
+## Cosmic Hex: a roll's pay to a bot turns over on its way (2026-11-23)
+
+- **Decided:** a card a roll pays to a bot pops out of its planet face down and turns over over the first half of its flight (`CardFace::turnOf`, `kSecondsTurnOver`), as one coming to you does, landing face up in the bot's row of the points bars. Which cards turn is the show's (`RollPayShow::turnsOver`), tested beside its timing; the top screen's drawing asks it. **Why:** the owner asked for the bots' pay to turn over as yours does; the flight's own time already held the turn, so the show is no longer.
+- **Not chosen:** turning over a home's pay or a trade's cards going to a bot (the owner asked for a roll's pay); a longer flight for the turn.

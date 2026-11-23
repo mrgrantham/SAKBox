@@ -645,6 +645,43 @@ TEST(TopShowsTest, ARollsPayFliesCardByCard) {
   EXPECT_TRUE(seven.cards().empty());
 }
 
+// A roll paying a bot: its card turns over on its way to the bot's row of
+// the points bars, as one coming to you does, in the flight's own time
+TEST(TopShowsTest, ARollsPayToABotTurnsOverOnItsWay) {
+  State state = newGame(4, agreedRules(boardR3()));
+  Planet *paying = nullptr;
+  for (Planet &planet : state.planets)
+    if (!planet.flipped && planet.homeOf < 0) {
+      planet.flipped = true;
+      planet.kind = PlanetKind::GasGiant;
+      planet.number = 6;
+      paying = &planet;
+      break;
+    }
+  ASSERT_NE(paying, nullptr);
+  state.stations.push_back({.at = {paying->hex, 0}, .owner = 1}); // (a bot's: you're 0)
+  RollPayShow show;
+  show.saw({{0, Action{Action::Kind::Roll, 2, 4}}}, state, 0);
+  ASSERT_EQ(show.cards().size(), 1u);
+  const RollPayShow::Card &card = show.cards().front();
+  ASSERT_EQ(card.player, 1);
+  EXPECT_TRUE(RollPayShow::turnsOver(card, 0));
+  EXPECT_TRUE(RollPayShow::turnsOver(card, -1)); // (watching: every player a bot)
+  // (its show as long as before: a pop, then the flight)
+  EXPECT_NEAR(show.seconds(), RollPayShow::kSecondsPop + RollPayShow::kSecondsFly, 1e-6);
+  show.start(10);
+  EXPECT_FLOAT_EQ(show.at(0, 10)->turned, 0); // (face down at the start)
+  const double lands = 10 + show.seconds();
+  ASSERT_TRUE(show.at(0, lands - 0.01).has_value());
+  EXPECT_FLOAT_EQ(show.at(0, lands - 0.01)->turned, 1); // (face up before it lands)
+  EXPECT_DOUBLE_EQ(show.endsAt(), lands);
+  // (a bot's card from the bank or another player flies as it was)
+  EXPECT_FALSE(RollPayShow::turnsOver(
+      {.planet = -1, .player = 1, .resource = Resource::Fuel, .from = RollPayShow::kBank}, 0));
+  EXPECT_TRUE(RollPayShow::turnsOver(
+      {.planet = -1, .player = 0, .resource = Resource::Fuel, .from = RollPayShow::kBank}, 0));
+}
+
 // The starting hand: each card from the bank (the ROUND hexagon), round the
 // table from the first player, one a little after another; seen only by
 // whoever it's dealt to; the game held while they fly, let go after the last

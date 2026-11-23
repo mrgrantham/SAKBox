@@ -1152,9 +1152,9 @@ void drawRollPay(const TopFrame &f, const RollPayShow &show, const State &state,
     // (a card stolen between two others, or dealt to another: face down, as
     // at a table; its back the whole card, on the backs' own square)
     const bool hidden = card.secret && card.player != you && card.from != you;
-    // (one coming to you: in face down, turned over on its way, as every
-    // card revealed to you is)
-    const bool revealed = card.player == you && you >= 0;
+    // (one coming to you, or a roll's pay to anyone: in face down, turned
+    // over on its way, as every card revealed to you is)
+    const bool turns = RollPayShow::turnsOver(card, you);
     // (each card a step nearer than the last: crossing paths, one stays
     // whole in front of the other, its layers never mixed with another's)
     const float tall = CardFace::heightOf(size);
@@ -1164,7 +1164,7 @@ void drawRollPay(const TopFrame &f, const RollPayShow &show, const State &state,
               y - tall / 2, size, tall, distance);
     else
       turningCard(f, static_cast<Art::Card>(card.resource), Art::kResourceBack, x - size / 2,
-                  y - tall / 2, size, revealed ? m->turned : 1, {.title = 0, .distance = distance});
+                  y - tall / 2, size, turns ? m->turned : 1, {.title = 0, .distance = distance});
   }
 }
 

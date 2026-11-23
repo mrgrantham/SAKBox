@@ -560,8 +560,15 @@ public:
 
   // Card i's moment: how far it's popped out (0 to 1, Settle), how far
   // it's flown (0 to 1, Gentle), and how far turned over (0 its back, 1 its
-  // face: over the flight's first half, for a card revealed to you as it
-  // comes); nothing before it starts or after it lands
+  // face: over the flight's first half, for a card that turns: turnsOver);
+  // nothing before it starts or after it lands
+  //
+  // Whether a card turns over on its way (otherwise it flies as it was):
+  // one coming to you, revealed, and a roll's pay to anyone (seen by all,
+  // as at a table), so a bot's turns over on its way to its row too
+  static bool turnsOver(const Card &card, int you) {
+    return (card.player == you && you >= 0) || (card.planet >= 0 && card.player >= 0);
+  }
   struct Moment {
     float pop, fly, turned;
   };
