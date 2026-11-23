@@ -501,8 +501,10 @@ HomePayShow::Step HomePayShow::update(double now) {
       break;
     pays_.erase(pays_.begin(), pays_.begin() + static_cast<std::ptrdiff_t>(t.pays));
     out_ = false;
+    // (from now, not from the last one's end: on a clock B jumped past
+    // that end, the next home's die was out long ago, never seen)
     if (!pays_.empty())
-      outAt_ = std::max(*end, pays_.front().seenAt);
+      outAt_ = now;
   }
   out_ = out_ || moving(now);
   Step step;

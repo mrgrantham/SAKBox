@@ -374,7 +374,7 @@ struct State {
   Settings settings;
   int players = 4;
   int turn = 0;  // whose turn
-  int round = 1; // counted from 1; a round is every player's turn
+  int round = 1; // counted from 1; a round is every player's turn, from the first player's
   Phase phase = Phase::HomeIncome;
   std::vector<Planet> planets; // in board order (ring by ring from the centre)
   std::vector<ZoneSite> zone;

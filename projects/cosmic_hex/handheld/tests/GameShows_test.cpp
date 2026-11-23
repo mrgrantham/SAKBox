@@ -359,20 +359,61 @@ TEST(GameShowsTest, SkipLeavesTheNextCardPlayedToCome) {
   const auto plays = stage.entries(ShowKind::CardPlay);
   ASSERT_EQ(plays.size(), 2u);
   EXPECT_EQ(plays[0].cut(), ShowLog::Cut::SkipPressed);
-  // (seen whole; the log marks it skipped too, as it took the skipped one's
-  // place in the frame B was pressed: ShowLog::frame's "B moving a show on
-  // in place")
   EXPECT_GE(plays[1].seenSeconds, CardPlayShow::kSeconds - 2 * kFrame);
   EXPECT_EQ(plays[1].lateBy, 0);
 }
 
-// FINDING (not fixed here): another player's home pay queued behind the one
-// B skips is skipped too, never seen, against the README's "B ends what's
-// animating, not what's to come". GameShows::skip only puts back the first
-// home's pay when it hasn't started (homeToCome); HomePayShow::update then
-// times the next home's die from the skipped one's end, long past on the
-// jumped clock. Enable once the next home's pay starts afresh after B
-TEST(GameShowsTest, DISABLED_SkipLeavesTheNextHomesPayToCome) {
+// The log: the next card played, starting in the frame after B ended the
+// one before, is a show of its own, played whole, not the skipped one moved
+// on in place (it was logged "skip pressed", as though the player had
+// skipped it too)
+TEST(GameShowsTest, TheNextCardPlayedAfterBIsLoggedAsPlayed) {
+  Stage stage;
+  stage.arrive(TestTables::snapshotWith(mainPart(1)));
+  stage.frame();
+  const TableGame::Played cartel{2, {Kind::PlayCartel}};
+  stage.arrive(TestTables::snapshotWith(mainPart(1), {kEnforcerPlayed, cartel}));
+  stage.framesFor(0.5);
+  stage.shows.skip(true);
+  stage.frame(); // (the next one starts in this frame)
+  ASSERT_TRUE(stage.shows.cardPlay().moving(stage.shows.showsNow()));
+  ASSERT_TRUE(stage.framesUntil([&] { return !stage.shows.holding(); }));
+  const auto plays = stage.entries(ShowKind::CardPlay);
+  ASSERT_EQ(plays.size(), 2u);
+  EXPECT_EQ(plays[0].cut(), ShowLog::Cut::SkipPressed);
+  EXPECT_EQ(plays[1].cut(), ShowLog::Cut::None);
+  EXPECT_FALSE(plays[1].skipPressed);
+}
+
+// ...while a banner B moves on to the prompt it waits for is the same show,
+// skipped in place (its prompt's words already in, not a new one late)
+TEST(GameShowsTest, ABannerMovedOnToItsPromptByBIsLoggedAsSkipped) {
+  ShowLog log;
+  const auto banner = [](double key, double elapsed) {
+    return ShowSeen{.kind = ShowKind::Banner,
+                    .on = true,
+                    .moving = true,
+                    .visible = true,
+                    .key = key,
+                    .elapsed = elapsed};
+  };
+  const ShowSeen first = banner(0, 0);
+  log.frame(0, kFrame, {&first, 1}, ShowKind::Banner);
+  const ShowSeen sweeping = banner(0, 0.5);
+  log.frame(0.5, kFrame, {&sweeping, 1}, ShowKind::Banner);
+  log.skipped(true);
+  const ShowSeen prompt = banner(0.6 - 0.55, 0.55);
+  log.frame(0.6, kFrame, {&prompt, 1}, ShowKind::Banner);
+  log.finish(1);
+  ASSERT_EQ(log.entries().size(), 2u);
+  EXPECT_EQ(log.entries()[1].cut(), ShowLog::Cut::SkipPressed);
+  EXPECT_EQ(log.entries()[1].lateBy, 0);
+}
+
+// Another player's home pay queued behind the one B skips is still to come:
+// it starts afresh after it, seen whole (HomePayShow timed the next home's
+// die from the skipped one's end, long past on the jumped clock: never seen)
+TEST(GameShowsTest, SkipLeavesTheNextHomesPayToCome) {
   Stage stage;
   stage.arrive(TestTables::snapshotWith(mainPart(1)));
   stage.frame();
@@ -388,6 +429,26 @@ TEST(GameShowsTest, DISABLED_SkipLeavesTheNextHomesPayToCome) {
   const auto pays = stage.entries(ShowKind::HomePay);
   ASSERT_EQ(pays.size(), 2u);
   EXPECT_EQ(pays[1].cut(), ShowLog::Cut::None);
+  EXPECT_GE(pays[1].seenSeconds, HomePayShow::seconds(1) - 2 * kFrame);
+}
+
+// A home's pay due the moment it came, B pressed before a frame of it was
+// drawn (an impatient player, in the sweeps): it hadn't been seen, so it's
+// still to come, and starts afresh after (it was jumped past, never seen)
+TEST(GameShowsTest, SkipBeforeAShowsFirstFrameLeavesItToCome) {
+  Stage stage;
+  stage.arrive(TestTables::snapshotWith(mainPart(1)));
+  stage.framesFor(0.2);
+  stage.arrive(TestTables::snapshotWith(mainPart(1), {kHomePaysMinerals}));
+  ASSERT_TRUE(stage.shows.homePay().moving(stage.shows.showsNow())); // (due now)
+  stage.shows.skip(true);
+  ASSERT_NE(stage.shows.homePay().current(), nullptr);
+  EXPECT_GE(stage.shows.homePay().outAt(), stage.shows.showsNow());
+  ASSERT_TRUE(stage.framesUntil([&] { return !stage.shows.holding(); }));
+  const auto pays = stage.entries(ShowKind::HomePay);
+  ASSERT_EQ(pays.size(), 1u);
+  EXPECT_EQ(pays[0].cut(), ShowLog::Cut::None);
+  EXPECT_GE(pays[0].seenSeconds, HomePayShow::seconds(1) - 2 * kFrame);
 }
 
 // ...and what is animating goes straight to its end

@@ -116,19 +116,21 @@ TEST_F(ShortGamesTest, NoShowIsCutShortUnasked) {
     EXPECT_EQ(unasked(*run.game), "") << nameOf(run.settings);
 }
 
-// Seeds that still have a show cut short unasked (found by
-// scripted_play's sweeps of short games: README, "Scripted play"): the
-// player's own choices meeting a show still to come. Run them with
-// --gtest_also_run_disabled_tests; once they pass, take DISABLED_ off
-//   - the star's choice: the home's die, out before a tile turned over
-//     earlier had shown, waits for the choice, and the tile takes the stage
-//     over it (seeds 34 and 50; the full-length game's seed 50 too)
-//   - the choice's banner then starts under that tile (seeds 34, 50, 101)
-//   - salvage's second pick: its banner starts while the salvage show
-//     pauses between cards, which then flies over it (seeds 104, 112)
+// Seeds whose shows were cut short unasked (found by scripted_play's
+// sweeps of short games: README, "Scripted play"), the player's own choices
+// meeting a show still to come. A show paused for a move gave the stage
+// away (GameShows::onStage counted only what moved); each show on the stage
+// now keeps it until it's done, pauses and all, and what's still to come
+// behind one paused for a move doesn't hold the table
+//   - the star's choice: a tile turned over earlier took the stage over the
+//     home's die waiting for it (seeds 34 and 50; the full-length game's
+//     seed 50 too), and the choice's banner then started under that tile
+//   - the roll's prompt: it started over a tile turned over (seed 101)
+//   - salvage's last pick: the next placer's banner started in the pause
+//     between its cards, which then flew over it (seeds 104, 112)
 //   - at the Quick pace, the star's choice (seeds 65, 67, 155), and a
 //     turn's banner under a tile turned over (seed 149)
-TEST(ShortGamesKnownTest, DISABLED_ShowsCutShortThatAreStillToFix) {
+TEST(ShortGamesKnownTest, ShowsOnceCutShortArePlayedWhole) {
   std::vector<ScriptedGameSettings> games = shortGames(34, 1);
   for (const std::uint64_t seed : {50, 101, 104, 112})
     games.push_back(shortGames(seed, 1).front());

@@ -2,6 +2,7 @@
 #include "TestGames.hpp"
 
 #include <HexGrid/CornersAndEdges.hpp>
+#include <SeededRandom/Generator.hpp>
 
 #include <gtest/gtest.h>
 
@@ -24,6 +25,28 @@ bool hasKind(const std::vector<Action> &actions, Kind kind) {
 int cardsOf(const State &state, int player) {
   const Resources &held = state.player[static_cast<std::size_t>(player)].resources;
   return std::accumulate(held.begin(), held.end(), 0);
+}
+
+bool playOnUntil(State &state, const std::function<bool(const State &)> &until, int most) {
+  SeededRandom::Generator random(1);
+  for (int played = 0; played < most; ++played) {
+    if (until(state))
+      return true;
+    if (Game::currentPlayer(state) == GameBots::kDealer) {
+      if (!Game::apply(state, Game::dealerAction(state, random)))
+        return false;
+      continue;
+    }
+    const std::vector<Action> legal = Game::legalActions(state);
+    if (legal.empty())
+      return false;
+    const auto quickest = std::find_if(legal.begin(), legal.end(), [](const Action &action) {
+      return action.kind == Kind::EndTrading || action.kind == Kind::EndTurn;
+    });
+    if (!Game::apply(state, quickest != legal.end() ? *quickest : legal.front()))
+      return false;
+  }
+  return until(state);
 }
 
 State atMain(int players) {

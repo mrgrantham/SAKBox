@@ -7,6 +7,7 @@
 #include "TestGames.hpp"
 
 #include <HexGrid/CornersAndEdges.hpp>
+#include <SeededRandom/Generator.hpp>
 
 #include <gtest/gtest.h>
 
@@ -181,6 +182,53 @@ TEST(SetupTest, ADeepSpaceShipByNothingGoesOn) {
     return;
   }
   ADD_FAILURE() << "no corner by nothing";
+}
+
+// The deep-space start with trading on: a pirate hideout a starting ship
+// turns over steals, and the setup goes on, with no trading in it (trading
+// is a turn's); the first player's first turn has its trading after the
+// roll. (On after the roll, the placer traded in the setup, and trading
+// marked done then was never reset: the first turn had none)
+TEST(SetupTest, AHideoutFoundPlacingLeavesTheFirstTurnItsTrading) {
+  Settings settings = cornerSettings();
+  settings.deepSpaceStart = true;
+  settings.playerTrading = true;
+  State state = newGame(2, settings, 0);
+  while (state.phase == Phase::PlaceColony)
+    ASSERT_TRUE(Game::apply(state, Game::legalActions(state).front()));
+  ASSERT_EQ(state.turn, 1); // (ships in reverse: player 1 first)
+  state.player[0].resources = {1, 0, 0, 0, 0};
+  const std::vector<Action> places = Game::legalActions(state);
+  const auto byAZoneTile = std::find_if(places.begin(), places.end(), [&](const Action &place) {
+    const Corner corner = boardCorners()[static_cast<std::size_t>(place.a)];
+    return std::ranges::any_of(HexGrid::hexesTouching(corner),
+                               [&](Hex hex) { return siteIndex(state, hex) >= 0; });
+  });
+  ASSERT_NE(byAZoneTile, places.end());
+  ASSERT_TRUE(Game::apply(state, *byAZoneTile));
+  // The dealer: the first zone tile a pirate hideout; the rest as they come
+  SeededRandom::Generator random(1);
+  bool hideout = false, stole = false;
+  while (state.turn == 1 && state.phase != Phase::PlaceShip) {
+    EXPECT_NE(state.phase, Phase::Trading);
+    if (state.phase == Phase::ZoneDraw && !hideout) {
+      ASSERT_TRUE(Game::apply(state, {Kind::RevealFind, static_cast<int>(Find::PirateHideout)}));
+      hideout = true;
+      continue;
+    }
+    stole = stole || state.phase == Phase::StealDraw;
+    ASSERT_TRUE(Game::apply(state, Game::dealerAction(state, random)));
+  }
+  ASSERT_TRUE(hideout);
+  EXPECT_TRUE(stole);
+  EXPECT_EQ(state.phase, Phase::PlaceShip);
+  EXPECT_EQ(state.turn, 0);
+  EXPECT_FALSE(state.tradingDone);
+  ASSERT_TRUE(playOnUntil(state, [](const State &s) {
+    return s.phase == Phase::Trading || (s.turn == 0 && s.phase == Phase::Main);
+  }));
+  EXPECT_EQ(state.phase, Phase::Trading);
+  EXPECT_EQ(state.turn, 0);
 }
 
 // Choosing homes: a home claimed by a colony is no longer offered, and

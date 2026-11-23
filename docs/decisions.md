@@ -273,7 +273,7 @@ Cosmic Hex and Infinifly are their own projects, using ScratchPadd as a library.
 ## Cosmic Hex: short scripted games every run, full-length ones by hand (2026-11-22)
 
 - **Decided:** the everyday scripted-play tests play short games: the agreed rules but for two of the rules' own settings, a home exhausted at 4 points and the win at 8 (`TableSettings::winPoints`, `exhaustHomesAt`), 32 seeds at the Full pace (`ScriptedGame_test`) and 5 at each other pace (`ScriptedGamePaces_test`), each game played once for all the checks. Three full-length games are `ScriptedGameLong_test`, tagged `manual`, run before merging.
-- **Why:** the owner asked for many short games a run rather than a few long ones, through the game's own settings and its real win. A short game took 1,110 s of play on average against 2,319 s (seeds 1 to 32), so the everyday run plays 52 games in the time the old test's 20 full-length games took; more seeds found shows cut short that the old seeds never met (the star's choice and salvage's second pick meeting a show still to come: `DISABLED_ShowsCutShortThatAreStillToFix`).
+- **Why:** the owner asked for many short games a run rather than a few long ones, through the game's own settings and its real win. A short game took 1,110 s of play on average against 2,319 s (seeds 1 to 32), so the everyday run plays 52 games in the time the old test's 20 full-length games took; more seeds found shows cut short that the old seeds never met (the star's choice and salvage's second pick meeting a show still to come: now `ShowsOnceCutShortArePlayedWhole`).
 - **Decided:** a scripted run repeats from its seed, checked by a test. It already did (every source of chance is seeded and the run has its own clock); the consoles' games don't, by design: they seed from the clock and their bots think for a time.
 - **Not chosen:** a special short mode in the game (the rules' own settings do it); a smaller board (not the agreed rules); dropping the long games (the agreed rules' own length still needs a check before a merge).
 
@@ -282,3 +282,22 @@ Cosmic Hex and Infinifly are their own projects, using ScratchPadd as a library.
 - **Decided:** `bazel coverage` on a Mac uses clang's source-based coverage, read by Xcode's `llvm-cov` and `llvm-profdata` into one LCOV report (`.bazelrc`'s `coverage:macos`), and `tools/coverage/lcov_table.py` prints it per file, worst first.
 - **Why:** Bazel's default there (gcov's counters) wrote empty reports: every test passed and no coverage was found.
 - **Not chosen:** genhtml's pages (not installed; a table is what a review needs); a coverage tool of the toolchain's own (none is set up for the Mac's toolchain).
+
+## Cosmic Hex: a show keeps the stage through its pauses (2026-11-23)
+
+- **Decided:** a show over the board has the stage from its start until it's done, its pauses for the game included: a home's die waiting for the star's choice or the next roll, a find waiting for salvage's picks, salvage's cards between picks (`GameShows::onStage`). Nothing else starts over the board meanwhile; a banner waits for it, except over a home's die waiting for the game, where banners are drawn (the star's choice, the turn's). The roll's prompt waits for the stage as every banner does.
+- **Why:** sweeps of short games found shows cut short at the player's own choices: counted only while it moved, a home's die waiting for the star's choice gave the stage to a tile turned over earlier, which then covered the die and the choice's banner; the next placer's banner started in the pause between salvage's cards, which then flew over it; the roll's prompt started over a tile turned over.
+- **Decided:** while the show on the stage waits for a move, what's still to come behind it (a tile, another home's pay, a card played, a banner) doesn't hold the table (`GameShows::stageWaitsForGame`).
+- **Why:** held, the move the stage waits for (a bot's choice, the dealer's roll of the home die) is never made, and the game stalls: that's how an earlier attempt, a home's pay waiting for any tile still to come, stalled games.
+- **Not chosen:** a home's pay waiting for every tile queued before it (strict order of arrival: the stall above); special cases for the seeds found.
+
+## Cosmic Hex: the next show after B starts afresh, and is logged as its own (2026-11-23)
+
+- **Decided:** B leaves every show not yet seen moving in a frame to start afresh after it (each show's own `waitFor` already tells: nothing once it's started), rather than GameShows deciding which were still to come; once a home's die is back, the next home's die comes out from now, not from the last one's end; in the show log, a show B ended is "skip pressed", and the next of its kind starting from its beginning in the following frame is a show of its own; only one moved on in place, part way (a banner to its waiting prompt), is the skipped one.
+- **Why:** B jumps the shows' clock past every end, so a second home's pay timed from the skipped one's end was out long ago and never seen; and a home's pay due the moment it came, B pressed before its first frame (an impatient player, in the sweeps), counted as animating and was jumped past (against "B ends what's animating, not what's to come"); and the log labelled the next card played "skip pressed", as though the player had skipped it too.
+
+## Cosmic Hex rules: rounds from the first player, no trading in the setup (2026-11-23)
+
+- **Decided:** a round is counted from the first player (`State::first`), so the first round, with no fuel boost in the agreed rules, is everyone's first turn; a pirate hideout's steals during the deep-space start go back to the setup, not on to trading.
+- **Why:** the written rules. Counted from player 0, with another player first, player 0 could boost in their first turn; and a hideout found by a starting ship sent the setup into trading, marked trading done and never reset it, so the first player had no trading in their first turn.
+- **Effect on the simulator:** it shares the rules, so its games change: the bots' search plays through these rules, and every game but one of the first 40 played differently. Over 400 four-player games of the agreed rules (60 iterations) seat wins went from 24/24/24/28% to 26/22/26/24% and the average game from 19.4 rounds to 19.6, within what 400 games can tell; the balance lab's tests pass.

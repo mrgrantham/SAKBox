@@ -147,6 +147,33 @@ TEST(BuildingAndMovingTest, MovesWithAndWithoutTheBoost) {
   EXPECT_EQ(moveLengths(state, mine), (std::set<int>{1, 2}));
 }
 
+// No fuel boost in the first round (firstRoundBoost off: the agreed
+// rules), whoever goes first: a round is counted from the first player, so
+// with player 2 first, player 0's first turn is in the first round (counted
+// from player 0, it was the second, and player 0 boosted in it); the next
+// round, it boosts
+TEST(BuildingAndMovingTest, NoBoostInTheFirstRoundWhoeverGoesFirst) {
+  Settings settings = cornerSettings();
+  settings.firstRoundBoost = false;
+  State state = newGame(4, settings, 2);
+  const auto mainPartOf = [](int player) {
+    return [player](const State &s) { return s.turn == player && s.phase == Phase::Main; };
+  };
+  ASSERT_TRUE(playOnUntil(state, mainPartOf(0)));
+  EXPECT_EQ(state.round, 1);
+  const int mine = firstShipOf(state, 0);
+  state.player[0].resources[of(Resource::Fuel)] = 1;
+  ASSERT_FALSE(moveLengths(state, mine).empty());
+  EXPECT_EQ(*moveLengths(state, mine).rbegin(), settings.shipMove);
+  ASSERT_TRUE(playOnUntil(state, mainPartOf(1)));
+  EXPECT_EQ(state.round, 1);
+  ASSERT_TRUE(playOnUntil(state, mainPartOf(2)));
+  EXPECT_EQ(state.round, 2);
+  ASSERT_TRUE(playOnUntil(state, mainPartOf(0)));
+  state.player[0].resources[of(Resource::Fuel)] = 1;
+  EXPECT_EQ(*moveLengths(state, mine).rbegin(), settings.shipMove + settings.boostMove);
+}
+
 // A ship moves once a turn, and only its owner's; the next turn it moves again
 TEST(BuildingAndMovingTest, EachShipMovesOnceATurn) {
   State state = cornersAtMain();

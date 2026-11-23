@@ -59,7 +59,9 @@ cc_library(
     hdrs = ["tests/TestGames.hpp"],
     deps = [
         ":rules",
+        "//projects/game_bots",
         "//projects/hex_grid",
+        "//projects/seeded_random",
         "@gtest",
     ],
 )
@@ -115,6 +117,8 @@ cc_test(
     deps = [
         ":rules",
         ":test_games",
+        "//projects/hex_grid",
+        "//projects/seeded_random",
         "@gtest//:gtest_main",
     ],
 )

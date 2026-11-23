@@ -7,6 +7,7 @@
 #include <ScratchPadd/Motion/Motion.hpp>
 
 #include <algorithm>
+#include <array>
 #include <string>
 #include <utility>
 
@@ -287,7 +288,7 @@ bool GameShows::yourRollWaits(const TableSnapshot &snapshot) const {
 // screen the game looked stuck); then it goes the usual way
 void GameShows::promptForYourRoll() {
   const bool waits = latest_ && yourRollWaits(*latest_) && !rollAsked_;
-  if (waits && !rollPrompted_ && !homePay_.current() && !bannerWaiting_) {
+  if (waits && !rollPrompted_ && !homePay_.current() && !bannerWaiting_ && !stageTaken()) {
     banner_.then(gameNow(), {"ROLL THE DICE", "touch Roll, or press A", true},
                  BoardColours::ofPlayer(0));
     rollPrompted_ = true;
@@ -509,53 +510,85 @@ void GameShows::togglePaused() {
 
 // The table held from the moment a move brings something to show until it's
 // shown: a discovery (not while it waits for a choice it brings: salvage's,
-// made in the game), salvage's cards once taken until they land, a home's pay (not while it waits
-// for the game: the star's choice, the next roll), the cards flying (from when they're queued, as
-// the dice go), a card played; and while the board's pieces move or a banner sweeps (or waits for
-// the stage). Without it the table made its next move meanwhile, and that move's banner, pieces or
-// show cut short or covered the last's
+// made in the game), salvage's cards once taken until they land, a home's
+// pay (not while it waits for the game: the star's choice, the next roll),
+// the cards flying (from when they're queued, as the dice go), a card
+// played; and while the board's pieces move or a banner sweeps (or waits
+// for the stage). Without it the table made its next move meanwhile, and
+// that move's banner, pieces or show cut short or covered the last's. While
+// the show on the stage waits for a move, what's still to come behind it
+// doesn't hold the table: the move must be made for the stage to come free
+// (held, a bot's choice was never made and the game stalled)
 void GameShows::updateHolds() {
   const double t = showsNow();
+  const bool toComeHolds = !stageWaitsForGame();
   holdFor(Hold::Discovery,
-          (discovery_.waiting() && !discovery_.waitingForChoice(t)) || salvage_.holding());
-  holdFor(Hold::HomePay, homePay_.current() && !homePay_.waitingForGame(t));
+          (toComeHolds && discovery_.waiting() && !discovery_.waitingForChoice(t)) ||
+              salvage_.holding());
+  holdFor(Hold::HomePay, toComeHolds && homePay_.current() && !homePay_.waitingForGame(t));
   holdFor(Hold::RollPay, rollPay_.waiting() || rollPay_.moving(t));
-  holdFor(Hold::CardPlay, cardPlay_.current() != nullptr);
-  holdFor(Hold::Stage,
-          (latest_ && piecesMoving()) || banner_.moving(gameNow()) || bannerWaiting_.has_value());
+  holdFor(Hold::CardPlay, toComeHolds && cardPlay_.current() != nullptr);
+  holdFor(Hold::Stage, (latest_ && piecesMoving()) || banner_.moving(gameNow()) ||
+                           (toComeHolds && bannerWaiting_.has_value()));
 }
 
-// Whether a show over the board has the stage now (a discovery, salvage's
-// cards, a home's pay that isn't waiting for the game, a card played)
-bool GameShows::stageTaken() const {
+// Whether a show over the board has the stage, from its start until it's
+// done, its pauses for the game too: a discovery (a find and its salvage's
+// cards are one), a home's pay (its die out, waiting for the star's choice
+// or the next roll as well), a card played. Counted only while they moved,
+// a show paused for a choice gave the stage away: a tile turned over took
+// it from a home's die waiting for the star's choice, and a banner started
+// in the pause between salvage's cards, each then covered
+bool GameShows::onStage(ShowKind kind) const {
   const double t = showsNow();
-  return discovery_.moving(t) || salvage_.moving(t) ||
-         (homePay_.moving(t) && !homePay_.waitingForGame(t)) || cardPlay_.moving(t);
+  switch (kind) {
+  case ShowKind::Discovery:
+    return discovery_.moving(t) || salvage_.onStage(t);
+  case ShowKind::HomePay:
+    return homePay_.moving(t);
+  case ShowKind::CardPlay:
+    return cardPlay_.moving(t);
+  default:
+    return false;
+  }
+}
+
+// Whether the show on the stage waits for a move in the game: a home's die
+// for the star's choice or the next roll, a find for salvage's picks
+bool GameShows::stageWaitsForGame() const {
+  const double t = showsNow();
+  return homePay_.waitingForGame(t) || (discovery_.waitingForChoice(t) && !salvage_.holding());
+}
+
+// Whether a banner must wait for the stage: a show has it, but for a home's
+// die waiting for the game (a banner is drawn over it: the star's choice,
+// the turn's)
+bool GameShows::stageTaken() const {
+  return onStage(ShowKind::Discovery) || onStage(ShowKind::CardPlay) ||
+         (onStage(ShowKind::HomePay) && !homePay_.waitingForGame(showsNow()));
 }
 
 // A show still to start waits while another has the stage or a banner
 // sweeps (they took turns before only by luck, each timed as it came: a
 // home's die spun unseen under a discovery and then appeared half done)
 void GameShows::takeTurn(ShowKind kind) {
-  const double t = showsNow();
-  const bool discovery = discovery_.moving(t) || salvage_.moving(t);
-  const bool home = homePay_.moving(t) && !homePay_.waitingForGame(t);
-  const bool card = cardPlay_.moving(t);
+  static constexpr std::array kOverTheBoard{ShowKind::Discovery, ShowKind::HomePay,
+                                            ShowKind::CardPlay};
+  const bool another = std::ranges::any_of(
+      kOverTheBoard, [&](ShowKind other) { return other != kind && onStage(other); });
   // (the dice too: thrown, they're seen till they've gone)
-  const bool banner = banner_.moving(gameNow()) || !roll_.idle();
-  const double soon = t + 1e-6; // (not this frame)
+  if (!another && !banner_.moving(gameNow()) && roll_.idle())
+    return;
+  const double soon = showsNow() + 1e-6; // (not this frame)
   switch (kind) {
   case ShowKind::Discovery:
-    if (home || card || banner)
-      discovery_.waitFor(soon);
+    discovery_.waitFor(soon);
     break;
   case ShowKind::HomePay:
-    if (discovery || card || banner)
-      homePay_.waitFor(soon);
+    homePay_.waitFor(soon);
     break;
   case ShowKind::CardPlay:
-    if (discovery || home || banner)
-      cardPlay_.waitFor(soon);
+    cardPlay_.waitFor(soon);
     break;
   default:
     break;
@@ -655,28 +688,17 @@ bool GameShows::skippable() const {
 void GameShows::skip(bool pressed) {
   if (log_)
     log_->skipped(pressed);
-  // The shows: their clock on past any of their ends. Those still to start
-  // (a home's pay after the banner, a discovery after the ship's flight)
-  // start afresh after it: B ends what's animating, not what's to come
-  // (jumped past too, a home's pay skipped by B on the banner before it
-  // showed its die at its end, or not at all)
-  // (one due this moment while another has the stage waits its turn first:
-  // it's still to come, not what's animating)
-  takeTurn(ShowKind::Discovery);
-  takeTurn(ShowKind::HomePay);
-  takeTurn(ShowKind::CardPlay);
-  const double before = showsNow();
-  const bool discoveryToCome = discovery_.waiting() && !discovery_.moving(before);
-  const bool homeToCome = homePay_.current() && !homePay_.moving(before);
-  const bool cardToCome = cardPlay_.current() && !cardPlay_.moving(before);
+  // The shows: their clock on past any of their ends. Those not yet seen
+  // moving in a frame (a home's pay after the banner, a discovery after the
+  // ship's flight, the next card played; one due this very moment too, B
+  // pressed before its first frame) start afresh after it: B ends what's
+  // animating, not what's to come (jumped past too, a home's pay skipped by
+  // B on the banner before it showed its die at its end, or not at all)
   static constexpr double kPastAnyShow = 30;
   showClock_.skipAhead(kPastAnyShow);
-  if (discoveryToCome)
-    discovery_.waitFor(showsNow());
-  if (homeToCome)
-    homePay_.waitFor(showsNow());
-  if (cardToCome)
-    cardPlay_.waitFor(showsNow());
+  discovery_.waitFor(showsNow());
+  homePay_.waitFor(showsNow());
+  cardPlay_.waitFor(showsNow());
   // Who goes first: each die set down and the order read
   if (lookingSince_)
     startFirstRoll();

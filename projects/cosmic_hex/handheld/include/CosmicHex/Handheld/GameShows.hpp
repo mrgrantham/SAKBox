@@ -224,6 +224,8 @@ private:
   void sendHold();
   void sendYourMove();
   void updateHolds();
+  bool onStage(ShowKind kind) const;
+  bool stageWaitsForGame() const;
   bool stageTaken() const;
   void takeTurn(ShowKind kind);
   void showBanner(const std::string &title, const std::string &note,

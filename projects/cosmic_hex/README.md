@@ -32,6 +32,11 @@ How the code is laid out (`rules/include/CosmicHex/Rules.hpp`):
 - **`newGame(players, settings)`**, **`points`**, and the **contracts** (`contracts()`: each a goal checked against the board and the player's tokens, and its points).
 - **`agreedRules()`:** the rules as agreed, which the app plays and the simulator's defaults are tested to match.
 
+As the written rules have it:
+
+- **A round is counted from the first player** (`State::first`): every player's turn once, from whoever goes first, so "the first round" (no fuel boost in it: `Settings::firstRoundBoost`) is each player's first turn, whoever goes first.
+- **The setup has no trading:** a pirate hideout a starting ship turns over (the deep-space start) steals and the setup goes on; trading is a turn's, and the first player's first turn has its trading after the roll.
+
 ### The rules' source files
 
 The rules are split by part of the turn (`rules/src`), sharing a private header, `RulesInternal.hpp`:
@@ -353,7 +358,9 @@ Every show is seen whole unless you skip it (`GameShows`; the scripted runs chec
 - **The game's own clock stops only when you pause** (A while watching, the pause menu, a view you opened), never because a show holds the table: a banner never freezes half across.
 - **Your move waits for the pieces:** made while the last move's pieces still fly, it's sent once they've landed.
 - **The star's choice opens once the home die has landed on it,** its CHOOSE A RESOURCE banner over the die; the choice made, the banner goes.
-- **B ends what's animating, not what's to come:** a show still to start (a home's pay after the banner B skipped) starts afresh after it.
+- **A show keeps the stage until it's done, pauses and all:** a home's die waiting for the star's choice or the next roll, a find waiting for salvage's picks, salvage's cards between picks; nothing else starts over the board meanwhile, and a banner (the turn's, the next placer's, the roll's prompt) waits for it, but for a banner over a home's die waiting for the game (`GameShows::onStage`).
+- **What's still to come behind a show paused for a move doesn't hold the table,** so the move it waits for (a bot's choice, the dealer's roll of the home die) is made (`GameShows::stageWaitsForGame`).
+- **B ends what's animating, not what's to come:** a show not yet seen moving in a frame (a home's pay after the banner B skipped, another home's pay after the one B skipped, one due the moment B is pressed) starts afresh after it.
 - **Cards joining a flight under way** (a build's cost as the roll's pay flies) fly from when they join, after the last.
 - **Your cards gained show each time** you gain some.
 
@@ -407,7 +414,9 @@ Whole games played through the app's own code with no screens, player 0 by a scr
   bazel test --jobs=3 //projects/cosmic_hex/handheld:ScriptedGameLong_test
   ```
 
-- **Seeds still to fix:** sweeps of short games (seeds 1 to 200 at each pace) found a few shows still cut short unasked, all at the player's own choices meeting a show still to come (the star's choice with a tile turned over before it, salvage's second pick); `ScriptedGame_test`'s `DISABLED_ShowsCutShortThatAreStillToFix` plays them (`--test_arg=--gtest_also_run_disabled_tests`), and the everyday seeds are ones that pass.
+- **Seeds once cut short:** the seeds whose shows sweeps of short games once found cut short unasked (the star's choice with a tile turned over before it, salvage's last pick, the roll's prompt over a tile) are played every run by `ScriptedGame_test`'s `ShowsOnceCutShortArePlayedWhole`.
+- **Sweeps before merging a change to the shows:** seeds 1 to 200 of short games at each pace (`-- 200 1 --short`, with `--quick`, `--ds`, `--watch`, `--impatient`) and 50 full-length games, every game finished and no show cut short unasked.
+- **The log names each cut by what the player did:** a show B ended is "skip pressed"; the next of its kind starting from its beginning in the frame after is a show of its own (only a show moved on in place, part way, as a banner to its waiting prompt, is the skipped one).
 - **On a DS:** `cosmic-hex-ds-scripted` plays itself with the same player, its taps and presses given to the app as the stylus and pad would.
 
 ### The code

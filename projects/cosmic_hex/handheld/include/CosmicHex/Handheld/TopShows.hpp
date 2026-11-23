@@ -175,6 +175,9 @@ public:
   float dim(double now) const;
   // A card coming up, being seen, or flying
   bool moving(double now) const;
+  // Over its find from its begin until its cards have landed, the pauses
+  // for the picks to come too (nothing else takes the stage meanwhile)
+  bool onStage(double now) const { return on() && begunAt_ && now >= *begunAt_; }
   // From the last pick taken until its cards have landed: the game waits
   // (a bot's turn goes on only then)
   bool holding() const;

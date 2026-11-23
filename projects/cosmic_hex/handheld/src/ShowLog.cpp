@@ -79,14 +79,19 @@ void ShowLog::frame(double now, double step, std::span<const ShowSeen> shows, Sh
   for (const ShowSeen &seen : shows) {
     const auto k = static_cast<std::size_t>(seen.kind);
     Open &open = open_[k];
+    // (seen more than a frame or two in: past its start)
+    const double slack = 2.5 * step * seen.rate + 1e-6;
     // (gone, or a new one in its place; one that hadn't moved yet keeps
     // its entry as its start is put back: a close-up drawn first, say)
     if (open.on && !seen.on)
       close(k, now);
     else if (open.on && seen.key != open.key && open.entry.everMoved) {
       // (B moving a show on in place, as the banner to its waiting
-      // prompt: the same show, skipped, not a new one starting late)
-      const bool skippedNow = open.entry.skipPressed && skippedSinceFrame_;
+      // prompt: the same show, skipped, not a new one starting late; one
+      // starting from its beginning is the next show, come in its place,
+      // as the next card played after the one B ended)
+      const bool skippedNow =
+          open.entry.skipPressed && skippedSinceFrame_ && seen.moving && seen.elapsed > slack;
       close(k, now);
       if (skippedNow) {
         open.on = true;
@@ -110,7 +115,6 @@ void ShowLog::frame(double now, double step, std::span<const ShowSeen> shows, Sh
     if (!seen.moving)
       continue;
     // (first seen moving more than a frame or two in: its start was missed)
-    const double slack = 2.5 * step * seen.rate + 1e-6;
     if (!entry.everMoved && seen.elapsed > slack)
       entry.lateBy = seen.elapsed;
     entry.everMoved = true;

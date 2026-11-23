@@ -14,14 +14,17 @@ using namespace Internal;
 namespace {
 
 // The turn passes to the next player, who starts with their home's income;
-// or, the final round played out, the game ends
+// or, the final round played out, the game ends. A round is counted from the
+// first player (State::first), not from player 0: counted from player 0, with
+// another player first, player 0's first turn came in round 2 (a fuel boost
+// the first round's rule turns off, firstRoundBoost)
 void endTurn(State &state) {
   state.player[static_cast<std::size_t>(state.turn)].boughtThisTurn.clear();
   state.cardPlayed = false;
   state.tradingDone = false;
   state.offersMade.clear();
   state.turn = (state.turn + 1) % state.players;
-  if (state.turn == 0)
+  if (state.turn == state.first)
     ++state.round;
   // (finishRound) the final round played out: the game's over
   if (state.finalRound && state.turn == state.first) {

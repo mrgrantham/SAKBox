@@ -88,6 +88,19 @@ void afterTheRoll(State &state) {
   state.phase = state.settings.playerTrading && !state.tradingDone ? Phase::Trading : Phase::Main;
 }
 
+// The steals done: on after the roll (the blockade's); a pirate hideout's
+// found by a starting ship (the deep-space start), back to the setup, which
+// goes on from there (finishPlacingShip). Trading is a turn's, and the
+// setup's placing isn't one: on after the roll, a placer traded in the
+// setup, and trading marked done then was never reset, so the first player
+// had no trading in their first turn
+void afterTheSteals(State &state) {
+  if (state.placingShip)
+    state.phase = Phase::Main;
+  else
+    afterTheRoll(state);
+}
+
 // The exhausted home: at exhaustHomesAt points, the resource just taken
 // was its last; it becomes a planet of that kind, its number drawn next
 void exhaustHomeIfDue(State &state, int resource) {
@@ -256,7 +269,7 @@ bool applySteal(State &state, const Action &action) {
   ++current(state).resources[static_cast<std::size_t>(action.a)];
   state.victims.erase(state.victims.begin());
   if (state.victims.empty())
-    afterTheRoll(state);
+    afterTheSteals(state);
   return true;
 }
 

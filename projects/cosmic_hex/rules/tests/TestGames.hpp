@@ -6,6 +6,7 @@
 #include <CosmicHex/Rules.hpp>
 
 #include <cstddef>
+#include <functional>
 #include <vector>
 
 namespace CosmicHex::TestGames {
@@ -19,6 +20,13 @@ bool hasKind(const std::vector<Action> &actions, Action::Kind kind);
 
 // How many resources the player holds
 int cardsOf(const State &state, int player);
+
+// Plays on until `until` holds (checked before each action), the quickest
+// way through each turn: trading and the turn ended as soon as they can be,
+// else the first legal action; the dealer's draws at random (a fixed
+// seed). Whether it got
+// there within `most` actions
+bool playOnUntil(State &state, const std::function<bool(const State &)> &until, int most = 2000);
 
 // ---- On hexes (the rules' first version: stations docked on planets)
 
