@@ -21,6 +21,8 @@ TableSettings tableFor(const ScriptedGameSettings &settings) {
   table.players = settings.players;
   table.board = boardChoices(settings.players).front().board; // (the setup's default)
   table.physicsDice = true; // (thrown on the stage, as the app's are)
+  table.winPoints = settings.winPoints;
+  table.exhaustHomesAt = settings.exhaustHomesAt;
   return table;
 }
 

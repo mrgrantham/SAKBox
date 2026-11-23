@@ -2,6 +2,8 @@
 // goes, every answer from the rules' own legal moves
 #include <CosmicHex/Handheld/BuildMenu.hpp>
 
+#include "TestTables.hpp"
+
 #include <GameBots/Bots.hpp>
 #include <SeededRandom/Generator.hpp>
 
@@ -12,21 +14,6 @@ using namespace CosmicHex::Handheld;
 
 namespace {
 
-// A real game on the agreed rules, played on (the dealer by chance, the
-// players by their first legal move) to its first main part
-State atFirstMain() {
-  State state = newGame(4, agreedRules(boardR3(), 4));
-  SeededRandom::Generator random(11);
-  for (int guard = 0; guard < 2000 && state.phase != Phase::Main; ++guard) {
-    const Action next = Game::currentPlayer(state) == GameBots::kDealer
-                            ? Game::dealerAction(state, random)
-                            : Game::legalActions(state).front();
-    EXPECT_TRUE(Game::apply(state, next));
-  }
-  EXPECT_EQ(state.phase, Phase::Main);
-  return state;
-}
-
 Resources &cardsOf(State &state) {
   return state.player[static_cast<std::size_t>(state.turn)].resources;
 }
@@ -34,7 +21,7 @@ Resources &cardsOf(State &state) {
 } // namespace
 
 TEST(BuildMenuTest, ARowForEachThingInOrder) {
-  const auto rows = buildRows(atFirstMain());
+  const auto rows = buildRows(TestTables::atFirstMain());
   ASSERT_EQ(rows.size(), 4u);
   EXPECT_EQ(rows[0].what, Buildable::Ship);
   EXPECT_EQ(rows[1].what, Buildable::Station);
@@ -46,7 +33,7 @@ TEST(BuildMenuTest, ARowForEachThingInOrder) {
 // With no cards, nothing can be built: each row says what's missing, or that
 // there's nowhere to put it
 TEST(BuildMenuTest, WithNoCardsEveryRowIsRedAndSaysWhy) {
-  State state = atFirstMain();
+  State state = TestTables::atFirstMain();
   cardsOf(state) = {};
   for (const BuildRow &row : buildRows(state)) {
     EXPECT_FALSE(row.canBuild) << nameOf(row.what);
@@ -58,7 +45,7 @@ TEST(BuildMenuTest, WithNoCardsEveryRowIsRedAndSaysWhy) {
 }
 
 TEST(BuildMenuTest, OneKindShortSaysHowManyMore) {
-  State state = atFirstMain();
+  State state = TestTables::atFirstMain();
   cardsOf(state) = {0, 1, 0, 1, 0}; // a card's cost but its Crystals
   const BuildRow card = buildRows(state)[3];
   EXPECT_FALSE(card.canBuild);
@@ -69,7 +56,7 @@ TEST(BuildMenuTest, OneKindShortSaysHowManyMore) {
 // it, and then it carries those ways; a red row's "needs" means the rules
 // would allow it with the cost added
 TEST(BuildMenuTest, RowsAgreeWithTheRules) {
-  State state = atFirstMain();
+  State state = TestTables::atFirstMain();
   cardsOf(state) = {9, 9, 9, 9, 9};
   const auto legal = Game::legalActions(state);
   for (const BuildRow &row : buildRows(state)) {
@@ -86,7 +73,7 @@ TEST(BuildMenuTest, RowsAgreeWithTheRules) {
 
 // Before the main part (the roll not done), nothing, whatever you hold
 TEST(BuildMenuTest, NothingBeforeTheRollsDone) {
-  State state = atFirstMain();
+  State state = TestTables::atFirstMain();
   cardsOf(state) = {9, 9, 9, 9, 9};
   state.phase = Phase::RollDraw;
   for (const BuildRow &row : buildRows(state)) {

@@ -4,6 +4,8 @@
 // for the next turn as before
 #include <CosmicHex/Rules.hpp>
 
+#include "TestGames.hpp"
+
 #include <GameBots/Bots.hpp>
 #include <SeededRandom/Generator.hpp>
 
@@ -12,13 +14,10 @@
 #include <algorithm>
 
 using namespace CosmicHex;
+using namespace CosmicHex::TestGames;
 using Kind = Action::Kind;
 
 namespace {
-bool has(const std::vector<Action> &actions, Kind kind) {
-  return std::any_of(actions.begin(), actions.end(),
-                     [&](const Action &a) { return a.kind == kind; });
-}
 // A game played on (first legal moves) until `player` can build a ship
 State untilShipCanBeBuilt(const Settings &settings) {
   State state = newGame(4, settings);
@@ -29,7 +28,7 @@ State untilShipCanBeBuilt(const Settings &settings) {
       continue;
     }
     const auto legal = Game::legalActions(state);
-    if (has(legal, Kind::BuildShip))
+    if (hasKind(legal, Kind::BuildShip))
       return state;
     // (end the turn when there's nothing else; else the first move)
     Game::apply(state, legal[guard % legal.size()]);
@@ -51,7 +50,7 @@ TEST(NewShipsLeaveTest, ANewShipMovesThisTurnByTheUsualMove) {
   EXPECT_FALSE(state.ships.back().moved);
   // (the turn can't end yet; its moves are the usual ones)
   const auto now = Game::legalActions(state);
-  EXPECT_FALSE(has(now, Kind::EndTurn));
+  EXPECT_FALSE(hasKind(now, Kind::EndTurn));
   EXPECT_FALSE(Game::apply(state, Action{Kind::EndTurn}));
   const auto move = std::find_if(
       now.begin(), now.end(), [&](const Action &a) { return a.kind == Kind::Move && a.a == ship; });
@@ -62,7 +61,7 @@ TEST(NewShipsLeaveTest, ANewShipMovesThisTurnByTheUsualMove) {
   for (int guard = 0; guard < 20 && Game::currentPlayer(state) == GameBots::kDealer; ++guard)
     Game::apply(state, Game::dealerAction(state, random));
   if (state.phase == Phase::Main) {
-    EXPECT_TRUE(has(Game::legalActions(state), Kind::EndTurn));
+    EXPECT_TRUE(hasKind(Game::legalActions(state), Kind::EndTurn));
   }
 }
 
@@ -76,5 +75,5 @@ TEST(NewShipsLeaveTest, OffANewShipWaitsAsBefore) {
   ASSERT_NE(build, legal.end());
   ASSERT_TRUE(Game::apply(state, *build));
   EXPECT_TRUE(state.ships.back().moved);
-  EXPECT_TRUE(has(Game::legalActions(state), Kind::EndTurn));
+  EXPECT_TRUE(hasKind(Game::legalActions(state), Kind::EndTurn));
 }

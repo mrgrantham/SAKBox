@@ -91,6 +91,17 @@ build:clang --per_file_copt='^projects/.*@-Wdocumentation'
 
 build --color=yes
 
+# Line coverage (bazel coverage --jobs=3 //projects/...): clang's own
+# source-based coverage, read into one LCOV report
+# (bazel-out/_coverage/_coverage_report.dat; tools/coverage/lcov_table.py
+# prints it per file) by Xcode's llvm-cov and llvm-profdata. Bazel's
+# default on a Mac, gcov's counters, found no coverage at all.
+coverage:macos --experimental_use_llvm_covmap
+coverage:macos --experimental_generate_llvm_lcov
+coverage:macos --combined_report=lcov
+coverage:macos --test_env=LLVM_COV=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/llvm-cov
+coverage:macos --test_env=LLVM_PROFDATA=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/llvm-profdata
+
 # Sanitizers for test runs (desktops; the console apps build with make):
 #   bazel test --config=asan-ubsan //...
 # AddressSanitizer (out of bounds, use after free; leaks not checked: macOS

@@ -9,7 +9,10 @@
 //     --quick       Animations Quick       --off   Animations Off
 //     --ds          a DS's slower frames (20 a second)
 //     --impatient   B pressed now and then while something animates
+//     --short       short games: a home exhausted at 4 points, the win at 8
 //     --quiet       the table only
+//     --shows       every show of every game, not only those cut short (to
+//                   study a seed: GAMES 1, FIRST_SEED the seed)
 #include <CosmicHex/Handheld/ScriptedGame.hpp>
 
 #include <cstdio>
@@ -29,7 +32,7 @@ int main(int argc, char **argv) {
   int games = 10;
   std::uint64_t first = 1;
   ScriptedGameSettings settings;
-  bool quiet = false, trace = false;
+  bool quiet = false, trace = false, everyShow = false;
   int numbers = 0;
   for (int i = 1; i < argc; ++i) {
     const std::string arg = argv[i];
@@ -43,8 +46,13 @@ int main(int argc, char **argv) {
       settings.impatience = 10;
     else if (arg == "--ds")
       settings.frameSeconds = 1.0 / 20;
-    else if (arg == "--quiet")
+    else if (arg == "--short") {
+      settings.winPoints = 8;
+      settings.exhaustHomesAt = 4;
+    } else if (arg == "--quiet")
       quiet = true;
+    else if (arg == "--shows")
+      everyShow = true;
     else if (arg == "--trace")
       trace = true;
     else if (numbers++ == 0)
@@ -91,10 +99,9 @@ int main(int argc, char **argv) {
     for (const ShowLog::Entry &entry : game.log().entries()) {
       ++shows;
       ++counts[static_cast<std::size_t>(entry.kind)][static_cast<std::size_t>(entry.cut())];
-      if (entry.cut() == ShowLog::Cut::None || ShowLog::asked(entry.cut()))
-        continue;
-      ++cut;
-      if (!quiet)
+      const bool unasked = entry.cut() != ShowLog::Cut::None && !ShowLog::asked(entry.cut());
+      cut += unasked ? 1 : 0;
+      if ((unasked || everyShow) && !quiet)
         std::printf(
             "seed %llu %8.2fs %-12s %-15s late %.2fs seen %.2f/%.2fs under %s | %s\n",
             static_cast<unsigned long long>(settings.seed), entry.startedAt,

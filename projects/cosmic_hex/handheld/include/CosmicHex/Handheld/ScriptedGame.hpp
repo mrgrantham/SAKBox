@@ -43,6 +43,9 @@ struct ScriptedGameSettings {
   // something animates, as an impatient player does: 0, never
   int impatience = 0;
   double mostSeconds = 3 * 3600; // (a game stopped there if it hasn't ended)
+  // The points to win and where a home is exhausted, if not the agreed
+  // rules' (TableSettings': the short games)
+  std::optional<int> winPoints, exhaustHomesAt;
 };
 
 class ScriptedGame {

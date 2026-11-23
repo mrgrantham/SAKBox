@@ -60,6 +60,10 @@ struct TableSettings {
   // Physics dice: the roll is thrown on screen (dice/DiceTray)
   // and given back with rollDice(); off, the dealer rolls at random
   bool physicsDice = false;
+  // The points to win and where a home is exhausted, if not the agreed
+  // rules' (Settings::winPoints, Settings::exhaustHomesAt): the scripted
+  // runs' short games
+  std::optional<int> winPoints, exhaustHomesAt;
 };
 
 // The agreed rules for a table: its board, players and play style

@@ -3,22 +3,16 @@
 // setup; the log's text keeps it; without it, the start is as before
 #include <CosmicHex/Rules.hpp>
 
+#include "TestGames.hpp"
+
 #include <GameBots/Bots.hpp>
 #include <SeededRandom/Generator.hpp>
 
 #include <gtest/gtest.h>
 
-#include <numeric>
-
 using namespace CosmicHex;
+using namespace CosmicHex::TestGames;
 using Kind = Action::Kind;
-
-namespace {
-int cardsOf(const State &state, int player) {
-  const Resources &r = state.player[static_cast<std::size_t>(player)].resources;
-  return std::accumulate(r.begin(), r.end(), 0);
-}
-} // namespace
 
 // The deal comes first, the dealer's, round the table from the first player;
 // then the setup begins as it would have (the agreed rules: placing)

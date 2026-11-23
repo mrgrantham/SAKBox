@@ -51,11 +51,102 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
+# Games set up for the rules' tests, and the lookups they share
+cc_library(
+    name = "test_games",
+    testonly = True,
+    srcs = ["tests/TestGames.cpp"],
+    hdrs = ["tests/TestGames.hpp"],
+    deps = [
+        ":rules",
+        "//projects/hex_grid",
+        "@gtest",
+    ],
+)
+
+cc_test(
+    name = "Scoring_test",
+    size = "small",
+    srcs = ["tests/Scoring_test.cpp"],
+    deps = [
+        ":rules",
+        ":test_games",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "Contracts_test",
+    size = "small",
+    srcs = ["tests/Contracts_test.cpp"],
+    deps = [
+        ":rules",
+        ":test_games",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "Production_test",
+    size = "small",
+    srcs = ["tests/Production_test.cpp"],
+    deps = [
+        ":rules",
+        ":test_games",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "Exploring_test",
+    size = "small",
+    srcs = ["tests/Exploring_test.cpp"],
+    deps = [
+        ":rules",
+        ":test_games",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "Setup_test",
+    size = "small",
+    srcs = ["tests/Setup_test.cpp"],
+    deps = [
+        ":rules",
+        ":test_games",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "Trading_test",
+    size = "small",
+    srcs = ["tests/Trading_test.cpp"],
+    deps = [
+        ":rules",
+        ":test_games",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "BuildingAndMoving_test",
+    size = "small",
+    srcs = ["tests/BuildingAndMoving_test.cpp"],
+    deps = [
+        ":rules",
+        ":test_games",
+        "@gtest//:gtest_main",
+    ],
+)
+
 cc_test(
     name = "Rules_test",
     srcs = ["tests/Rules_test.cpp"],
     deps = [
         ":rules",
+        ":test_games",
         "@gtest//:gtest_main",
     ],
 )
@@ -65,6 +156,7 @@ cc_test(
     srcs = ["tests/Corners_test.cpp"],
     deps = [
         ":rules",
+        ":test_games",
         "@gtest//:gtest_main",
     ],
 )
@@ -75,6 +167,7 @@ cc_test(
     srcs = ["tests/TradingRule_test.cpp"],
     deps = [
         ":rules",
+        ":test_games",
         "@gtest//:gtest_main",
     ],
 )
@@ -85,6 +178,7 @@ cc_test(
     srcs = ["tests/StartCards_test.cpp"],
     deps = [
         ":rules",
+        ":test_games",
         "//projects/game_bots",
         "//projects/seeded_random",
         "@gtest//:gtest_main",
@@ -97,6 +191,7 @@ cc_test(
     srcs = ["tests/NewShipsLeave_test.cpp"],
     deps = [
         ":rules",
+        ":test_games",
         "//projects/game_bots",
         "//projects/seeded_random",
         "@gtest//:gtest_main",

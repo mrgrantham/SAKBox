@@ -1,20 +1,18 @@
 // The bots' trading rule (TradingRule.hpp): what they offer, what they take
 #include <CosmicHex/TradingRule.hpp>
 
+#include "TestGames.hpp"
+
 #include <gtest/gtest.h>
 
 using namespace CosmicHex;
+using namespace CosmicHex::TestGames;
 using Kind = Action::Kind;
 
 namespace {
 // Three players, player 1's trading step; nobody can build anything
 State trading() {
-  Settings settings;
-  settings.playerTrading = true;
-  State state = newGame(3, settings);
-  EXPECT_TRUE(Game::apply(state, {Kind::ChooseHome, 0}));
-  EXPECT_TRUE(Game::apply(state, {Kind::Roll, 1, 2}));
-  EXPECT_EQ(state.phase, Phase::Trading);
+  State state = atTrading(3);
   for (Player &player : state.player)
     player.resources = {0, 0, 0, 0, 0};
   // No ships (so a station isn't a build to want): a ship is the next build

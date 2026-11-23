@@ -4,8 +4,9 @@
 #include <CosmicHex/Handheld/BoardButtons.hpp>
 #include <CosmicHex/Handheld/Pickers.hpp>
 
+#include "TestTables.hpp"
+
 #include <GameBots/Bots.hpp>
-#include <SeededRandom/Generator.hpp>
 
 #include <gtest/gtest.h>
 
@@ -14,21 +15,6 @@
 using namespace CosmicHex;
 using namespace CosmicHex::Handheld;
 using Kind = Action::Kind;
-
-namespace {
-// A four-player game played by the first legal move until `until` says stop
-State playUntil(bool (*until)(const State &), int limit = 4000) {
-  State state = newGame(4, agreedRules(boardR3(), 4));
-  SeededRandom::Generator dealer(7);
-  for (int i = 0; i < limit && !until(state) && state.winner < 0; ++i) {
-    const Action action = Game::currentPlayer(state) == GameBots::kDealer
-                              ? Game::dealerAction(state, dealer)
-                              : Game::legalActions(state).front();
-    Game::apply(state, action);
-  }
-  return state;
-}
-} // namespace
 
 TEST(BoardButtonsTest, TheCornersAndWhatShows) {
   const BoardButtons::Situation waiting{};
@@ -114,9 +100,11 @@ TEST(BoardButtonsTest, ButtonsFadeInAndOut) {
 }
 
 TEST(PickersTest, TheHomesPayIsAResourceChoice) {
-  const State state = playUntil([](const State &s) {
-    return s.phase == Phase::HomeIncome && Game::currentPlayer(s) != GameBots::kDealer;
-  });
+  const State state = TestTables::playedUntil(
+      [](const State &s) {
+        return s.phase == Phase::HomeIncome && Game::currentPlayer(s) != GameBots::kDealer;
+      },
+      7);
   ASSERT_EQ(state.phase, Phase::HomeIncome);
   const auto legal = Game::legalActions(state);
   const auto choice = Pickers::resourceChoiceOf(state, legal);

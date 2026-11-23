@@ -328,3 +328,20 @@ TEST(TableGameTest, PlayOnAndPlayDrawsStopWhereTheScreensLook) {
   }
   EXPECT_GT(checked, 10);
 }
+
+// The points to win and where a home is exhausted are the agreed rules'
+// unless a table names its own (the scripted runs' short games)
+TEST(TableGameTest, ATableCanNameThePointsToWinAndTheExhaustedHome) {
+  const Settings agreed = rulesFor({});
+  EXPECT_EQ(agreed.winPoints, agreedRules(boardR3(), 4).winPoints);
+  EXPECT_EQ(agreed.exhaustHomesAt, agreedRules(boardR3(), 4).exhaustHomesAt);
+  const Settings named = rulesFor({.winPoints = 8, .exhaustHomesAt = 4});
+  EXPECT_EQ(named.winPoints, 8);
+  EXPECT_EQ(named.exhaustHomesAt, 4);
+  // (the rest as agreed)
+  Settings rest = named;
+  rest.winPoints = agreed.winPoints;
+  rest.exhaustHomesAt = agreed.exhaustHomesAt;
+  EXPECT_EQ(rest, agreed);
+  EXPECT_EQ(TableGame({.winPoints = 8}).state().settings.winPoints, 8);
+}

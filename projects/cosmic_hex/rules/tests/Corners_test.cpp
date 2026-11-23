@@ -6,6 +6,8 @@
 // blockade, the text forms, and bots playing whole games.
 #include <CosmicHex/Rules.hpp>
 
+#include "TestGames.hpp"
+
 #include <GameBots/Bots.hpp>
 #include <HexGrid/CornersAndEdges.hpp>
 #include <HexGrid/Paths.hpp>
@@ -20,82 +22,11 @@
 #include <set>
 
 using namespace CosmicHex;
+using namespace CosmicHex::TestGames;
 using Kind = Action::Kind;
 
 namespace {
-
-// Corners, on layout R2 (layouts/layouts.txt: clusters of 3, 2 and 1)
-Settings cornerSettings() {
-  Settings settings;
-  settings.corners = true;
-  settings.shipMove = 2;
-  settings.boostMove = 1;
-  settings.planetHexes = {{0, 0}, {-4, 4}, {-3, 0}, {-2, 0}, {-2, 3}, {-2, 4}, {-1, 3}, {0, -4},
-                          {0, 4}, {1, -3}, {2, -4}, {2, -3}, {2, 0},  {3, 0},  {4, -4}};
-  return settings;
-}
-
-// Player 0's ship (ships are placed in reverse order, so it may not be first)
-int firstShipOf(const State &state, int player) {
-  for (std::size_t i = 0; i < state.ships.size(); ++i)
-    if (state.ships[i].owner == player)
-      return static_cast<int>(i);
-  ADD_FAILURE() << "no ship of player " << player;
-  return 0;
-}
-
-// Plays the start by taking each placement's first choice
-State afterSetup(int players = 4, int first = 0) {
-  State state = newGame(players, cornerSettings(), first);
-  while (state.phase == Phase::PlaceColony || state.phase == Phase::PlaceShip) {
-    const std::vector<Action> legal = Game::legalActions(state);
-    EXPECT_FALSE(legal.empty());
-    if (legal.empty())
-      break;
-    EXPECT_TRUE(Game::apply(state, legal.front()));
-  }
-  return state;
-}
-
-// A game in its main part, player 0's turn, every planet turned over with
-// number 6, and nobody's ship anywhere useful
-State atMain() {
-  State state = afterSetup(2);
-  for (Planet &planet : state.planets) {
-    if (planet.homeOf >= 0)
-      continue;
-    planet.flipped = true;
-    planet.kind = PlanetKind::GasGiant;
-    planet.number = 6;
-  }
-  state.turn = 0;
-  state.phase = Phase::Main;
-  state.player[0].resources = {5, 5, 5, 5, 5};
-  return state;
-}
-
 int numberOf(Corner corner) { return cornerNumber(corner); }
-
-// A corner touching exactly the given planet hexes among the board's planets
-Corner cornerTouching(const State &state, int planetsTouched) {
-  for (Corner corner : boardCorners()) {
-    int count = 0;
-    bool home = false;
-    for (Hex hex : HexGrid::hexesTouching(corner)) {
-      for (const Planet &planet : state.planets) {
-        if (planet.hex == hex) {
-          ++count;
-          home = home || planet.homeOf >= 0;
-        }
-      }
-    }
-    if (count == planetsTouched && !home)
-      return corner;
-  }
-  ADD_FAILURE() << "no corner touching " << planetsTouched << " planets";
-  return Corner{};
-}
-
 } // namespace
 
 // The start: colonies on a corner of each home planet in turn order from
@@ -158,7 +89,7 @@ TEST(CornersTest, AStartingShipStaysNearItsColony) {
 
 // Ships move 2 edges free, 1 more for a fuel, no further
 TEST(CornersTest, ShipsMoveAlongEdges) {
-  State state = atMain();
+  State state = cornersAtMain();
   const int mine = firstShipOf(state, 0);
   Ship &ship = state.ships[static_cast<std::size_t>(mine)];
   ship.moved = false;
@@ -191,7 +122,7 @@ TEST(CornersTest, ShipsMoveAlongEdges) {
 // A ship can't end its move where a station, a colony or another ship is
 // (the user's); it can pass them
 TEST(CornersTest, ShipsDontEndOnTakenCorners) {
-  State state = atMain();
+  State state = cornersAtMain();
   const int mine = firstShipOf(state, 0);
   Ship &ship = state.ships[static_cast<std::size_t>(mine)];
   ship.moved = false;
@@ -228,7 +159,7 @@ TEST(CornersTest, ShipsDontEndOnTakenCorners) {
 // Where a move ends, every face-down planet and tile it touches turns over,
 // one after another; passing by turns nothing over
 TEST(CornersTest, PlanetsTurnOverWhereAMoveEnds) {
-  State state = atMain();
+  State state = cornersAtMain();
   const Corner rich = cornerTouching(state, 2);
   // Face down again: the two planets this corner touches
   std::vector<int> touched;
@@ -260,7 +191,7 @@ TEST(CornersTest, PlanetsTurnOverWhereAMoveEnds) {
 // A station goes on a free corner by a turned-over planet: not next to
 // another station (the distance rule), nor where it would touch no planet
 TEST(CornersTest, StationsFollowTheDistanceRule) {
-  State state = atMain();
+  State state = cornersAtMain();
   const Corner spot = cornerTouching(state, 2);
   const int mine = firstShipOf(state, 0);
   state.ships[static_cast<std::size_t>(mine)].corner = spot;
@@ -280,7 +211,7 @@ TEST(CornersTest, StationsFollowTheDistanceRule) {
 // On a roll, a station earns from every planet it touches with that number,
 // a colony twice as much
 TEST(CornersTest, AStationEarnsFromEveryPlanetItTouches) {
-  State state = atMain();
+  State state = cornersAtMain();
   const Corner spot = cornerTouching(state, 2);
   state.stations.push_back(Station{spot, 1, false});
   const int before = state.player[1].resources[static_cast<std::size_t>(PlanetKind::GasGiant)];
@@ -295,7 +226,7 @@ TEST(CornersTest, AStationEarnsFromEveryPlanetItTouches) {
 
 // Ships are built only at colonies; a station can be upgraded to one
 TEST(CornersTest, ShipsAreBuiltAtColonies) {
-  State state = atMain();
+  State state = cornersAtMain();
   state.ships.clear(); // (room for more)
   state.stations.push_back(Station{cornerTouching(state, 2), 0, false});
   const int station = static_cast<int>(state.stations.size()) - 1;
@@ -309,7 +240,7 @@ TEST(CornersTest, ShipsAreBuiltAtColonies) {
 
 // The blockade steals from players with a station touching its planet
 TEST(CornersTest, TheBlockadeStealsFromStationsTouchingIt) {
-  State state = atMain();
+  State state = cornersAtMain();
   const Corner spot = cornerTouching(state, 2);
   state.stations.push_back(Station{spot, 1, false});
   state.player[1].resources = {1, 0, 0, 0, 0};
@@ -399,22 +330,11 @@ TEST(CornersTest, ADeepSpaceStart) {
   EXPECT_TRUE(read.value_or(State{}).settings.deepSpaceStart);
 }
 
-namespace {
-// How many planets (and homes) a corner touches
-int planetsAt(const State &state, Corner corner) {
-  int count = 0;
-  for (Hex hex : HexGrid::hexesTouching(corner))
-    for (const Planet &planet : state.planets)
-      count += planet.hex == hex;
-  return count;
-}
-} // namespace
-
 // The alien outposts: a ship by one trades 3 for 1, a
 // station 2 for 1; a station may stand by an outpost with no planet beside
 // it, but becomes a colony only if it touches a planet too
 TEST(CornersTest, AlienOutposts) {
-  State state = atMain();
+  State state = cornersAtMain();
   ASSERT_FALSE(state.zone.empty());
   ZoneSite &outpost = state.zone.front();
   outpost.flipped = true;
@@ -460,7 +380,7 @@ TEST(CornersTest, AlienOutposts) {
 // the home's last: it becomes a planet of that kind with a number from 4, 5,
 // 9 and 10, paying by the dice; its 1 a turn stops
 TEST(CornersTest, AnExhaustedHomeBecomesAPlanet) {
-  State state = atMain();
+  State state = cornersAtMain();
   state.settings.exhaustHomesAt = 5;
   state.phase = Phase::HomeIncome;
   state.homeIncomeLeft = 1;
@@ -522,7 +442,7 @@ TEST(CornersTest, AnExhaustedHomeBecomesAPlanet) {
 
 // Or its kind drawn at random, whatever was chosen
 TEST(CornersTest, AnExhaustedHomesKindCanBeDrawn) {
-  State state = atMain();
+  State state = cornersAtMain();
   state.settings.exhaustHomesAt = 1;
   state.settings.exhaustedKindRandom = true;
   state.stations.push_back(Station{cornerTouching(state, 2), 0, false}); // (a point at least)
@@ -540,28 +460,10 @@ TEST(CornersTest, AnExhaustedHomesKindCanBeDrawn) {
   EXPECT_EQ(home->number, 5);
 }
 
-namespace {
-bool touchesHex(Corner corner, Hex hex) {
-  const auto hexes = HexGrid::hexesTouching(corner);
-  return std::find(hexes.begin(), hexes.end(), hex) != hexes.end();
-}
-// No station on the corner or next to it (the distance rule)
-bool clearOfStations(const State &state, Corner corner) {
-  for (const Station &station : state.stations) {
-    if (station.at == corner)
-      return false;
-    for (Corner next : HexGrid::neighbours(corner))
-      if (station.at == next)
-        return false;
-  }
-  return true;
-}
-} // namespace
-
 // Deep-space relay: only a holder of its Charter may build a
 // station touching no planet and no outpost, one; the Charter's then met
 TEST(CornersTest, ADeepSpaceRelay) {
-  State state = atMain();
+  State state = cornersAtMain();
   // A corner touching nothing (no planet, home, or find)
   std::optional<Corner> empty;
   for (Corner corner : boardCorners()) {
@@ -606,15 +508,8 @@ TEST(CornersTest, ADeepSpaceRelay) {
 // Shipyard Surplus: built with a ship, a second comes free at the
 // same colony; it needs room for both, and can't be played the turn it's
 // bought
-namespace {
-int shipsOwned(const State &state, int player) {
-  return static_cast<int>(std::count_if(state.ships.begin(), state.ships.end(),
-                                        [&](const Ship &ship) { return ship.owner == player; }));
-}
-} // namespace
-
 TEST(CornersTest, ShipyardSurplus) {
-  State state = atMain();
+  State state = cornersAtMain();
   state.ships.clear();
   state.stations.push_back(Station{cornerTouching(state, 2), 0, true});
   const int colony = static_cast<int>(state.stations.size()) - 1;
@@ -631,7 +526,7 @@ TEST(CornersTest, ShipyardSurplus) {
   EXPECT_EQ(state.player[0].resources, paid); // (one ship's cost)
   EXPECT_TRUE(state.player[0].contracts.empty());
   // With room for only one more: the card is kept, not played
-  State full = atMain();
+  State full = cornersAtMain();
   full.stations.push_back(Station{cornerTouching(full, 2), 0, true});
   full.player[0].contracts = {kShipyardCard};
   while (shipsOwned(full, 0) < full.settings.maxShips - 1)
@@ -647,7 +542,7 @@ TEST(CornersTest, ShipyardSurplus) {
 // A relay may touch a find only once it's turned over, and never
 // an alien outpost
 TEST(CornersTest, ARelayBesideAFind) {
-  State state = atMain();
+  State state = cornersAtMain();
   // A corner touching one find and no planet, and the find
   std::optional<Corner> spot;
   std::size_t find = 0;
@@ -691,7 +586,7 @@ TEST(CornersTest, ARelayBesideAFind) {
 // With firstRoundBoost off, a ship can't use fuel in the first
 // round (fewer places to go than with it), and can from the second
 TEST(CornersTest, NoBoostInTheFirstRound) {
-  State state = atMain();
+  State state = cornersAtMain();
   const int mine = firstShipOf(state, state.turn);
   ASSERT_GE(mine, 0);
   state.player[static_cast<std::size_t>(state.turn)].resources = {5, 5, 5, 5, 5};
@@ -724,7 +619,7 @@ TEST(CornersTest, TheRelayScoresItsSetting) {
   settings.relayPoints = 0;
   EXPECT_EQ(charterPoints(settings, kDeepSpaceRelay), 0);
   EXPECT_EQ(charterPoints(settings, 0), contracts()[0].points);
-  State state = atMain();
+  State state = cornersAtMain();
   const int before = points(state, 0);
   state.player[0].revealed.push_back(kDeepSpaceRelay);
   EXPECT_EQ(points(state, 0), before + state.settings.relayPoints);
@@ -734,7 +629,7 @@ TEST(CornersTest, TheRelayScoresItsSetting) {
 // kinds): met with three of one kind, not with three different kinds
 TEST(CornersTest, ThreeOfOneKind) {
   const Contract &threeOfAKind = contracts().at(21);
-  State state = atMain();
+  State state = cornersAtMain();
   state.stations.clear();
   std::vector<std::size_t> gasGiants, others;
   for (std::size_t i = 0; i < state.planets.size(); ++i) {
@@ -772,7 +667,7 @@ TEST(CornersTest, ThreeOfOneKind) {
 // colonies on other players' former homes, at least one, taken by
 // overtaking; none at all with its points 0
 TEST(CornersTest, ImperialDominion) {
-  State state = atMain();
+  State state = cornersAtMain();
   EXPECT_EQ(state.settings.dominionPoints, 0);
   state.settings.dominionPoints = 2;
   // Player 1's home, exhausted; a colony of player 0's on it
@@ -802,7 +697,7 @@ TEST(CornersTest, ImperialDominion) {
 // three become a point as soon as they're there, with nothing to choose;
 // held (the rule before), they wait for CashBadges
 TEST(CornersTest, BadgesCashedAtOnceWhenThatsTheRule) {
-  State state = atMain();
+  State state = cornersAtMain();
   state.player[0].badges = 3;
   EXPECT_TRUE(state.settings.autoCashBadges);
   const auto has = [](const std::vector<Action> &moves) {

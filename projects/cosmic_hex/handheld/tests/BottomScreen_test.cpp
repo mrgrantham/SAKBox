@@ -5,6 +5,8 @@
 #include <CosmicHex/Handheld/BottomScreen.hpp>
 #include <CosmicHex/Handheld/MoveSpots.hpp>
 
+#include "TestTables.hpp"
+
 #include <GameBots/Bots.hpp>
 #include <SeededRandom/Generator.hpp>
 
@@ -18,15 +20,6 @@ using Kind = Action::Kind;
 using Mode = BottomScreen::Mode;
 
 namespace {
-State playUntil(bool (*until)(const State &)) {
-  State state = newGame(4, agreedRules(boardR3(), 4));
-  SeededRandom::Generator random(11);
-  for (int guard = 0; guard < 4000 && !until(state) && state.winner < 0; ++guard)
-    Game::apply(state, Game::currentPlayer(state) == GameBots::kDealer
-                           ? Game::dealerAction(state, random)
-                           : Game::legalActions(state).front());
-  return state;
-}
 constexpr int kWidth = 256, kHeight = 192;
 // Confirm's place while placing: bottom right (BoardButtons' layout)
 BoardButtons::Place confirmButton() {
@@ -40,7 +33,7 @@ BoardButtons::Place confirmButton() {
 } // namespace
 
 TEST(BottomScreenTest, TheHomesPayIsPickedByTouch) {
-  const State state = playUntil([](const State &s) {
+  const State state = TestTables::playedUntil([](const State &s) {
     return s.phase == Phase::HomeIncome && Game::currentPlayer(s) != GameBots::kDealer;
   });
   ASSERT_EQ(state.phase, Phase::HomeIncome);
@@ -61,7 +54,7 @@ TEST(BottomScreenTest, TheHomesPayIsPickedByTouch) {
 // A home paying 2: two choices in a row, the second opened afresh (the
 // first's pick not carried over), each saying how many are left
 TEST(BottomScreenTest, TheNextOfTwoHomeChoicesOpensAfresh) {
-  State state = playUntil([](const State &s) {
+  State state = TestTables::playedUntil([](const State &s) {
     return s.phase == Phase::HomeIncome && Game::currentPlayer(s) != GameBots::kDealer;
   });
   ASSERT_EQ(state.phase, Phase::HomeIncome);
@@ -166,7 +159,7 @@ TEST(BottomScreenTest, ThePickerWaitsForTheFindThenComesUp) {
 // with the pointer on it, and Confirm or A building it. A card, with
 // nowhere on the board, is bought at once
 TEST(BottomScreenTest, BuildThenChooseWhereOnTheBoard) {
-  State state = playUntil([](const State &s) { return s.phase == Phase::Main; });
+  State state = TestTables::playedUntil([](const State &s) { return s.phase == Phase::Main; });
   ASSERT_EQ(state.phase, Phase::Main);
   state.player[static_cast<std::size_t>(state.turn)].resources = {3, 3, 3, 3, 3};
   const auto rows = buildRows(state);
@@ -213,7 +206,8 @@ TEST(BottomScreenTest, BuildThenChooseWhereOnTheBoard) {
 }
 
 TEST(BottomScreenTest, TheBoardsOwnTapsAndOthersTurns) {
-  const State state = playUntil([](const State &s) { return s.phase == Phase::Main; });
+  const State state =
+      TestTables::playedUntil([](const State &s) { return s.phase == Phase::Main; });
   BottomScreen screen(kWidth, kHeight);
   screen.update(state, Game::legalActions(state), true);
   // A tap on the board away from the buttons: the app's
@@ -234,7 +228,8 @@ TEST(BottomScreenTest, TheBoardsOwnTapsAndOthersTurns) {
 // Every button tap shows: a glow, and a message when it can't do anything
 // yet (the user couldn't tell taps had landed)
 TEST(BottomScreenTest, ButtonsAlwaysAnswer) {
-  const State state = playUntil([](const State &s) { return s.phase == Phase::Main; });
+  const State state =
+      TestTables::playedUntil([](const State &s) { return s.phase == Phase::Main; });
   BottomScreen screen(kWidth, kHeight);
   screen.update(state, Game::legalActions(state), false);
   EXPECT_TRUE(screen.tap(240, 10, std::nullopt).used); // Build, not your move
@@ -254,7 +249,7 @@ TEST(BottomScreenTest, ButtonsAlwaysAnswer) {
 // Touching one of your ships marks where it can go; touching one chooses
 // it (again: put down), and Confirm, the green check bottom right, moves it
 TEST(BottomScreenTest, TouchAShipThenWhereItGoes) {
-  State state = playUntil([](const State &s) { return s.phase == Phase::Main; });
+  State state = TestTables::playedUntil([](const State &s) { return s.phase == Phase::Main; });
   const auto legal = Game::legalActions(state);
   const auto move = std::find_if(legal.begin(), legal.end(),
                                  [](const Action &a) { return a.kind == Kind::Move; });
@@ -286,7 +281,7 @@ TEST(BottomScreenTest, TouchAShipThenWhereItGoes) {
 // While a ship's moves are marked, a touch elsewhere puts it down and is
 // the app's (the board's pointer goes there)
 TEST(BottomScreenTest, ATouchElsewherePutsTheShipDown) {
-  State state = playUntil([](const State &s) { return s.phase == Phase::Main; });
+  State state = TestTables::playedUntil([](const State &s) { return s.phase == Phase::Main; });
   const auto legal = Game::legalActions(state);
   const auto move = std::find_if(legal.begin(), legal.end(),
                                  [](const Action &a) { return a.kind == Kind::Move; });
@@ -316,7 +311,7 @@ TEST(BottomScreenTest, ATouchElsewherePutsTheShipDown) {
 // ends the offers first, then moves (the user's: it did nothing). A ship
 // that can't move says why
 TEST(BottomScreenTest, AShipMovesFromTheTradingPhase) {
-  State state = playUntil([](const State &s) {
+  State state = TestTables::playedUntil([](const State &s) {
     // (the last seat's offer: the next round the table, you, answers first)
     if (s.phase != Phase::Trading || s.turn != s.players - 1)
       return false;
@@ -370,7 +365,7 @@ TEST(BottomScreenTest, AShipMovesFromTheTradingPhase) {
 // is the one picked, Right, Right to Fuel, and A takes it at once (the
 // user's: one press); B leaves the build screen
 TEST(BottomScreenTest, TheButtonsWorkTheChoosingScreens) {
-  const State state = playUntil([](const State &s) {
+  const State state = TestTables::playedUntil([](const State &s) {
     return s.phase == Phase::HomeIncome && Game::currentPlayer(s) != GameBots::kDealer;
   });
   ASSERT_EQ(state.phase, Phase::HomeIncome);
@@ -388,7 +383,7 @@ TEST(BottomScreenTest, TheButtonsWorkTheChoosingScreens) {
   }
   // On the board the buttons are the app's
   EXPECT_FALSE(screen.press(Key::Down).used);
-  const State main = playUntil([](const State &s) { return s.phase == Phase::Main; });
+  const State main = TestTables::playedUntil([](const State &s) { return s.phase == Phase::Main; });
   screen.update(main, Game::legalActions(main), true);
   screen.tap(240, 10, std::nullopt);
   ASSERT_EQ(screen.mode(), Mode::Build);
@@ -398,7 +393,8 @@ TEST(BottomScreenTest, TheButtonsWorkTheChoosingScreens) {
 
 // Show resources opens and closes, your move or not
 TEST(BottomScreenTest, ShowResourcesAnyTime) {
-  const State state = playUntil([](const State &s) { return s.phase == Phase::Main; });
+  const State state =
+      TestTables::playedUntil([](const State &s) { return s.phase == Phase::Main; });
   BottomScreen screen(kWidth, kHeight);
   screen.update(state, Game::legalActions(state), false);
   EXPECT_EQ(screen.info(), BottomScreen::Info::None);
@@ -413,7 +409,8 @@ TEST(BottomScreenTest, ShowResourcesAnyTime) {
 // Your roll waits for you: Roll shows only then, and a tap on
 // it says to throw the dice
 TEST(BottomScreenTest, RollWhenYourRollWaits) {
-  const State state = playUntil([](const State &s) { return s.phase == Phase::Main; });
+  const State state =
+      TestTables::playedUntil([](const State &s) { return s.phase == Phase::Main; });
   BottomScreen screen(kWidth, kHeight);
   screen.update(state, Game::legalActions(state), false, false);
   EXPECT_FALSE(screen.tap(10, 178, std::nullopt).roll);
@@ -464,29 +461,11 @@ TEST(BottomScreenTest, AtTheStartATouchChoosesAndConfirmPlaces) {
   EXPECT_FALSE(screen.chosenPlacement().has_value());
 }
 
-namespace {
-// A game played until `until`, buying a card whenever one can be bought
-State playBuying(bool (*until)(const State &)) {
-  State state = newGame(4, agreedRules(boardR3(), 4));
-  SeededRandom::Generator random(23);
-  for (int guard = 0; guard < 6000 && !until(state) && state.winner < 0; ++guard) {
-    if (Game::currentPlayer(state) == GameBots::kDealer) {
-      Game::apply(state, Game::dealerAction(state, random));
-      continue;
-    }
-    const std::vector<Action> legal = Game::legalActions(state);
-    const auto buy = std::find_if(legal.begin(), legal.end(),
-                                  [](const Action &a) { return a.kind == Kind::BuyContract; });
-    Game::apply(state, buy != legal.end() ? *buy : legal.front());
-  }
-  return state;
-}
-} // namespace
-
 // After buying: the two cards dealt open by themselves; choosing one and
 // Keep keeps it
 TEST(BottomScreenTest, AfterBuyingOneOfTwoIsKept) {
-  const State state = playBuying([](const State &s) { return s.phase == Phase::KeepContract; });
+  const State state =
+      TestTables::playedBuyingUntil([](const State &s) { return s.phase == Phase::KeepContract; });
   ASSERT_EQ(state.phase, Phase::KeepContract);
   const std::vector<Action> legal = Game::legalActions(state);
   BottomScreen screen(kWidth, kHeight);
@@ -504,7 +483,7 @@ TEST(BottomScreenTest, AfterBuyingOneOfTwoIsKept) {
 // The cards screen: Cards opens it; a card chosen and Play plays it (an
 // Enforcer here, given to the player)
 TEST(BottomScreenTest, TheCardsScreenPlaysACard) {
-  State state = playUntil([](const State &s) {
+  State state = TestTables::playedUntil([](const State &s) {
     return s.phase == Phase::Main && Game::currentPlayer(s) != GameBots::kDealer;
   });
   ASSERT_EQ(state.phase, Phase::Main);
@@ -609,7 +588,8 @@ TEST(BottomScreenTest, TheTradeRoomMakesABankTrade) {
 // chooses it, Confirm moves it (or asks whom to steal from). With nowhere
 // to go, the only move is queued for the app, and it says so
 TEST(BottomScreenTest, TheBlockadeIsPlacedLikeEverythingElse) {
-  const State state = playUntil([](const State &s) { return s.phase == Phase::Blockade; });
+  const State state =
+      TestTables::playedUntil([](const State &s) { return s.phase == Phase::Blockade; });
   ASSERT_EQ(state.phase, Phase::Blockade);
   const auto legal = Game::legalActions(state);
   BottomScreen screen(kWidth, kHeight);
@@ -641,7 +621,7 @@ TEST(BottomScreenTest, TheBlockadeIsPlacedLikeEverythingElse) {
 // one that has moved): touching it chose the first, which couldn't move,
 // so the new one, which must move before End Turn, couldn't be chosen
 TEST(BottomScreenTest, TouchingTwoShipsOnACornerChoosesTheOneThatCanMove) {
-  State state = playUntil([](const State &s) {
+  State state = TestTables::playedUntil([](const State &s) {
     return s.phase == Phase::Main && Game::currentPlayer(s) != GameBots::kDealer &&
            std::any_of(s.ships.begin(), s.ships.end(),
                        [&](const Ship &ship) { return ship.owner == s.turn; });
@@ -673,21 +653,7 @@ TEST(BottomScreenTest, TouchingTwoShipsOnACornerChoosesTheOneThatCanMove) {
 // An offer to you is answered with the pad too: A accepts, B declines (B did
 // nothing, so a player on the buttons alone couldn't decline it)
 TEST(BottomScreenTest, BDeclinesAnOffer) {
-  State state = playUntil([](const State &s) {
-    // (the last seat's offer to anyone: the next round the table, you,
-    // answers first)
-    if (s.phase != Phase::Trading || s.turn != s.players - 1)
-      return false;
-    const Resources &have = s.player[static_cast<std::size_t>(s.turn)].resources;
-    return std::any_of(have.begin(), have.end(), [](int n) { return n > 0; });
-  });
-  ASSERT_EQ(state.phase, Phase::Trading);
-  const Resources &have = state.player[static_cast<std::size_t>(state.turn)].resources;
-  Resources give{}, get{};
-  const auto held = std::find_if(have.begin(), have.end(), [](int n) { return n > 0; });
-  give[static_cast<std::size_t>(held - have.begin())] = 1;
-  get[(static_cast<std::size_t>(held - have.begin()) + 1) % get.size()] = 1;
-  Game::apply(state, {Kind::OfferTrade, bundleOf(give), bundleOf(get), -1});
+  const State state = TestTables::offeredToYou();
   ASSERT_EQ(state.phase, Phase::TradeReply);
   ASSERT_EQ(Game::currentPlayer(state), 0);
   BottomScreen screen(kWidth, kHeight);

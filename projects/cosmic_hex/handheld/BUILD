@@ -310,6 +310,7 @@ cc_test(
     srcs = ["tests/BuildMenu_test.cpp"],
     deps = [
         ":handheld",
+        ":test_tables",
         "//projects/game_bots",
         "//projects/seeded_random",
         "@gtest//:gtest_main",
@@ -354,8 +355,8 @@ cc_test(
     srcs = ["tests/Pickers_test.cpp"],
     deps = [
         ":handheld",
+        ":test_tables",
         "//projects/game_bots",
-        "//projects/seeded_random",
         "@gtest//:gtest_main",
     ],
 )
@@ -366,9 +367,8 @@ cc_test(
     srcs = ["tests/ChoiceScreens_test.cpp"],
     deps = [
         ":handheld",
-        "//projects/game_bots",
+        ":test_tables",
         "//projects/scratchpadd/scene/overlay_text",
-        "//projects/seeded_random",
         "@gtest//:gtest_main",
     ],
 )
@@ -379,6 +379,7 @@ cc_test(
     srcs = ["tests/BottomScreen_test.cpp"],
     deps = [
         ":handheld",
+        ":test_tables",
         "//projects/game_bots",
         "//projects/seeded_random",
         "@gtest//:gtest_main",
@@ -470,6 +471,89 @@ cc_test(
     ],
 )
 
+# Games played on to where the handheld's tests want them, a table with
+# you at it, and a state as the screens get it (tests/TestTables.hpp)
+cc_library(
+    name = "test_tables",
+    testonly = True,
+    srcs = ["tests/TestTables.cpp"],
+    hdrs = ["tests/TestTables.hpp"],
+    deps = [
+        ":handheld",
+        "//projects/cosmic_hex/rules",
+        "//projects/game_bots",
+        "//projects/seeded_random",
+    ],
+)
+
+# The stage's shows driven with snapshots on the test's own clock: the
+# table held until a show has shown, one show over the board at a time,
+# banners queuing, B ending only what animates
+cc_test(
+    name = "GameShows_test",
+    size = "small",
+    srcs = ["tests/GameShows_test.cpp"],
+    deps = [
+        ":handheld",
+        ":test_tables",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "ScriptedPlayer_test",
+    size = "small",
+    srcs = ["tests/ScriptedPlayer_test.cpp"],
+    deps = [
+        ":handheld",
+        ":test_tables",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "TableSnapshot_test",
+    size = "small",
+    srcs = ["tests/TableSnapshot_test.cpp"],
+    deps = [
+        ":handheld",
+        ":test_tables",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "CardChoices_test",
+    size = "small",
+    srcs = ["tests/CardChoices_test.cpp"],
+    deps = [
+        ":handheld",
+        ":test_tables",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "BoardButtons_test",
+    size = "small",
+    srcs = ["tests/BoardButtons_test.cpp"],
+    deps = [
+        ":handheld",
+        ":test_tables",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "ButtonMenu_test",
+    size = "small",
+    srcs = ["tests/ButtonMenu_test.cpp"],
+    deps = [
+        ":handheld",
+        "@gtest//:gtest_main",
+    ],
+)
+
 # The discovery's words and tile laid out on each handheld's screen in its
 # font (no window needed): nothing overlaps
 cc_test(
@@ -555,16 +639,52 @@ cc_test(
     ],
 )
 
-# Whole games played through the app's own shows and touch panel, player 0
-# by the scripted player (ScriptedGame): every show seen from its start to
-# its end unless the player skipped it; and each cause of a show cut short,
-# found by the runs, kept from coming back
+# What the scripted-play tests share: a game played, the short games'
+# settings, the shows cut short unasked (tests/ScriptedRuns.hpp)
+cc_library(
+    name = "scripted_runs",
+    testonly = True,
+    srcs = ["tests/ScriptedRuns.cpp"],
+    hdrs = ["tests/ScriptedRuns.hpp"],
+    deps = [":handheld"],
+)
+
+# Short whole games (a home exhausted at 4 points, the win at 8; the rest
+# the agreed rules) played through the app's own shows and touch panel,
+# player 0 by the scripted player (ScriptedGame), many seeds a run: every
+# show seen from its start to its end unless the player skipped it; and
+# each cause of a show cut short, found by the runs, kept from coming back
 cc_test(
     name = "ScriptedGame_test",
     size = "large",
     srcs = ["tests/ScriptedGame_test.cpp"],
     deps = [
-        ":handheld",
+        ":scripted_runs",
+        "@gtest//:gtest_main",
+    ],
+)
+
+# The short games at the other paces: Quick, a DS's frames, watched, and a
+# player pressing B
+cc_test(
+    name = "ScriptedGamePaces_test",
+    size = "large",
+    srcs = ["tests/ScriptedGamePaces_test.cpp"],
+    deps = [
+        ":scripted_runs",
+        "@gtest//:gtest_main",
+    ],
+)
+
+# Full-length games (the agreed rules' win at 12): run by hand before
+# merging (manual: //... and the everyday run skip it)
+cc_test(
+    name = "ScriptedGameLong_test",
+    size = "large",
+    srcs = ["tests/ScriptedGameLong_test.cpp"],
+    tags = ["manual"],
+    deps = [
+        ":scripted_runs",
         "@gtest//:gtest_main",
     ],
 )

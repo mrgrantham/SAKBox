@@ -23,6 +23,8 @@ Settings rulesFor(const TableSettings &settings) {
   Settings rules = agreedRules(settings.board, settings.players);
   rules.finishRound = settings.finishRound;
   rules.seatBonus = settings.seatBonus;
+  rules.winPoints = settings.winPoints.value_or(rules.winPoints);
+  rules.exhaustHomesAt = settings.exhaustHomesAt.value_or(rules.exhaustHomesAt);
   return rules;
 }
 

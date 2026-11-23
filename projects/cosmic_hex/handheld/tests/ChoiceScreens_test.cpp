@@ -5,8 +5,7 @@
 #include <CosmicHex/Handheld/CardFace.hpp>
 #include <CosmicHex/Handheld/ChoiceScreens.hpp>
 
-#include <GameBots/Bots.hpp>
-#include <SeededRandom/Generator.hpp>
+#include "TestTables.hpp"
 
 #include <gtest/gtest.h>
 
@@ -35,20 +34,11 @@ void writeOut(const Canvas &canvas, const std::string &name) {
     out.put(static_cast<char>(c.r)).put(static_cast<char>(c.g)).put(static_cast<char>(c.b));
 }
 
-State atFirstMain() {
-  State state = newGame(4, agreedRules(boardR3(), 4));
-  SeededRandom::Generator random(11);
-  for (int guard = 0; guard < 2000 && state.phase != Phase::Main; ++guard)
-    Game::apply(state, Game::currentPlayer(state) == GameBots::kDealer
-                           ? Game::dealerAction(state, random)
-                           : Game::legalActions(state).front());
-  return state;
-}
 } // namespace
 
 TEST(ChoiceScreensTest, TheBuildScreen) {
   for (const auto [w, h] : {std::pair{256, 192}, std::pair{320, 240}}) {
-    State state = atFirstMain();
+    State state = TestTables::atFirstMain();
     state.player[static_cast<std::size_t>(state.turn)].resources = {2, 2, 1, 1, 1};
     const auto rows = buildRows(state);
     Canvas canvas(w, h);

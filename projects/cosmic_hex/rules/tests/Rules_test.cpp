@@ -4,6 +4,8 @@
 #include <CosmicHex/BotStyles.hpp>
 #include <CosmicHex/Rules.hpp>
 
+#include "TestGames.hpp"
+
 #include <GameBots/Bots.hpp>
 #include <SeededRandom/Seed.hpp>
 
@@ -15,43 +17,8 @@
 #include <set>
 
 using namespace CosmicHex;
+using namespace CosmicHex::TestGames;
 using Kind = Action::Kind;
-
-namespace {
-
-bool has(const std::vector<Action> &actions, const Action &action) {
-  return std::find(actions.begin(), actions.end(), action) != actions.end();
-}
-bool hasKind(const std::vector<Action> &actions, Kind kind) {
-  return std::any_of(actions.begin(), actions.end(),
-                     [&](const Action &a) { return a.kind == kind; });
-}
-
-// A game at player 0's main phase, after their home income and a quiet roll
-State atMain(int players = 2) {
-  State state = newGame(players);
-  EXPECT_TRUE(Game::apply(state, {Kind::ChooseHome, 0}));
-  EXPECT_TRUE(Game::apply(state, {Kind::Roll, 1, 2})); // 3: nothing turned over yet
-  EXPECT_EQ(state.phase, Phase::Main);
-  return state;
-}
-
-int planetIndex(const State &state, Hex hex) {
-  for (std::size_t i = 0; i < state.planets.size(); ++i) {
-    if (state.planets[i].hex == hex)
-      return static_cast<int>(i);
-  }
-  return -1;
-}
-
-// Turns a planet over by hand, as a reveal would
-void flip(State &state, int planet, PlanetKind kind, int number) {
-  state.planets[static_cast<std::size_t>(planet)].flipped = true;
-  state.planets[static_cast<std::size_t>(planet)].kind = kind;
-  state.planets[static_cast<std::size_t>(planet)].number = number;
-}
-
-} // namespace
 
 TEST(RulesTest, TheBoard) {
   const State state = newGame(4);
@@ -238,33 +205,19 @@ TEST(RulesTest, TheDeck) {
     EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), charter), 1);
 }
 
-namespace {
-bool canPlay(const State &state) {
-  const auto legal = Game::legalActions(state);
-  return std::find(legal.begin(), legal.end(), Action{Action::Kind::PlayEnforcer}) != legal.end();
-}
-// Player 0's turn, in its main part (a roll of 3: nothing pays)
-State mainPartOfATurn() {
-  State state = newGame(3);
-  Game::apply(state, {Action::Kind::ChooseHome, 0});
-  Game::apply(state, {Action::Kind::Roll, 1, 2});
-  return state;
-}
-} // namespace
-
 // An Enforcer bought this turn waits for the next; then it moves the
 // blockade and steals, as on a 7, one a turn
 TEST(RulesTest, AnEnforcer) {
-  State state = mainPartOfATurn();
+  State state = atMain(3);
   state.player[0].resources = {0, 1, 0, 1, 1}; // a card's cost: food, water, crystals
   ASSERT_TRUE(Game::apply(state, {Kind::BuyContract}));
   ASSERT_TRUE(Game::apply(state, {Kind::DealContracts, kEnforcerCard, kEnforcerCard}));
   ASSERT_TRUE(Game::apply(state, {Kind::KeepContract, kEnforcerCard}));
-  EXPECT_FALSE(canPlay(state)); // bought this turn
+  EXPECT_FALSE(has(Game::legalActions(state), {Kind::PlayEnforcer})); // bought this turn
   EXPECT_FALSE(Game::apply(state, {Kind::PlayEnforcer}));
 
   state.player[0].boughtThisTurn.clear(); // as at the start of their next turn
-  ASSERT_TRUE(canPlay(state));
+  ASSERT_TRUE(has(Game::legalActions(state), {Kind::PlayEnforcer}));
   ASSERT_TRUE(Game::apply(state, {Kind::PlayEnforcer}));
   EXPECT_EQ(state.phase, Phase::Blockade);
   EXPECT_EQ(state.player[0].enforcersPlayed, 1);
@@ -274,20 +227,20 @@ TEST(RulesTest, AnEnforcer) {
 }
 
 TEST(RulesTest, OneEnforcerATurn) {
-  State state = mainPartOfATurn();
+  State state = atMain(3);
   state.player[0].contracts = {kEnforcerCard, kEnforcerCard};
   ASSERT_TRUE(Game::apply(state, {Kind::PlayEnforcer}));
   // No planet is turned over yet, so the blockade has nowhere to go and
   // there's no one to steal from: straight back to the main part
   ASSERT_TRUE(Game::apply(state, {Kind::MoveBlockade, -1, -1}));
   EXPECT_EQ(state.phase, Phase::Main);
-  EXPECT_FALSE(canPlay(state));
+  EXPECT_FALSE(has(Game::legalActions(state), {Kind::PlayEnforcer}));
 }
 
 // The Galactic Embargo: 3 Enforcers played claim it (2 points); a tie
 // keeps it; more takes it
 TEST(RulesTest, TheGalacticEmbargo) {
-  State state = mainPartOfATurn();
+  State state = atMain(3);
   const int before = points(state, 0);
   state.player[0].enforcersPlayed = 2;
   state.player[0].contracts = {kEnforcerCard};
