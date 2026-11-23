@@ -440,7 +440,7 @@ void HomePayShow::saw(const std::vector<TableGame::Played> &moves, const State &
 std::optional<double> HomePayShow::Timeline::leavesAt() const {
   if (spins.size() < pays || spins.empty() || !spins.back().cardAt)
     return std::nullopt;
-  return *spins.back().cardAt + kSecondsCard + kSecondsHold;
+  return *spins.back().cardAt + kSecondsCardShown;
 }
 
 std::optional<double> HomePayShow::Timeline::endAt() const {
@@ -467,7 +467,7 @@ HomePayShow::Timeline HomePayShow::timeline() const {
     if (pay.resource)
       spin.cardAt = pay.chosenAt ? std::max(landed, *pay.chosenAt) : landed;
     t.spins.push_back(spin);
-    due = spin.cardAt ? std::optional(*spin.cardAt + kSecondsCard + kSecondsHold) : std::nullopt;
+    due = spin.cardAt ? std::optional(*spin.cardAt + kSecondsCardShown) : std::nullopt;
   }
   // Back as the last card leaves, once it's known no more come: another
   // home's pay queued, or the game said so
@@ -629,14 +629,16 @@ std::optional<HomePayShow::Card> HomePayShow::card(double now) const {
     const std::optional<Resource> resource = pays_[i].resource; // (known: it has a card)
     if (!at || !resource)
       continue;
-    const double leaves = *at + kSecondsCard + kSecondsHold;
+    const double leaves = *at + kSecondsCardShown, over = *at + kSecondsCard + kSecondsTurn;
     if (now < *at || now >= leaves + kSecondsAway)
       continue;
     return Card{.order = static_cast<int>(i),
                 .resource = *resource,
                 .grown = partOf(now, *at, kSecondsCard),
+                .turned = Motion::along(Motion::Curve::EaseInOut,
+                                        partOf(now, *at + kSecondsCard, kSecondsTurn)),
                 .away = partOf(now, leaves, kSecondsAway),
-                .words = partOf(now, *at + kSecondsCard, kSecondsWordsIn)};
+                .words = partOf(now, over, kSecondsWordsIn)};
   }
   return std::nullopt;
 }
@@ -713,7 +715,7 @@ std::optional<double> SalvageShow::awayAt() const {
     const std::optional<double> taken = picks_[i].takenAt;
     if (!taken)
       return std::nullopt;
-    away = std::max({away, *taken, inAt(i) + paced(kSecondsIn + kSecondsRead)});
+    away = std::max({away, *taken, inAt(i) + paced(kSecondsIn + kSecondsTurnOver + kSecondsRead)});
   }
   return away;
 }
@@ -741,11 +743,14 @@ std::vector<SalvageShow::Card> SalvageShow::cards(double now) const {
                             : 0.0f;
     if (now < in || gone >= 1)
       continue;
+    const double turning = in + paced(kSecondsIn), over = turning + paced(kSecondsTurnOver);
     shown.push_back(
         {.slot = static_cast<int>(i),
          .resource = picks_[i].resource,
          .in = partOf(now, in, static_cast<float>(paced(kSecondsIn))),
-         .words = partOf(now, in + paced(kSecondsIn), static_cast<float>(paced(kSecondsWordsIn))),
+         .turned = Motion::along(Motion::Curve::EaseInOut,
+                                 partOf(now, turning, static_cast<float>(paced(kSecondsTurnOver)))),
+         .words = partOf(now, over, static_cast<float>(paced(kSecondsWordsIn))),
          .away = gone});
   }
   return shown;
@@ -769,7 +774,7 @@ bool SalvageShow::moving(double now) const {
   if (!begunAt_ || picks_.empty())
     return false;
   for (std::size_t i = 0; i < picks_.size(); ++i)
-    if (now < inAt(i) + paced(kSecondsIn + kSecondsWordsIn))
+    if (now < inAt(i) + paced(kSecondsIn + kSecondsTurnOver + kSecondsWordsIn))
       return true;
   const std::optional<double> end = endAt();
   return end && now < *end;
@@ -925,9 +930,10 @@ std::optional<RollPayShow::Moment> RollPayShow::at(std::size_t i, double now) co
   const auto t = static_cast<float>(now - cards_[i].at);
   if (t < 0 || t >= kSecondsPop + kSecondsFly)
     return std::nullopt;
+  const float flown = std::clamp((t - kSecondsPop) / kSecondsFly, 0.0f, 1.0f);
   return Moment{Motion::along(Motion::Curve::Settle, std::min(1.0f, t / kSecondsPop)),
-                Motion::along(Motion::Curve::Gentle,
-                              std::clamp((t - kSecondsPop) / kSecondsFly, 0.0f, 1.0f))};
+                Motion::along(Motion::Curve::Gentle, flown),
+                Motion::along(Motion::Curve::EaseInOut, std::min(1.0f, 2 * flown))};
 }
 
 bool RollPayShow::moving(double now) const {
@@ -1100,17 +1106,32 @@ float HandShow::piles(double now) const {
   return leaving > 0 ? 1 - Motion::along(Motion::Curve::EaseIn, leaving) : 1;
 }
 
-float HandShow::card(Resource r, int index, double now) const {
-  if (!startedAt_ || index < 0)
-    return 1;
+float HandShow::sinceCard(Resource r, int index, double now) const {
+  if (!startedAt_)
+    return 0;
   // (the gained cards in order: all of one resource, then the next)
   int order = 0;
   for (int q = 0; q < static_cast<int>(r); ++q)
     order += added_[static_cast<std::size_t>(q)];
   order += index;
-  const auto t =
-      static_cast<float>(now - *startedAt_) - kSecondsPiles - kStagger * static_cast<float>(order);
-  return Motion::along(Motion::Curve::Settle, std::clamp(t / kSecondsCard, 0.0f, 1.0f));
+  return static_cast<float>(now - *startedAt_) - kSecondsPiles -
+         kStagger * static_cast<float>(order);
+}
+
+float HandShow::card(Resource r, int index, double now) const {
+  if (!startedAt_ || index < 0)
+    return 1;
+  return Motion::along(Motion::Curve::Settle,
+                       std::clamp(sinceCard(r, index, now) / kSecondsCard, 0.0f, 1.0f));
+}
+
+float HandShow::turned(Resource r, int index, double now) const {
+  if (!startedAt_ || index < 0)
+    return 1;
+  // (landing face up: turned over through the last of its drop)
+  const float turning = sinceCard(r, index, now) - (kSecondsCard - kSecondsTurnOver);
+  return Motion::along(Motion::Curve::EaseInOut,
+                       std::clamp(turning / kSecondsTurnOver, 0.0f, 1.0f));
 }
 
 // ------------------------------------------------------------ Corner pointer

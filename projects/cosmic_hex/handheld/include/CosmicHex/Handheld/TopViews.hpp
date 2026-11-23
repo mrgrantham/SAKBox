@@ -19,6 +19,7 @@
 #include <CosmicHex/Handheld/Palette.hpp>
 #include <CosmicHex/Handheld/PlayerNames.hpp>
 #include <CosmicHex/Handheld/RollDice.hpp>
+#include <CosmicHex/Handheld/TextMeasure.hpp>
 #include <CosmicHex/Handheld/TopShows.hpp>
 
 #include <ScratchPadd/PictureSlot/PictureSlot.hpp>
@@ -29,6 +30,7 @@
 #include <array>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace CosmicHex::Handheld {
 
@@ -86,6 +88,18 @@ struct TopFrame {
   float k() const { return width / 256; } // (sizes are for a DS's screen, scaled)
 };
 
+// An action card's words on a card `width` wide (cardFace writes them in
+// the cream under its art, Art::kCardWords): at the screen's words' scale
+// (`largest`, its width over a DS's) or smaller, down to the bottom
+// screen's (1), the largest at which every line fits (`whole`; else the
+// smallest, its last lines left off), wrapped as drawn
+struct CardWordsFit {
+  float scale = 1;
+  std::vector<std::string> lines;
+  bool whole = false;
+};
+CardWordsFit cardWordsFit(Art::Card card, float width, float largest, TextMeasure measure = {});
+
 // Where a discovery's words and its tile go on a screen `width` x `height`
 // (points), in the font `lineHeight` measures: who discovered it and the
 // tile's name stacked down from the top, the tile facing you in the middle
@@ -141,15 +155,6 @@ void drawDealtCards(const TopFrame &frame, const DealtShow &show, int chosen);
 // for each, five at most, a count past five), their action cards across
 // the top, each card coming in as `show` has it
 void drawResources(const TopFrame &frame, const Player &player, const CardsShow &show);
-// How wide a line of text is at a scale, in points
-using TextWidth = float (*)(std::string_view text, float scale);
-// How a layout worked out before drawing measures text: the platform's
-// font (the overlay's) unless another is asked for (a test's)
-struct TextMeasure {
-  ScratchPadd::Scene::LineHeight lineHeight = ScratchPadd::Scene::Overlay::lineHeight;
-  TextWidth width = ScratchPadd::Scene::Overlay::textWidth;
-};
-
 // Where another player's panel puts what it shows on a screen `width` x
 // `height` (points from the panel's top), worked out from the screen's
 // size and the font's lines the same way on every screen: `name` and
@@ -192,12 +197,18 @@ struct OtherPlayerLayout {
   float planetsX = 0, planetsY = 0, planetRadius = 0, planetStep = 0, planetRowStep = 0;
   int planetsARow = 1, planetsShown = 0;
   float planetsBottom() const;
-  // The Charters' line (none: an empty box at the bottom)
+  // The Charters' lines (chartersLine, fitted across; on more lines, each
+  // name whole, where it won't fit even at the smallest) and their box
+  // (none: an empty box at the bottom)
+  std::vector<std::string> chartersLines;
   ScratchPadd::Scene::LineBox charters;
 };
 OtherPlayerLayout otherPlayerLayout(const PlayerView &view, std::string_view name, float width,
                                     float height, TextMeasure measure = {});
-// "Charters: ..." for the Charters a player has revealed (empty for none)
+// "Charters: Occupier, Deep-space Relay" for the Charters a player has
+// revealed, each by its own name (charterNameOf: its title after
+// "Charter: "); empty for none
+std::string_view charterNameOf(Art::Card card);
 std::string chartersLine(const PlayerView &view);
 
 // What everyone can see of a player, on a panel sliding down from the top

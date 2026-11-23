@@ -582,8 +582,13 @@ TEST(BottomScreenTest, TheTradeRoomMakesABankTrade) {
   ASSERT_EQ(screen.mode(), Mode::Trade);
   // Minerals given (the first card of the give row, the lower), Food got
   // (the second of the get row, the upper): the cards' middles
-  screen.tap(6 + 24, 102 + 20, std::nullopt);
-  screen.tap(6 + 49 + 24, 34 + 20, std::nullopt);
+  const ChoiceScreens::TradeLayout trade = ChoiceScreens::tradeLayout(kWidth, kHeight);
+  const auto tapMiddle = [&](const ChoiceScreens::Box &card) {
+    screen.tap(static_cast<int>(card.x + card.w / 2), static_cast<int>(card.y + card.h / 2),
+               std::nullopt);
+  };
+  tapMiddle(trade.card(trade.giveTop, 0));
+  tapMiddle(trade.card(trade.getTop, 1));
   const auto first = screen.press(BottomScreen::Key::Confirm);
   ASSERT_TRUE(first.play.has_value());
   if (first.play) {

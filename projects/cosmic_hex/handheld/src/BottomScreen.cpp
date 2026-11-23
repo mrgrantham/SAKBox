@@ -42,7 +42,9 @@ void rememberActionTouch(ChoiceScreens::Press &press,
 } // namespace
 
 BottomScreen::BottomScreen(int width, int height)
-    : width_(width), height_(height), cards_(width), bigCards_(width, kCardsScreenWidth) {}
+    : width_(width), height_(height), cards_(pickerCardWidth(width)),
+      tradeCards_(ChoiceScreens::tradeLayout(width, height).cardWidth),
+      bigCards_(ChoiceScreens::cardsLayout(width, height, 1).cardWidth) {}
 
 void BottomScreen::update(const State &state, const std::vector<Action> &legal, bool yourMove,
                           bool yourRollWaits) {
@@ -421,7 +423,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
     return {std::nullopt, true};
   }
   case Mode::Cards: {
-    const auto touch = ChoiceScreens::cardsTouch(width_, held_.size(), x, y);
+    const auto touch = ChoiceScreens::cardsTouch(width_, height_, held_.size(), x, y);
     rememberActionTouch(actionPress_, touch, now_);
     if (!touch)
       return {std::nullopt, true};
@@ -435,7 +437,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
   }
   case Mode::Trade: {
     using TradeWhat = ChoiceScreens::TradeTouch::What;
-    const auto touch = ChoiceScreens::tradeTouch(width_, trade_, x, y);
+    const auto touch = ChoiceScreens::tradeTouch(width_, height_, trade_, x, y);
     rememberActionTouch(actionPress_, touch, now_);
     if (!touch)
       return {std::nullopt, true};
@@ -477,7 +479,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
   }
   case Mode::Keep: {
     const auto touch =
-        keep_ ? ChoiceScreens::keepTouch(width_, keep_->cards.size(), x, y) : std::nullopt;
+        keep_ ? ChoiceScreens::keepTouch(width_, height_, keep_->cards.size(), x, y) : std::nullopt;
     rememberActionTouch(actionPress_, touch, now_);
     if (!touch)
       return {std::nullopt, true};
@@ -929,7 +931,7 @@ void BottomScreen::draw(Canvas &canvas) {
     ChoiceScreens::drawOthers(canvas, others_, othersChosen_, trade_.names(), actionPress());
     return;
   case Mode::Trade:
-    ChoiceScreens::drawTrade(canvas, trade_, cards_, actionPress());
+    ChoiceScreens::drawTrade(canvas, trade_, tradeCards_, actionPress());
     return;
   case Mode::Board:
   case Mode::Placing:
@@ -986,7 +988,7 @@ std::vector<BoardPicture::Area> BottomScreen::overBoardAreas() const {
 }
 
 bool BottomScreen::prepare() {
-  if (!cards_.prepare())
+  if (!cards_.prepare() || !tradeCards_.prepare())
     return false;
   const int inner = static_cast<int>(22.0f * static_cast<float>(width_) / 256.0f) - 4;
   if (iconSize_ != inner) {

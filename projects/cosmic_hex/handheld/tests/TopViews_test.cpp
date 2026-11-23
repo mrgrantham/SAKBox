@@ -5,9 +5,12 @@
 #include <CosmicHex/Handheld/Hud.hpp>
 #include <CosmicHex/Handheld/TopViews.hpp>
 
+#include <CosmicHex/Handheld/CardFace.hpp>
 #include <ExpectedCapabilities/ExpectedCapabilities.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
+#include <ScratchPadd/Scene/Font.hpp>
 #include <ScratchPadd/Scene/Primitives.hpp>
+#include <ScratchPadd/Scene/TextWrap.hpp>
 
 #include <gtest/gtest.h>
 
@@ -80,6 +83,40 @@ TEST(TopViewsLayoutTest, EveryBigCardIsTwoByThreeAndWholeOnTheScreen) {
     EXPECT_LT(boxes[3].x + boxes[3].width, boxes[4].x) << width;
     const CardBox home = homePayCardBox(width, height);
     EXPECT_LE(home.y + home.height + Scene::Overlay::lineHeight(1.5f * k), height) << width;
+  }
+}
+
+// An action card's words read whole on its body at the cards' one shape
+// (CardFace::kHeightPerWidth), on both consoles' top screens in their
+// fonts (the DS's Silkscreen, the 3DS's Orbitron): at the size it's dealt
+// and played, every line of what it does fits the cream under its art, as
+// cardFace stacks them; a resource card has no words, its art down to its
+// foot
+TEST(TopViewsLayoutTest, ActionCardsWordsReadWholeAtTheCardsShape) {
+  struct Screen {
+    float width, height;
+    TextMeasure measure;
+  };
+  const TextMeasure silkscreen{
+      [](float scale) { return Scene::Font::silkscreen().lineHeight(scale); },
+      [](std::string_view text, float scale) {
+        return Scene::Font::silkscreen().width(text, scale);
+      }};
+  const TextMeasure orbitron{[](float scale) { return Scene::Font::orbitron().lineHeight(scale); },
+                             [](std::string_view text, float scale) {
+                               return Scene::Font::orbitron().width(text, scale);
+                             }};
+  for (const Screen &s : {Screen{256, 192, silkscreen}, Screen{400, 240, orbitron}}) {
+    const float k = s.width / 256;
+    for (const CardBox &box :
+         {playedCardBox(s.width, s.height), dealtCardBox(s.width, s.height, 0, 2)})
+      for (int c = kResources; c < Art::kCards; ++c) {
+        const auto card = static_cast<Art::Card>(c);
+        ASSERT_TRUE(CardFace::hasWords(card));
+        const CardWordsFit fit = cardWordsFit(card, box.width, k, s.measure);
+        EXPECT_TRUE(fit.whole) << s.width << " " << box.width << " " << Art::fileOf(card);
+        EXPECT_GE(fit.scale, 1) << s.width; // (no smaller than the bottom screen's words)
+      }
   }
 }
 

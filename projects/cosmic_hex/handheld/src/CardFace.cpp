@@ -13,6 +13,8 @@ namespace {
 
 Colour colourOf(Art::Rgb rgb) { return {rgb.r, rgb.g, rgb.b, 255}; }
 
+constexpr float kPi = 3.14159265f;
+
 // A shape's corners, in the card's units
 float cornerOf(Shape shape) { return shape == Shape::Card ? Art::kCardCorner : Art::kBandCorner; }
 
@@ -87,6 +89,26 @@ Colour bandOf(Art::Card card) { return colourOf(Art::bandOf(card)); }
 
 Colour titleInkOf(Art::Card card) { return Palette::inkOnBand(CardFace::bandOf(card)); }
 
+// (the resources come first, Crystals the last of them)
+bool hasWords(Art::Card card) { return card > Art::Card::Crystals; }
+
+Art::CardArea artOf(Art::Card card) {
+  if (hasWords(card))
+    return Art::kCardArt;
+  // (down to the card's foot, in from it as far as the title band is from
+  // its top)
+  const float inset = Art::kCardTitle.y;
+  return {Art::kCardArt.x, Art::kCardArt.y, Art::kCardArt.width,
+          Art::kCardHeight - inset - Art::kCardArt.y};
+}
+
+Art::CardArea iconOf(Art::Card card) {
+  Art::CardArea icon = Art::kCardIcon;
+  if (!hasWords(card))
+    icon.y = (Art::kCardHeight - icon.height) / 2;
+  return icon;
+}
+
 std::array<Layer, kLayers> layersOf(Art::Card card) {
   // (the body inside the edge by a line's width, as the drawings' stroke)
   constexpr float kEdge = 0.75f;
@@ -95,24 +117,29 @@ std::array<Layer, kLayers> layersOf(Art::Card card) {
             Shape::Card,
             colourOf(Art::kCardBody)},
            {Art::kCardTitle, Shape::TitleBand, CardFace::bandOf(card)},
-           {Art::kCardArt, Shape::ArtBand, colourOf(Art::kCardArtBand)}}};
+           {artOf(card), hasWords(card) ? Shape::ArtBand : Shape::TallArtBand,
+            colourOf(Art::kCardArtBand)}}};
 }
 
 ShapeArea areaOf(Shape shape) {
-  // Each in the card's proportions, 30 texels wide: the card down the left
-  // (2:3), the bands to its right, one under the other
-  constexpr int kWide = 30;
-  constexpr float kTexels = kWide / Art::kCardWidth, kBandTexels = kWide / Art::kCardTitle.width;
+  // Each in its own proportions: the card down the left, 30 texels wide;
+  // the bands to its right, one under the other, 30 wide (a resource's
+  // tall art band 26, to fit under the others)
+  constexpr int kWide = 30, kBandsX = kWide + 3;
+  const auto band = [](int y, int wide, const Art::CardArea &area) {
+    const float texels = static_cast<float>(wide) / area.width;
+    return ShapeArea{kBandsX, y, wide, static_cast<int>(std::lround(area.height * texels)),
+                     Art::kBandCorner * texels};
+  };
   switch (shape) {
   case Shape::Card:
-    return {1, 1, kWide, kWide * 3 / 2, Art::kCardCorner * kTexels};
+    return {1, 1, kWide, heightOf(kWide), Art::kCardCorner * kWide / Art::kCardWidth};
   case Shape::TitleBand:
-    return {kWide + 3, 1, kWide,
-            static_cast<int>(std::lround(Art::kCardTitle.height * kBandTexels)),
-            Art::kBandCorner * kBandTexels};
+    return band(1, kWide, Art::kCardTitle);
   case Shape::ArtBand:
-    return {kWide + 3, 11, kWide, static_cast<int>(std::lround(Art::kCardArt.height * kBandTexels)),
-            Art::kBandCorner * kBandTexels};
+    return band(11, kWide, Art::kCardArt);
+  case Shape::TallArtBand:
+    return band(29, 26, artOf(Art::Card::Minerals));
   }
   return {};
 }
@@ -120,7 +147,7 @@ ShapeArea areaOf(Shape shape) {
 std::vector<Colour> shapesPixels() {
   std::vector<Colour> pixels(static_cast<std::size_t>(kShapesSize) * kShapesSize,
                              Colour{255, 255, 255, 0});
-  for (const Shape shape : {Shape::Card, Shape::TitleBand, Shape::ArtBand}) {
+  for (const Shape shape : kShapes) {
     const ShapeArea area = areaOf(shape);
     fill(pixels, kShapesSize, kShapesSize,
          {static_cast<float>(area.x), static_cast<float>(area.y), static_cast<float>(area.width),
@@ -152,11 +179,11 @@ Scene::MeshBuilder layersMesh(Art::Card card) {
   return mesh;
 }
 
-PixelArea iconPixelsOn(int width) {
+PixelArea iconPixelsOn(Art::Card card, int width) {
   const float scale = static_cast<float>(width) / Art::kCardWidth;
   const auto at = [scale](float units) { return static_cast<int>(std::lround(units * scale)); };
-  return {at(Art::kCardIcon.x), at(Art::kCardIcon.y), at(Art::kCardIcon.width),
-          at(Art::kCardIcon.height)};
+  const Art::CardArea icon = iconOf(card);
+  return {at(icon.x), at(icon.y), at(icon.width), at(icon.height)};
 }
 
 std::vector<Colour> pixelsOf(Art::Card card, int width, std::span<const Colour> icon) {
@@ -169,7 +196,7 @@ std::vector<Colour> pixelsOf(Art::Card card, int width, std::span<const Colour> 
          {layer.area.x * scale, layer.area.y * scale, layer.area.width * scale,
           layer.area.height * scale, cornerOf(layer.shape) * scale},
          layer.colour);
-  const PixelArea at = iconPixelsOn(width);
+  const PixelArea at = iconPixelsOn(card, width);
   if (icon.size() < static_cast<std::size_t>(at.width) * static_cast<std::size_t>(at.height))
     return pixels;
   for (int y = 0; y < at.height && at.y + y < height; ++y)
@@ -181,6 +208,11 @@ std::vector<Colour> pixelsOf(Art::Card card, int width, std::span<const Colour> 
                    1, pixel);
     }
   return pixels;
+}
+
+Turn turnOf(float turned) {
+  const float t = std::clamp(turned, 0.0f, 1.0f);
+  return {std::abs(std::cos(t * kPi)), t >= 0.5f};
 }
 
 } // namespace CosmicHex::Handheld::CardFace

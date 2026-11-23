@@ -239,11 +239,12 @@ private:
   // (update's work: the screen following the game)
   void follow(const State &state, const std::vector<Action> &legal, bool yourMove,
               bool yourRollWaits);
-  void closeOthers();     // (the other players' Back: the board again)
-  Outcome confirmTrade(); // (the trade room's Trade, Offer, Accept or Counter)
-  void backFromTrade();   // (its Back: from countering, the offer again)
-  CardSprites cards_;
-  CardSprites bigCards_; // (the cards screens': bigger, four a row)
+  void closeOthers();      // (the other players' Back: the board again)
+  Outcome confirmTrade();  // (the trade room's Trade, Offer, Accept or Counter)
+  void backFromTrade();    // (its Back: from countering, the offer again)
+  CardSprites cards_;      // (the resource picker's, and the player picker's backs)
+  CardSprites tradeCards_; // (the trade room's: tradeLayout's)
+  CardSprites bigCards_;   // (the cards screen's and the keep screen's: cardsLayout's)
   std::array<std::vector<Canvas::Colour>, Art::kIcons> icons_;
   int iconSize_ = 0;
 };

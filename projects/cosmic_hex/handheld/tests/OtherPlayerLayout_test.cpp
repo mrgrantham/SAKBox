@@ -118,7 +118,10 @@ TEST_P(OtherPlayerLayoutTest, ItsPartsFitAcross) {
       EXPECT_LE(widthOf(l.resourcesLabel, l.labelScale), l.columnWidth);
       EXPECT_LE(widthOf(l.actionsLabel, l.labelScale), l.columnWidth);
       EXPECT_NE(l.resourcesLabel.find(std::to_string(cards)), std::string::npos);
-      EXPECT_LE(l.left + widthOf(chartersLine(view), l.chartersScale), screen.width - l.margin);
+      for (const std::string &line : l.chartersLines)
+        EXPECT_LE(l.left + widthOf(line, l.chartersScale), screen.width - l.margin) << line;
+      EXPECT_FALSE(l.chartersLines.empty()); // (every Charter named, on one line or more)
+      EXPECT_NE(l.chartersLines.back().find("Relay"), std::string::npos);
       EXPECT_LE(l.piecesX[3] + widthOf("colonies", l.textScale), screen.width - l.margin);
       const float halfWide = 0.8660254f * l.planetRadius;
       EXPECT_LE(l.left + widthOf("PLANETS", l.textScale), l.planetsX - halfWide);
@@ -162,6 +165,18 @@ TEST_P(OtherPlayerLayoutTest, PlanetsPastTwoRowsAreCounted) {
   const OtherPlayerLayout l = layOut(playerWith(0, 40));
   EXPECT_EQ(l.planetsShown, OtherPlayerLayout::kPlanetRows * l.planetsARow);
   EXPECT_EQ(layOut(playerWith(0, 3)).planetsShown, 3);
+}
+
+// Each revealed Charter by its own name: every Charter's short title is
+// "Charter", so the line read "Charters: Charter Charter"
+TEST(ChartersLineTest, NamesEachCharter) {
+  PlayerView view;
+  EXPECT_EQ(chartersLine(view), "");
+  view.charters = {Art::Card::CharterOccupier};
+  EXPECT_EQ(chartersLine(view), "Charters: Occupier");
+  view.charters = {Art::Card::CharterThreeOfAKind, Art::Card::CharterOccupier,
+                   Art::Card::CharterDeepSpaceRelay};
+  EXPECT_EQ(chartersLine(view), "Charters: Three of a Kind, Occupier, Deep-space Relay");
 }
 
 INSTANTIATE_TEST_SUITE_P(OnEachHandheld, OtherPlayerLayoutTest,

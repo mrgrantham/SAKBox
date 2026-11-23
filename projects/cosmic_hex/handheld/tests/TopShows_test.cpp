@@ -179,6 +179,14 @@ TEST(TopShowsTest, YourSalvageFollowsThePickerThenFlies) {
   EXPECT_GT(show.cards(4.1)[0].in, 0);
   EXPECT_LT(show.cards(4.1)[0].in, 1);
   EXPECT_FLOAT_EQ(show.dim(4 + SalvageShow::kSecondsIn), SalvageShow::kWordsDim);
+  // (in face down, turned over once it's in, its name only once it's over)
+  const SalvageShow::Card in = show.cards(4 + SalvageShow::kSecondsIn)[0];
+  EXPECT_NEAR(in.turned, 0, 1e-5);
+  EXPECT_NEAR(in.words, 0, 1e-5);
+  const SalvageShow::Card over = show.cards(4 + SalvageShow::kSecondsIn + kSecondsTurnOver)[0];
+  EXPECT_NEAR(over.turned, 1, 1e-5);
+  EXPECT_NEAR(over.words, 0, 1e-5);
+  EXPECT_GT(show.cards(4 + SalvageShow::kSecondsIn + kSecondsTurnOver + 0.1)[0].words, 0);
   show.choosing({Resource::Fuel, Resource::Fuel}, 5);
   show.choosing({Resource::Fuel, Resource::Water}, 6);
   auto shown = show.cards(6.1);
@@ -244,7 +252,7 @@ TEST(TopShowsTest, ABotsSalvageComesWithItsMovesAndIsQuicker) {
   // (watching, every player a bot; and playing, with the bot not you)
   const double watching = end(-1), playing = end(0);
   EXPECT_NEAR(watching, playing, 0.02);
-  const double yours = 3 + SalvageShow::kSecondsIn + SalvageShow::kSecondsRead +
+  const double yours = 3 + SalvageShow::kSecondsIn + kSecondsTurnOver + SalvageShow::kSecondsRead +
                        SalvageShow::kStagger + SalvageShow::kSecondsAway;
   EXPECT_LT(watching, yours - 0.2); // (quicker)
   EXPECT_GT(watching, 3.2);         // (but still seen)
@@ -402,6 +410,12 @@ TEST(TopShowsTest, AHomePaysOnItsDie) {
   EXPECT_EQ(held->resource, Resource::Water);
   EXPECT_NEAR(held->grown, 1, 1e-4);
   EXPECT_FLOAT_EQ(held->away, 0);
+  // (grown face down, then turned over, what it is fading in once it's over)
+  EXPECT_FLOAT_EQ(held->turned, 0);
+  EXPECT_FLOAT_EQ(held->words, 0);
+  const auto over = show.card(spins + S::kSecondsSpin + S::kSecondsCard + S::kSecondsTurn);
+  EXPECT_FLOAT_EQ(over->turned, 1);
+  EXPECT_GT(show.card(spins + S::kSecondsSpin + S::kSecondsCard + S::kSecondsTurn + 0.1)->words, 0);
   const double leaves = spins + S::kSecondsPay;
   EXPECT_GT(show.card(leaves + S::kSecondsAway / 2)->away, 0);
   // (back as the card leaves: over its place, then dropped in, seated)
@@ -499,8 +513,7 @@ TEST(TopShowsTest, TheStarWaitsForTheChoice) {
   EXPECT_FALSE(show.waitingForChoice(6));
   EXPECT_TRUE(show.update(6).hold); // (held again for its card)
   EXPECT_EQ(show.card(6.1)->resource, Resource::Food);
-  EXPECT_TRUE(
-      show.update(6 + S::kSecondsCard + S::kSecondsHold + S::kSecondsHome + kJustAfter).letGo);
+  EXPECT_TRUE(show.update(6 + S::kSecondsCardShown + S::kSecondsHome + kJustAfter).letGo);
 }
 
 // B, or Animations Off: the shows' clock skipped on past any end, the
@@ -595,6 +608,11 @@ TEST(TopShowsTest, ARollsPayFliesCardByCard) {
   EXPECT_FALSE(show.at(0, 9.9).has_value());
   EXPECT_TRUE(show.update(10).hold);
   EXPECT_FLOAT_EQ(show.at(0, 10 + RollPayShow::kSecondsPop)->pop, 1);
+  // (face down as it pops out, turned over by halfway along its flight:
+  // the view turns over the cards coming to you)
+  EXPECT_FLOAT_EQ(show.at(0, 10 + RollPayShow::kSecondsPop)->turned, 0);
+  EXPECT_FLOAT_EQ(
+      show.at(0, 10 + RollPayShow::kSecondsPop + RollPayShow::kSecondsFly / 2 + 0.01)->turned, 1);
   EXPECT_TRUE(show.moving(10.1));
   EXPECT_TRUE(show.update(10 + show.seconds()).letGo);
   EXPECT_TRUE(show.cards().empty());
@@ -761,6 +779,10 @@ TEST(TopShowsTest, CardsGainedDropIntoTheHand) {
   EXPECT_NEAR(hand.card(Resource::Food, 0, first), 0, 1e-4);
   EXPECT_GT(hand.card(Resource::Food, 0, first + 0.2), hand.card(Resource::Food, 1, first + 0.2));
   EXPECT_FLOAT_EQ(hand.card(Resource::Food, 1, first + 2), 1);
+  // (each dropping in face down, landing turned over)
+  EXPECT_FLOAT_EQ(hand.turned(Resource::Food, 0, first), 0);
+  EXPECT_FLOAT_EQ(hand.turned(Resource::Food, 0, first + HandShow::kSecondsCard), 1);
+  EXPECT_LT(hand.turned(Resource::Food, 1, first + HandShow::kSecondsCard), 1);
   EXPECT_TRUE(hand.showing(first + 1));
   EXPECT_FALSE(hand.showing(20));
 }

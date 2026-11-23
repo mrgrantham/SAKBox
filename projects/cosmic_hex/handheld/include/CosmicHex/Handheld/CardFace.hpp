@@ -1,14 +1,16 @@
 // CardFace.hpp - every card the consoles show, drawn one way: layered from
-// cheap pieces (the user's), in a true card's shape, 2:3. A card is its
-// edge, its cream body, its title band in the card's colour and its art
-// band, each a plain tinted rounded rectangle cut from one small shared
-// alpha texture (shapesPixels); only its icon is a picture (Art's
+// cheap pieces (the user's), in one shape everywhere, 2:3 (kHeightPerWidth).
+// A card is its edge, its cream body, its title band in the card's colour
+// and its art band, each a plain tinted rounded rectangle cut from one small
+// shared alpha texture (shapesPixels); only its icon is a picture (Art's
 // cardIconRecipeOf). The top screen draws the layers as one mesh
 // (layersMesh) and the icon over them; the bottom screen's canvas draws the
-// same layers into pixels (pixelsOf).
+// same layers into pixels (pixelsOf). A card turning over from its back to
+// its face is turnOf's, on both screens.
 //
 //   const auto mesh = renderer.load(CardFace::layersMesh(Art::Card::Fuel).data());
 //   const float height = CardFace::heightOf(width);
+//   const CardFace::Turn turn = CardFace::turnOf(0.3f); // (its back, narrowing)
 #pragma once
 
 #include <CosmicHex/Art.hpp>
@@ -26,23 +28,31 @@ namespace CosmicHex::Handheld::CardFace {
 
 using Colour = ScratchPadd::Scene::Colour;
 
-// A card's height for its width: 2:3, a playing card's shape
-constexpr float heightOf(float width) { return width * Art::kCardHeight / Art::kCardWidth; }
+// The one shape of every card, faces and backs, on both screens: its
+// height for its width, 2:3, a playing card's (the user's). Nothing else
+// sizes a card's height: heightOf and widthToFit are the ways to it. The
+// card's units (Art.hpp's 63 x 94.5) and its backs' drawings keep to it
+inline constexpr float kHeightPerWidth = 1.5f;
+static_assert(Art::kCardHeight == Art::kCardWidth * kHeightPerWidth,
+              "Art's card units are a card's shape");
+constexpr float heightOf(float width) { return width * kHeightPerWidth; }
 inline int heightOf(int width) {
   return static_cast<int>(std::lround(heightOf(static_cast<float>(width))));
 }
-// How far down a card its top goes: its title band and art, with the
-// cream under them (the bottom screen's rows of cards, where a whole card
-// has no room)
-constexpr float kTopUnits = Art::kCardArt.y + Art::kCardArt.height + 3;
-inline int topHeightOf(int width) {
-  return static_cast<int>(std::lround(static_cast<float>(width) * kTopUnits / Art::kCardWidth));
-}
 // The widest card that fits `width` x `height`
 constexpr float widthToFit(float width, float height) {
-  const float tallest = height * Art::kCardWidth / Art::kCardHeight;
+  const float tallest = height / kHeightPerWidth;
   return width < tallest ? width : tallest;
 }
+
+// Where a card's art band and its icon are, in its units. An action card
+// keeps Art's (kCardArt, kCardIcon), its words in the cream under them
+// (kCardWords); a resource card has no words, so its art band goes down to
+// its foot and its icon sits in the card's middle (the user's: no empty
+// cream under it)
+bool hasWords(Art::Card card);
+Art::CardArea artOf(Art::Card card);
+Art::CardArea iconOf(Art::Card card);
 
 // The card's colours: its title band's (cards.txt), and its title's letters
 // on it (Palette::inkOnBand: dark on a light band)
@@ -50,8 +60,11 @@ Colour bandOf(Art::Card card);
 Colour titleInkOf(Art::Card card);
 
 // The shared texture's rounded rectangles, one for each shape of layer, so
-// each is stretched only in its own proportions
-enum class Shape : std::uint8_t { Card, TitleBand, ArtBand };
+// each is stretched only in its own proportions (a resource card's art
+// band, much taller than an action card's, is a shape of its own)
+enum class Shape : std::uint8_t { Card, TitleBand, ArtBand, TallArtBand };
+inline constexpr std::array kShapes{Shape::Card, Shape::TitleBand, Shape::ArtBand,
+                                    Shape::TallArtBand};
 // A layer: a rounded rectangle in the card's units (Art.hpp), tinted
 struct Layer {
   Art::CardArea area;
@@ -87,15 +100,26 @@ inline constexpr float kCardStep = kIconLift + kLayerStep;
 // (one draw a card, four quads)
 ScratchPadd::Scene::MeshBuilder layersMesh(Art::Card card);
 
-// Where the icon goes on a card `width` wide, in whole pixels from its top
-// left
+// Where `card`'s icon goes on it `width` wide, in whole pixels from its
+// top left
 struct PixelArea {
   int x, y, width, height;
 };
-PixelArea iconPixelsOn(int width);
+PixelArea iconPixelsOn(Art::Card card, int width);
 // The whole card as pixels (RGBA, rows from the top), `width` x
-// heightOf(width): its layers and `icon` (drawn iconPixelsOn(width)'s size)
-// over them; its words are the caller's
+// heightOf(width): its layers and `icon` (drawn iconPixelsOn's size) over
+// them; its words are the caller's
 std::vector<Colour> pixelsOf(Art::Card card, int width, std::span<const Colour> icon);
+
+// A card turning over, from its back (`turned` 0) to its face (1), about
+// its upright middle, as a card is turned at a table (the user's): how much
+// of its width shows (its width through |cos|, none edge on, halfway), and
+// whether its face shows yet (from halfway). Every card turned over, on
+// either screen, is drawn by it; the shows time it (kSecondsTurnOver)
+struct Turn {
+  float across = 1;
+  bool face = true;
+};
+Turn turnOf(float turned);
 
 } // namespace CosmicHex::Handheld::CardFace

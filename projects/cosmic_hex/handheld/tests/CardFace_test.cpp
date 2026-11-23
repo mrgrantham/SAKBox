@@ -1,6 +1,7 @@
-// Every card drawn one way, in layers (CardFace): 2:3, its layers' colours,
-// the one shapes texture they're cut from, the mesh the top screen draws
-// and the pixels the bottom screen draws
+// Every card drawn one way, in layers (CardFace): one shape, 2:3, its
+// layers' colours, a resource's art band down to its foot, the one shapes
+// texture they're cut from, the mesh the top screen draws, the pixels the
+// bottom screen draws, and a card turning over
 #include <CosmicHex/Handheld/CardFace.hpp>
 
 #include <CosmicHex/Handheld/Palette.hpp>
@@ -19,13 +20,40 @@ constexpr Scene::Colour kCream{0xf4, 0xf1, 0xe8, 255}, kArtBand{0x18, 0x22, 0x37
 bool sameColour(Scene::Colour a, Scene::Colour b) { return a.r == b.r && a.g == b.g && a.b == b.b; }
 } // namespace
 
-// A card is 2:3 at every size, and the widest that fits a box keeps it
+// A card is 2:3 at every size (kHeightPerWidth, the one source of its
+// shape: the card's units and the shapes texture's card keep to it), and
+// the widest that fits a box keeps it
 TEST(CardFaceTest, ACardIsTwoByThree) {
+  EXPECT_FLOAT_EQ(CardFace::kHeightPerWidth, 1.5f);
+  EXPECT_FLOAT_EQ(Art::kCardHeight / Art::kCardWidth, CardFace::kHeightPerWidth);
   EXPECT_FLOAT_EQ(CardFace::heightOf(44.0f), 66);
   EXPECT_EQ(CardFace::heightOf(48), 72);
   EXPECT_FLOAT_EQ(CardFace::widthToFit(100, 90), 60); // (as tall as fits)
   EXPECT_FLOAT_EQ(CardFace::widthToFit(40, 200), 40); // (as wide as fits)
-  EXPECT_LT(CardFace::topHeightOf(48), CardFace::heightOf(48));
+  const CardFace::ShapeArea card = CardFace::areaOf(CardFace::Shape::Card);
+  EXPECT_EQ(card.height, CardFace::heightOf(card.width));
+}
+
+// A resource card has no words: its art band goes down to its foot (no
+// empty cream under it) and its icon sits in the card's middle. An action
+// card keeps its art band under its title and its words in the cream
+// under that, every line of them inside the card
+TEST(CardFaceTest, AResourcesArtFillsTheCardUnderItsTitle) {
+  for (int c = 0; c < Art::kCards; ++c) {
+    const auto card = static_cast<Art::Card>(c);
+    const Art::CardArea art = CardFace::artOf(card), icon = CardFace::iconOf(card);
+    EXPECT_GE(icon.y, art.y) << c;
+    EXPECT_LE(icon.y + icon.height, art.y + art.height) << c;
+    if (CardFace::hasWords(card)) {
+      EXPECT_GE(c, kResources);
+      EXPECT_LE(art.y + art.height, Art::kCardWords.y) << c;
+      continue;
+    }
+    EXPECT_LT(c, kResources);
+    EXPECT_FLOAT_EQ(art.y + art.height, Art::kCardHeight - Art::kCardTitle.y) << c;
+    EXPECT_FLOAT_EQ(icon.y + icon.height / 2, Art::kCardHeight / 2) << c;
+    EXPECT_EQ(CardFace::layersOf(card)[3].shape, CardFace::Shape::TallArtBand) << c;
+  }
 }
 
 // Its layers back to front: the edge, the cream body, its own band, the
@@ -52,8 +80,7 @@ TEST(CardFaceTest, TheShapesTextureHoldsEachRoundedRectangle) {
     return pixels[static_cast<std::size_t>(y) * CardFace::kShapesSize + static_cast<std::size_t>(x)]
         .a;
   };
-  for (const auto shape :
-       {CardFace::Shape::Card, CardFace::Shape::TitleBand, CardFace::Shape::ArtBand}) {
+  for (const auto shape : CardFace::kShapes) {
     const CardFace::ShapeArea a = CardFace::areaOf(shape);
     EXPECT_GE(a.x, 1);
     EXPECT_GE(a.y, 1);
@@ -82,11 +109,12 @@ TEST(CardFaceTest, TheLayersMeshIsFourQuadsOverTheUnitSquare) {
 }
 
 // The bottom screen's card: 2:3, its corner clear, its band its colour,
-// its art band dark round the icon, the cream under it, the icon drawn
+// its art band dark round the icon, the icon drawn; an action card's
+// cream under its art band, a resource card's art band down to its foot
 TEST(CardFaceTest, ACardsPixelsAreItsLayersAndIcon) {
   constexpr int kWidth = 60;
-  const auto card = Art::Card::Water;
-  const CardFace::PixelArea icon = CardFace::iconPixelsOn(kWidth);
+  const auto card = Art::Card::Enforcer;
+  const CardFace::PixelArea icon = CardFace::iconPixelsOn(card, kWidth);
   const auto iconPixels = recipePixels(Art::cardIconRecipeOf(card), icon.width, icon.height);
   const auto pixels = CardFace::pixelsOf(card, kWidth, iconPixels);
   const int height = CardFace::heightOf(kWidth);
@@ -99,6 +127,33 @@ TEST(CardFaceTest, ACardsPixelsAreItsLayersAndIcon) {
   EXPECT_TRUE(sameColour(at(6, 10), CardFace::bandOf(card)));
   EXPECT_TRUE(sameColour(at(4, 23), kArtBand));
   EXPECT_TRUE(sameColour(at(31.5f, 70), kCream));
-  EXPECT_TRUE(
-      sameColour(at(22.5f, 36), CardFace::bandOf(card))); // (the icon's disc, its band's colour)
+  EXPECT_NE(pixels[static_cast<std::size_t>(icon.y + icon.height / 2) * kWidth +
+                   static_cast<std::size_t>(icon.x + icon.width / 2)]
+                .a,
+            0); // (the icon drawn)
+  const auto water = Art::Card::Water;
+  const CardFace::PixelArea waterIcon = CardFace::iconPixelsOn(water, kWidth);
+  const auto resource = CardFace::pixelsOf(
+      water, kWidth, recipePixels(Art::cardIconRecipeOf(water), waterIcon.width, waterIcon.height));
+  const auto resourceAt = [&](float x, float y) {
+    const float u = static_cast<float>(kWidth) / Art::kCardWidth;
+    return resource[static_cast<std::size_t>(y * u) * kWidth + static_cast<std::size_t>(x * u)];
+  };
+  EXPECT_TRUE(sameColour(resourceAt(31.5f, 70), kArtBand)); // (no cream under its icon)
+  EXPECT_TRUE(sameColour(resourceAt(31.5f, 88), kArtBand));
+  EXPECT_GT(waterIcon.y, icon.y); // (its icon lower, in the card's middle)
+}
+
+// A card turning over: its back, narrowing to its edge at halfway, then
+// its face widening to the whole card
+TEST(CardFaceTest, ACardTurnsOverFromItsBackToItsFace) {
+  EXPECT_FALSE(CardFace::turnOf(0).face);
+  EXPECT_FLOAT_EQ(CardFace::turnOf(0).across, 1);
+  EXPECT_FALSE(CardFace::turnOf(0.25f).face);
+  EXPECT_NEAR(CardFace::turnOf(0.25f).across, 0.7071f, 1e-3);
+  EXPECT_NEAR(CardFace::turnOf(0.5f).across, 0, 1e-5);
+  EXPECT_TRUE(CardFace::turnOf(0.5f).face);
+  EXPECT_TRUE(CardFace::turnOf(1).face);
+  EXPECT_FLOAT_EQ(CardFace::turnOf(1).across, 1);
+  EXPECT_FLOAT_EQ(CardFace::turnOf(2).across, 1); // (past its end: face up)
 }

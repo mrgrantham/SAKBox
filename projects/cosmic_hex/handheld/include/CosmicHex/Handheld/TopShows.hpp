@@ -43,6 +43,12 @@ namespace CosmicHex::Handheld {
 // How long words take to fade in, once what they're over has settled (the
 // user's: never on something still moving, and never just appearing)
 inline constexpr float kSecondsWordsIn = 0.25f;
+// How long a card takes to turn over, from its back to its face
+// (CardFace::turnOf): the cards dealt, and every resource card revealed to
+// you (salvage's, a home's pay, a roll's pay and the starting hand coming
+// to you, cards gained), which come in face down and turn over once
+// they're in (the user's)
+inline constexpr float kSecondsTurnOver = 0.4f;
 
 // ---------------------------------------------------------------------------
 // Tiles turned over, shown one after another
@@ -117,7 +123,8 @@ private:
 // Salvage: a find giving resources of the player's choice
 // (Settings::salvageResources of them). Over the find's tile, facing you,
 // each card picked comes up from the bottom screen into its place, side by
-// side, with a pop, its name fading in, and the find's words under them dim
+// side, with a pop, face down, turns over (kSecondsTurnOver), its name
+// fading in, and the find's words under them dim
 // so they can be seen (on a DS the words are a layer over every shape). Once
 // all are taken, a moment to see them, then each flies off to its player
 // (CardPlaces), one a little after the other. Yours follow the picker as you
@@ -154,12 +161,13 @@ public:
   // Begun, and nothing picked yet ("Choosing...")
   bool waitingForChoice(double now) const;
   // The cards showing: each one's place (`slot`, 0 the first picked), its
-  // resource, how far it's come up (0 to 1), its name faded in, and how far
-  // it's flown off to its player (0 to 1)
+  // resource, how far it's come up (0 to 1), turned over (0 its back, 1 its
+  // face), its name faded in, and how far it's flown off to its player (0
+  // to 1)
   struct Card {
     int slot = 0;
     Resource resource{};
-    float in = 0, words = 0, away = 0;
+    float in = 0, turned = 0, words = 0, away = 0;
   };
   std::vector<Card> cards(double now) const;
   // How far the find's words are dimmed (0 to kWordsDim): down as the first
@@ -206,7 +214,7 @@ private:
 
 class DealtShow {
 public:
-  static constexpr float kSecondsThrow = 0.45f, kSecondsTurn = 0.4f;
+  static constexpr float kSecondsThrow = 0.45f, kSecondsTurn = kSecondsTurnOver;
   static constexpr float kThrowStagger = 0.15f, kTurnStagger = 0.35f, kTurnAfter = 0.2f;
 
   // The cards to keep one of (shown till they're gone: stop())
@@ -381,9 +389,10 @@ public:
   static constexpr float kSecondsWindUp = 0.18f; // a dip into the board, held a moment
   static constexpr float kSecondsLift = 0.65f;   // up out of it and along an arc to face you
   static constexpr float kSecondsSpin = 1.2f;    // about its long axis to the side chosen
-  static constexpr float kSecondsCard = 0.4f;    // the card growing out of the die
-  static constexpr float kSecondsHold = 1.0f;    // read it
-  static constexpr float kSecondsAway = 0.5f;    // the card off to its player
+  static constexpr float kSecondsCard = 0.4f;    // the card growing out of the die, face down
+  static constexpr float kSecondsTurn = kSecondsTurnOver; // then turning over
+  static constexpr float kSecondsHold = 1.0f;             // read it
+  static constexpr float kSecondsAway = 0.5f;             // the card off to its player
   static constexpr float kSecondsBack = 0.6f;    // back along the arc, over its place, face up
   static constexpr float kSecondsDrop = 0.14f;   // dropping in, faster and faster
   static constexpr float kSecondsSeat = 0.25f;   // a sink a hair past its place, and back
@@ -391,7 +400,9 @@ public:
   // The die out; a pay, from its spin until its card leaves (the next spin,
   // or the die's way back, starts as it does: overlap); and the die back
   static constexpr float kSecondsOut = kSecondsWindUp + kSecondsLift;
-  static constexpr float kSecondsPay = kSecondsSpin + kSecondsCard + kSecondsHold;
+  // (a card, from growing out of the die until it leaves)
+  static constexpr float kSecondsCardShown = kSecondsCard + kSecondsTurn + kSecondsHold;
+  static constexpr float kSecondsPay = kSecondsSpin + kSecondsCardShown;
   static constexpr float kSecondsHome =
       kSecondsBack + kSecondsDrop + std::max(kSecondsSeat, kSecondsRipple);
   // A home paying `pays` in a row, from the die's wind-up to its ripple gone
@@ -459,13 +470,13 @@ public:
   };
   std::optional<Die> die(double now) const;
   // The card showing (one at a time: a spin outlasts a card's way off):
-  // which pay of the home's (0 the first: its close-up's slot is order %
-  // 2), its resource, how far grown (0 to 1), held, off to its player (0 to
-  // 1) and its words faded in
+  // which pay of the home's (0 the first), its resource, how far grown (0
+  // to 1), turned over once grown (0 its back, 1 its face), held, off to
+  // its player (0 to 1) and its words faded in once it's over
   struct Card {
     int order = 0;
     Resource resource{};
-    float grown = 0, away = 0, words = 0;
+    float grown = 0, turned = 0, away = 0, words = 0;
   };
   std::optional<Card> card(double now) const;
   // The star landed and the player's choice not made yet
@@ -544,10 +555,12 @@ public:
   static constexpr double kSlack = 1e-9;      // (its end, give or take rounding)
   const std::vector<Card> &cards() const { return cards_; }
 
-  // Card i's moment: how far it's popped out (0 to 1, Settle) and how far
-  // it's flown (0 to 1, Gentle); nothing before it starts or after it lands
+  // Card i's moment: how far it's popped out (0 to 1, Settle), how far
+  // it's flown (0 to 1, Gentle), and how far turned over (0 its back, 1 its
+  // face: over the flight's first half, for a card revealed to you as it
+  // comes); nothing before it starts or after it lands
   struct Moment {
-    float pop, fly;
+    float pop, fly, turned;
   };
   std::optional<Moment> at(std::size_t i, double now) const;
   bool moving(double now) const;
@@ -649,7 +662,9 @@ private:
 class HandShow {
 public:
   static constexpr float kSecondsPiles = 0.3f; // (the piles in, and out)
-  static constexpr float kSecondsCard = 0.35f, kStagger = 0.12f;
+  // (a card dropping in, face down, turning over as it comes:
+  // kSecondsTurnOver of it, landing face up)
+  static constexpr float kSecondsCard = 0.5f, kStagger = 0.12f;
   static constexpr float kSecondsHold = 0.6f;
 
   // Cards gained: queued, shown from `start` (when the top screen is free;
@@ -666,12 +681,15 @@ public:
   // How far the piles are up (0 below the screen, 1 in place)
   float piles(double now) const;
   // How far gained card `index` of resource `r` has slid in (0 above the
-  // screen, 1 in its pile); 1 for cards held before
+  // screen, 1 in its pile), and turned over (0 its back, 1 its face); 1 for
+  // cards held before
   float card(Resource r, int index, double now) const;
+  float turned(Resource r, int index, double now) const;
   const Resources &added() const { return added_; }
 
 private:
-  float seconds() const; // (all told)
+  float seconds() const;                                    // (all told)
+  float sinceCard(Resource r, int index, double now) const; // (since it started in)
   Resources added_{}, queued_{};
   std::optional<double> startedAt_;
 };

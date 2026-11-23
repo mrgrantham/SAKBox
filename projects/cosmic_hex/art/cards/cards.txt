@@ -15,6 +15,6 @@ enforcer | #c0392b | Enforcer | Enforcer | Move the blockade and steal 1 resourc
 interstellar_cartel | #c0392b | Interstellar Cartel | Cartel | Name a resource: every other player gives you all of theirs.
 shipyard_surplus | #5b8c3a | Shipyard Surplus | Surplus | Build a ship and a second comes free at the same colony.
 supply_drop | #5b8c3a | Supply Drop | Supply | Take any 2 resources from the bank.
-charter_three_of_a_kind | #2c6e9e | Charter | Charter | Stations on 3 planets of one kind: 2 points, shown when true.
+charter_three_of_a_kind | #2c6e9e | Charter: Three of a Kind | Charter | Stations on 3 planets of one kind: 2 points, shown when true.
 charter_occupier | #2c6e9e | Charter: Occupier | Charter | A station on another player's used-up home: 2 points, shown when true.
 charter_deep_space_relay | #2c6e9e | Charter: Deep-space Relay | Charter | Build one station touching no planet. It scores 1, and this card 1 more.

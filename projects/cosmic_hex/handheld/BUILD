@@ -90,6 +90,7 @@ cc_library(
         "include/CosmicHex/Handheld/TableGame.hpp",
         "include/CosmicHex/Handheld/TableSnapshot.hpp",
         "include/CosmicHex/Handheld/TopShows.hpp",
+        "include/CosmicHex/Handheld/TextMeasure.hpp",
         "include/CosmicHex/Handheld/TopViews.hpp",
         "include/CosmicHex/Handheld/TradeArrival.hpp",
         "include/CosmicHex/Handheld/TradeRoom.hpp",
@@ -366,6 +367,7 @@ cc_test(
     deps = [
         ":handheld",
         "//projects/game_bots",
+        "//projects/scratchpadd/scene/overlay_text",
         "//projects/seeded_random",
         "@gtest//:gtest_main",
     ],
@@ -508,6 +510,7 @@ cc_test(
         ":handheld",
         "//projects/expected_capabilities",
         "//projects/scratchpadd/scene/desktop",
+        "//projects/scratchpadd/scene/overlay_text",
         "@gtest//:gtest_main",
     ],
 )
