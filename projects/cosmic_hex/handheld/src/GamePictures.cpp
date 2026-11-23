@@ -4,6 +4,8 @@
 #include <CosmicHex/Handheld/RecipePixels.hpp>
 #include <CosmicHex/Handheld/ScreenPictures.hpp>
 
+#include <cmath>
+
 namespace CosmicHex::Handheld {
 
 namespace Scene = ScratchPadd::Scene;
@@ -17,20 +19,28 @@ void loadCardPictures(Scene::Renderer &renderer, const PlatformProfile &profile,
   pictures.cardWidth = profile.topWidth >= 400 ? 44 : 32;
   // The cards in layers (CardFace): the one shapes texture every layer is
   // cut from, each card's layers as a mesh, and its icon, the only
-  // picture, as sharp as the biggest card shown (profile.cardIconWidth)
+  // picture (the part of it inside the art band: CardFace::iconOf), as
+  // sharp as the biggest card shown (profile.cardIconWidth across)
   const std::vector<Scene::Colour> shapes = CardFace::shapesPixels();
   pictures.cardShapes =
       renderer.load(Scene::TextureImage{CardFace::kShapesSize, CardFace::kShapesSize, shapes});
-  const int iconWidth = profile.cardIconWidth, iconHeight = iconWidth / 2;
   for (int c = 0; c < Art::kCards; ++c) {
     const auto card = static_cast<Art::Card>(c);
-    pictures.cardLayers[static_cast<std::size_t>(c)] =
-        renderer.load(CardFace::layersMesh(card).data());
+    const auto index = static_cast<std::size_t>(c);
+    pictures.cardLayers[index] = renderer.load(CardFace::layersMesh(card).data());
+    const Art::CardArea shown = CardFace::iconOf(card);
+    const int iconWidth = profile.cardIconWidth;
+    const int iconHeight =
+        static_cast<int>(std::lround(static_cast<float>(iconWidth) * shown.height / shown.width));
     const std::vector<Scene::Colour> icon =
-        recipePixels(Art::cardIconRecipeOf(card), iconWidth, iconHeight, profile.recipeSmoothing);
-    if (!icon.empty())
-      pictures.cardIcons[static_cast<std::size_t>(c)] =
-          renderer.load(Scene::TextureImage{iconWidth, iconHeight, icon});
+        CardFace::iconPixels(card, iconWidth, iconHeight, profile.recipeSmoothing);
+    if (icon.empty())
+      continue;
+    const PaddedPicture picture = padded(icon, iconWidth, iconHeight);
+    pictures.cardIcons[index] =
+        renderer.load(Scene::TextureImage{picture.width, picture.height, picture.pixels});
+    pictures.cardIconSquares[index] =
+        renderer.load(pictureSquare(picture.uMax, picture.vMax).data());
   }
   pictures.pictureSquare = renderer.load(pictureSquare().data());
   // The tile close-ups' slots, blank until one's shown (closeUpTile draws

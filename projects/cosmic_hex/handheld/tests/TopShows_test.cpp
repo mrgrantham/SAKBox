@@ -439,6 +439,30 @@ TEST(TopShowsTest, AHomePaysOnItsDie) {
 // A home paying two: the die comes out once, spins for the first, spins
 // again as its card leaves (never back in between), and goes back only
 // after the second's card
+
+// The die pulled out of its tile (homeDieStretch, by its lift): flat in its
+// place as it dips, its whole length once it's out and facing you, and
+// flat again as it drops back in and settles
+TEST(TopShowsTest, AHomesDieIsPulledOutFlatAndSquashedBackIn) {
+  using S = HomePayShow;
+  HomePayShow show;
+  const State paid = newGame(4, agreedRules(boardR3()));
+  show.saw({{2, Action{Action::Kind::RollHomeDie, 3}}}, paid, 10);
+  show.update(10);
+  const auto stretchAt = [&](double now) { return homeDieStretch(show.die(now)->lifted); };
+  EXPECT_FLOAT_EQ(stretchAt(10), kHomeDieFlat);
+  EXPECT_FLOAT_EQ(stretchAt(10 + S::kSecondsWindUp * 0.9), kHomeDieFlat);
+  const double spins = 10 + S::kSecondsOut;
+  EXPECT_FLOAT_EQ(stretchAt(spins), 1);
+  EXPECT_LT(stretchAt(spins - S::kSecondsLift * 0.9), 1); // (still stretching early in the lift)
+  // (back: whole over its place, squashed flat as it touches and settles)
+  const double back = spins + S::kSecondsPay, touches = back + S::kSecondsBack + S::kSecondsDrop;
+  EXPECT_FLOAT_EQ(stretchAt(back + S::kSecondsBack), 1);
+  EXPECT_LT(stretchAt(touches - S::kSecondsDrop * 0.3), 1);
+  EXPECT_NEAR(stretchAt(touches + kJustAfter), kHomeDieFlat, 1e-3);
+  EXPECT_NEAR(stretchAt(touches + S::kSecondsSeat / 2), kHomeDieFlat, 1e-3);
+}
+
 TEST(TopShowsTest, AHomePayingTwoStaysOutForBoth) {
   using S = HomePayShow;
   HomePayShow show;

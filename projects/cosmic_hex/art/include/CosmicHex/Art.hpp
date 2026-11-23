@@ -103,9 +103,9 @@ struct CardArea {
 };
 inline constexpr float kCardWidth = 63, kCardHeight = 94.5f;
 inline constexpr CardArea kCardTitle{3, 3, 57, 16};     // the title band
-inline constexpr CardArea kCardArt{3, 21, 57, 30};      // the art band
-inline constexpr CardArea kCardIcon{3.5f, 22, 56, 28};  // the icon, on the art band
-inline constexpr CardArea kCardWords{5, 54, 53, 37.5f}; // what it does
+inline constexpr CardArea kCardArt{3, 21, 57, 34};      // the art band
+inline constexpr CardArea kCardIcon{3.5f, 24, 56, 28};  // the icon's drawing, on the art band
+inline constexpr CardArea kCardWords{5, 58, 53, 33.5f}; // what it does
 // The layers' corners' radii (the card's, the bands'), in those units
 inline constexpr float kCardCorner = 4, kBandCorner = 2;
 

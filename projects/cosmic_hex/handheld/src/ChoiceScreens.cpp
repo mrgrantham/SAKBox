@@ -157,8 +157,7 @@ const std::vector<Canvas::Colour> &CardSprites::card(Art::Card card) {
     return sprite;
   // Its layers and its icon, as the top screen draws them
   const CardFace::PixelArea icon = CardFace::iconPixelsOn(card, width_);
-  sprite = CardFace::pixelsOf(card, width_,
-                              recipePixels(Art::cardIconRecipeOf(card), icon.width, icon.height));
+  sprite = CardFace::pixelsOf(card, width_, CardFace::iconPixels(card, icon.width, icon.height));
   if (!titled_)
     return sprite;
   // Its short title on its band, dark on a light band

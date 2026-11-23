@@ -48,8 +48,8 @@ inline constexpr float kHomeDieScale = 1.7320508f * kTileInset;
 // out of its place, clear of the board (from there it arcs to face you)
 inline constexpr float kHomeDieRisen = 0.3f;
 
-// The home die's poses: rigid (no scale; homeDieBody scales its mesh),
-// its long axis x, its face the +x end.
+// The home die's poses: rigid (no scale; homeDieBody scales its mesh, and
+// stretches it: homeDieStretch), its long axis x, its face the +x end.
 // In the board: standing in its tile's place (`tile`: the tile's middle),
 // its face where the tile lies, the rest of it below the board, its
 // hexagon turned as the tile's
@@ -68,10 +68,23 @@ Scene::Transform homeDieFacing(const Scene::Camera &camera, float width, float h
 // into the board, a settle), turned `turn` about its long axis
 Scene::Transform homeDiePose(const Scene::Transform &inBoard, const Scene::Transform &facing,
                              const Scene::Vector3 &bow, float lifted, float sink, float turn);
-// The die's mesh at `pose` (scaled to its tile), and its face there: the
-// board's tile mesh (BoardPieces::hexTile) over its +x end, lying as it
-// does on the board when the die is in it
-Scene::Transform homeDieBody(const Scene::Transform &pose);
+// How long the die is, a share of its whole length, `lifted` of the way
+// (homeDiePose's): pulled out of its tile (the user's). In its place it's
+// squashed flat, kHomeDieFlat long (the board's tiles have no thickness),
+// so it is the tile and nothing hangs below the board; pulled up, its face
+// rises as homeDiePose has it while its far end stays in the place, below
+// the board, stretching it, eased out (quick from the place, slowing to
+// its length, as a pulled elastic thing), to its whole length just as its
+// far end clears the board; whole from there to facing you. Coming back it
+// squashes flat into its place the same way
+float homeDieStretch(float lifted);
+inline constexpr float kHomeDieFlat = 0.01f;
+// The die's mesh at `pose` (scaled to its tile), `stretch` of its length
+// (homeDieStretch: along its long axis only, its face's end where the pose
+// has it, so its sides' insets stretch with it and its face doesn't), and
+// its face there: the board's tile mesh (BoardPieces::hexTile) over its +x
+// end, lying as it does on the board when the die is in it
+Scene::Transform homeDieBody(const Scene::Transform &pose, float stretch = 1);
 Scene::Transform homeDieFace(const Scene::Transform &pose);
 // The home's place while its die is out: an opening onto empty space (the
 // board's tile mesh, drawn in the background's colour), a little wider

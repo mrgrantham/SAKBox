@@ -5,6 +5,7 @@
 
 #include <CosmicHex/Dice/DiceTray.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <utility>
 #include <vector>
@@ -284,8 +285,21 @@ Scene::Transform homeDiePose(const Scene::Transform &inBoard, const Scene::Trans
   return rigidBetween(inBoard, facing, across, place) * spin;
 }
 
-Scene::Transform homeDieBody(const Scene::Transform &pose) {
-  return pose * Scene::Transform::scaling({kHomeDieScale, kHomeDieScale, kHomeDieScale});
+float homeDieStretch(float lifted) {
+  // (where a whole die's far end would reach the board on the way up:
+  // homeDiePose's rise lifts its face by its length and kClearOfTheBoard)
+  constexpr float kClears =
+      kHomeDieRisen * 2 * kHomeDieHalf / (2 * kHomeDieHalf + kClearOfTheBoard);
+  const float out = std::clamp(lifted / kClears, 0.0f, 1.0f);
+  return kHomeDieFlat +
+         (1 - kHomeDieFlat) * ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::EaseOut, out);
+}
+
+Scene::Transform homeDieBody(const Scene::Transform &pose, float stretch) {
+  // (about its face's end, +x: the mesh's middle moved towards it as it
+  // shortens)
+  return pose * Scene::Transform::translation({kHomeDieHalf * (1 - stretch), 0, 0}) *
+         Scene::Transform::scaling({kHomeDieScale * stretch, kHomeDieScale, kHomeDieScale});
 }
 
 Scene::Transform homeDieFace(const Scene::Transform &pose) {

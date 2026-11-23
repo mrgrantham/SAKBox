@@ -128,7 +128,7 @@ void cardFace(const TopFrame &f, Art::Card card, float x, float y, float w,
                    .texture = f.pictures.cardShapes,
                    .alpha = look.alpha});
   const Art::CardArea icon = CardFace::iconOf(card);
-  f.renderer.draw(f.pictures.pictureSquare,
+  f.renderer.draw(f.pictures.cardIconSquares[index],
                   onScreenAt(f.camera, f.width, f.height, cx + icon.x * cu, y + icon.y * u,
                              icon.width * cu, icon.height * u, look.distance - CardFace::kIconLift),
                   {.shading = Scene::Material::Shading::Unlit,
@@ -1304,11 +1304,12 @@ void homeDieRipple(const TopFrame &f, Hex hex, float ripple) {
                       ring.material);
 }
 
-// The die at `pose`: its body, and on its end the home's own tile (the
-// board's tile mesh, with the face texture the board already has loaded)
-void homeDieAt(const TopFrame &f, const Scene::Transform &pose, Art::Face face) {
+// The die at `pose`, `stretch` of its length (homeDieStretch): its body,
+// and on its end the home's own tile (the board's tile mesh, with the face
+// texture the board already has loaded)
+void homeDieAt(const TopFrame &f, const Scene::Transform &pose, float stretch, Art::Face face) {
   if (f.pictures.homeDie)
-    f.renderer.draw(f.pictures.homeDie, homeDieBody(pose),
+    f.renderer.draw(f.pictures.homeDie, homeDieBody(pose, stretch),
                     {.shading = Scene::Material::Shading::Lit});
   if (!f.pictures.hexTile)
     return;
@@ -1320,7 +1321,8 @@ void homeDieAt(const TopFrame &f, const Scene::Transform &pose, Art::Face face) 
                                 .colour = BoardColours::ofFace(face)});
 }
 
-// The die from its place to facing you, as the show has it now (its place
+// The die from its place to facing you, as the show has it now (pulled out
+// of its tile, flat at first and stretching: homeDieStretch; its place
 // empty space while it's out, rippling where it leaves and seats)
 void homeDie(const TopFrame &f, const HomePayShow::Die &die, Hex hex, Art::Face face) {
   const float dk = homePayScale(f.width, f.height);
@@ -1331,7 +1333,7 @@ void homeDie(const TopFrame &f, const HomePayShow::Die &die, Hex hex, Art::Face 
         homeDieInBoard(BoardPieces::centre(hex)),
         homeDieFacing(f.camera, f.width, f.height, f.width / 2, kDieY * dk, kDieAcross * dk),
         viewAxes(f.camera).up * 1.2f, die.lifted, die.sink, die.turn);
-    homeDieAt(f, pose, face);
+    homeDieAt(f, pose, homeDieStretch(die.lifted), face);
   }
   if (die.ripple)
     homeDieRipple(f, hex, *die.ripple);

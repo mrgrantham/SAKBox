@@ -259,3 +259,60 @@ TEST(DicePiecesTest, TheHomeDieRisesThenArcs) {
   }
   EXPECT_NEAR(pose(0, 0.1f).position().y - pose(0).position().y, -0.1f, 1e-5);
 }
+
+// Pulled out of its tile (the user's): flat in its place, the tile itself
+// and nothing below the board; stretching as it rises, its face where the
+// rigid pose has it and its far end staying in the place, below the
+// board, till it's its whole length just as that end clears the board;
+// whole from there. Stretched along its long axis only, so its face's end
+// stays put and its sides' insets only lengthen
+TEST(DicePiecesTest, TheHomeDieIsPulledOutOfItsTile) {
+  EXPECT_FLOAT_EQ(homeDieStretch(0), kHomeDieFlat);
+  EXPECT_FLOAT_EQ(homeDieStretch(kHomeDieRisen), 1);
+  EXPECT_FLOAT_EQ(homeDieStretch(1), 1);
+  const Scene::Transform inBoard = homeDieInBoard(BoardPieces::centre({0, 0}));
+  const Scene::Transform facing = homeDieFacing(gameCamera(0), 256, 192, 128, 50, 40);
+  const float board = BoardPieces::centre({0, 0}).y, half = kHomeDieLength / 2;
+  const auto body = [&](float lifted) {
+    return homeDieBody(homeDiePose(inBoard, facing, {0, 1, 0}, lifted, 0, 0),
+                       homeDieStretch(lifted));
+  };
+  // (flat: its far end as near the board as its face, none of it above)
+  const Scene::MeshBuilder built = homeDie({Scene::Colour{}, {}, {}, {}, {}}, Scene::Colour{});
+  const Scene::MeshData mesh = built.data();
+  for (const Scene::Vertex &v : mesh.vertices) {
+    const float y = body(0).apply(v.position).y - board;
+    EXPECT_LT(y, 1e-4f);
+    EXPECT_GT(y, -0.05f);
+  }
+  // (on the way up: longer and longer, its far end below the board till
+  // it's whole, then up off the board)
+  float last = 0, wholeAt = -1;
+  for (float lifted = 0; lifted <= kHomeDieRisen + 1e-4f; lifted += kHomeDieRisen / 60) {
+    const float stretch = homeDieStretch(lifted);
+    EXPECT_GE(stretch, last) << lifted;
+    last = stretch;
+    const float farEnd = body(lifted).apply({-half, 0, 0}).y - board;
+    if (stretch < 1 - 1e-4f)
+      EXPECT_LT(farEnd, 1e-3f) << lifted;
+    else if (wholeAt < 0)
+      wholeAt = lifted;
+    // (its face where the rigid pose has it)
+    EXPECT_NEAR(
+        (body(lifted).apply({half, 0, 0}) -
+         homeDieBody(homeDiePose(inBoard, facing, {0, 1, 0}, lifted, 0, 0)).apply({half, 0, 0}))
+            .length(),
+        0, 1e-4);
+  }
+  ASSERT_GT(wholeAt, 0);
+  EXPECT_LT(wholeAt, kHomeDieRisen); // (whole before it's risen clear...)
+  EXPECT_NEAR(body(wholeAt).apply({-half, 0, 0}).y - board, 0, 0.05f); // (...as it clears)
+  // (an inset's corner, half stretched: moved along the die's axis only)
+  const Scene::Transform pose = homeDiePose(inBoard, facing, {0, 1, 0}, 0.1f, 0, 0);
+  const Scene::Vector3 corner{0.2f, 0.3f, 0.55f};
+  const Scene::Vector3 moved =
+      homeDieBody(pose, 0.5f).apply(corner) - homeDieBody(pose).apply(corner);
+  const Scene::Vector3 axis = pose.applyToDirection({1, 0, 0});
+  EXPECT_NEAR((moved - axis * moved.dot(axis)).length(), 0, 1e-4);
+  EXPECT_GT(std::abs(moved.dot(axis)), 0.1f);
+}

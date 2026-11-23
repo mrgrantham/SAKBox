@@ -3,7 +3,6 @@
 #include <CosmicHex/Art.hpp>
 #include <CosmicHex/Handheld/CardFace.hpp>
 #include <CosmicHex/Handheld/DicePieces.hpp>
-#include <CosmicHex/Handheld/RecipePixels.hpp>
 
 #include "rock.h"
 #include "rocket.h"
@@ -61,9 +60,8 @@ LabShape card() {
                                                                 shape.pictureWidth);
   shape.picture = CosmicHex::Handheld::CardFace::pixelsOf(
       CosmicHex::Art::Card::Minerals, shape.pictureWidth,
-      CosmicHex::Handheld::recipePixels(
-          CosmicHex::Art::cardIconRecipeOf(CosmicHex::Art::Card::Minerals), icon.width,
-          icon.height));
+      CosmicHex::Handheld::CardFace::iconPixels(CosmicHex::Art::Card::Minerals, icon.width,
+                                                icon.height));
   return shape;
 }
 

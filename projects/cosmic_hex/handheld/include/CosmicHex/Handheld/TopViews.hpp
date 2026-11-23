@@ -44,10 +44,13 @@ struct TopPictures {
   std::array<ScratchPadd::Scene::Texture, Art::kHighestChip + 1> chips{}; // (by number)
   // The cards, in layers (CardFace): each card's layers, one mesh; the
   // rounded rectangles they're cut from, one small texture; and each card's
-  // icon, its only picture (all by Art::Card, resources first)
+  // icon, its only picture, with the square it's drawn on (its texture
+  // padded to the DS's sizes: ScreenPictures' padded) (all by Art::Card,
+  // resources first)
   std::array<ScratchPadd::Scene::Mesh, Art::kCards> cardLayers{};
   ScratchPadd::Scene::Texture cardShapes;
   std::array<ScratchPadd::Scene::Texture, Art::kCards> cardIcons{};
+  std::array<ScratchPadd::Scene::Mesh, Art::kCards> cardIconSquares{};
   std::array<ScratchPadd::Scene::Texture, 2> backs{}; // (by Art::CardBack)
   // The piles' cards' widths (Show resources: resource cards bigger, their
   // titles on them; action cards smaller, their titles under them)

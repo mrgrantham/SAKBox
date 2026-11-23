@@ -1,6 +1,7 @@
 #include <CosmicHex/Handheld/CardFace.hpp>
 
 #include <CosmicHex/Handheld/Palette.hpp>
+#include <CosmicHex/Handheld/RecipePixels.hpp>
 
 #include <algorithm>
 #include <cstddef>
@@ -102,11 +103,59 @@ Art::CardArea artOf(Art::Card card) {
           Art::kCardHeight - inset - Art::kCardArt.y};
 }
 
+Art::CardArea iconDrawingOf(Art::Card card) {
+  const Art::CardArea &art = Art::kCardIcon;
+  const float scale = hasWords(card) ? kIconScale : kResourceIconScale;
+  const float middleX = art.x + art.width / 2;
+  const float middleY = hasWords(card) ? art.y + art.height / 2 : Art::kCardHeight / 2;
+  const float width = art.width * scale, height = art.height * scale;
+  return {middleX - width / 2, middleY - height / 2, width, height};
+}
+
 Art::CardArea iconOf(Art::Card card) {
-  Art::CardArea icon = Art::kCardIcon;
-  if (!hasWords(card))
-    icon.y = (Art::kCardHeight - icon.height) / 2;
-  return icon;
+  const Art::CardArea drawing = iconDrawingOf(card), art = artOf(card);
+  const float left = std::max(drawing.x, art.x + kIconMargin);
+  const float top = std::max(drawing.y, art.y + kIconMargin);
+  const float right = std::min(drawing.x + drawing.width, art.x + art.width - kIconMargin);
+  const float bottom = std::min(drawing.y + drawing.height, art.y + art.height - kIconMargin);
+  return {left, top, right - left, bottom - top};
+}
+
+IconCut iconCutOf(Art::Card card) {
+  const Art::CardArea drawing = iconDrawingOf(card), shown = iconOf(card);
+  return {(shown.x - drawing.x) / drawing.width, (shown.y - drawing.y) / drawing.height,
+          (shown.x + shown.width - drawing.x) / drawing.width,
+          (shown.y + shown.height - drawing.y) / drawing.height};
+}
+
+std::vector<Colour> iconPixels(Art::Card card, int width, int height,
+                               ScratchPadd::TextureRecipe::Smoothing smoothing) {
+  if (width <= 0 || height <= 0)
+    return {};
+  // (the whole drawing, as big as makes its shown part width x height)
+  const IconCut cut = iconCutOf(card);
+  const int wholeWidth =
+      static_cast<int>(std::lround(static_cast<float>(width) / (cut.right - cut.left)));
+  const int wholeHeight =
+      static_cast<int>(std::lround(static_cast<float>(height) / (cut.bottom - cut.top)));
+  const std::vector<Colour> whole =
+      recipePixels(Art::cardIconRecipeOf(card), wholeWidth, wholeHeight, smoothing);
+  if (whole.empty())
+    return {};
+  const int left =
+      std::clamp(static_cast<int>(std::lround(cut.left * static_cast<float>(wholeWidth))), 0,
+                 wholeWidth - width);
+  const int top =
+      std::clamp(static_cast<int>(std::lround(cut.top * static_cast<float>(wholeHeight))), 0,
+                 wholeHeight - height);
+  std::vector<Colour> pixels(static_cast<std::size_t>(width) * static_cast<std::size_t>(height));
+  for (int y = 0; y < height; ++y)
+    for (int x = 0; x < width; ++x)
+      pixels[static_cast<std::size_t>(y) * static_cast<std::size_t>(width) +
+             static_cast<std::size_t>(x)] =
+          whole[static_cast<std::size_t>(top + y) * static_cast<std::size_t>(wholeWidth) +
+                static_cast<std::size_t>(left + x)];
+  return pixels;
 }
 
 std::array<Layer, kLayers> layersOf(Art::Card card) {

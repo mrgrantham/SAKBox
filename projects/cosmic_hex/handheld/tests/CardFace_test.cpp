@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstddef>
 
 using namespace CosmicHex;
@@ -115,8 +116,8 @@ TEST(CardFaceTest, ACardsPixelsAreItsLayersAndIcon) {
   constexpr int kWidth = 60;
   const auto card = Art::Card::Enforcer;
   const CardFace::PixelArea icon = CardFace::iconPixelsOn(card, kWidth);
-  const auto iconPixels = recipePixels(Art::cardIconRecipeOf(card), icon.width, icon.height);
-  const auto pixels = CardFace::pixelsOf(card, kWidth, iconPixels);
+  const auto pixels =
+      CardFace::pixelsOf(card, kWidth, CardFace::iconPixels(card, icon.width, icon.height));
   const int height = CardFace::heightOf(kWidth);
   ASSERT_EQ(pixels.size(), static_cast<std::size_t>(kWidth * height));
   const auto at = [&](float x, float y) {
@@ -134,7 +135,7 @@ TEST(CardFaceTest, ACardsPixelsAreItsLayersAndIcon) {
   const auto water = Art::Card::Water;
   const CardFace::PixelArea waterIcon = CardFace::iconPixelsOn(water, kWidth);
   const auto resource = CardFace::pixelsOf(
-      water, kWidth, recipePixels(Art::cardIconRecipeOf(water), waterIcon.width, waterIcon.height));
+      water, kWidth, CardFace::iconPixels(water, waterIcon.width, waterIcon.height));
   const auto resourceAt = [&](float x, float y) {
     const float u = static_cast<float>(kWidth) / Art::kCardWidth;
     return resource[static_cast<std::size_t>(y * u) * kWidth + static_cast<std::size_t>(x * u)];
@@ -142,6 +143,64 @@ TEST(CardFaceTest, ACardsPixelsAreItsLayersAndIcon) {
   EXPECT_TRUE(sameColour(resourceAt(31.5f, 70), kArtBand)); // (no cream under its icon)
   EXPECT_TRUE(sameColour(resourceAt(31.5f, 88), kArtBand));
   EXPECT_GT(waterIcon.y, icon.y); // (its icon lower, in the card's middle)
+}
+
+// The icons a little larger than the layered cards first drew them (the
+// user's): each drawing, on a card the same height, at least as big as it
+// was on the 63 x 88 card before the layers (its height, 24 units, or the
+// two wide ones' width, 47), and still whole: every drawn pixel inside the
+// part shown, which is inside the art band, kIconMargin in from its edges
+TEST(CardFaceTest, IconsAreLargerAndWholeInsideTheirArtBand) {
+  constexpr float kOldCardHeight = 88, kOldHeight = 24, kOldWideWidth = 47;
+  constexpr float kTexelsPerUnit = 4;
+  for (int c = 0; c < Art::kCards; ++c) {
+    const auto card = static_cast<Art::Card>(c);
+    const Art::CardArea art = CardFace::artOf(card), shown = CardFace::iconOf(card);
+    const Art::CardArea drawing = CardFace::iconDrawingOf(card);
+    EXPECT_GE(shown.x, art.x + CardFace::kIconMargin - 1e-4f) << c;
+    EXPECT_GE(shown.y, art.y + CardFace::kIconMargin - 1e-4f) << c;
+    EXPECT_LE(shown.x + shown.width, art.x + art.width - CardFace::kIconMargin + 1e-4f) << c;
+    EXPECT_LE(shown.y + shown.height, art.y + art.height - CardFace::kIconMargin + 1e-4f) << c;
+    // (the whole drawing, and where its pixels are, in the card's units)
+    const int w = static_cast<int>(drawing.width * kTexelsPerUnit),
+              h = static_cast<int>(drawing.height * kTexelsPerUnit);
+    const auto pixels = recipePixels(Art::cardIconRecipeOf(card), w, h);
+    ASSERT_EQ(pixels.size(), static_cast<std::size_t>(w) * static_cast<std::size_t>(h)) << c;
+    float left = drawing.x + drawing.width, right = drawing.x, top = drawing.y + drawing.height,
+          bottom = drawing.y;
+    for (int y = 0; y < h; ++y)
+      for (int x = 0; x < w; ++x)
+        if (pixels[static_cast<std::size_t>(y) * static_cast<std::size_t>(w) +
+                   static_cast<std::size_t>(x)]
+                .a > 127) {
+          left = std::min(left, drawing.x + static_cast<float>(x) / kTexelsPerUnit);
+          right = std::max(right, drawing.x + static_cast<float>(x + 1) / kTexelsPerUnit);
+          top = std::min(top, drawing.y + static_cast<float>(y) / kTexelsPerUnit);
+          bottom = std::max(bottom, drawing.y + static_cast<float>(y + 1) / kTexelsPerUnit);
+        }
+    EXPECT_GE(left, shown.x) << Art::fileOf(card);
+    EXPECT_LE(right, shown.x + shown.width) << Art::fileOf(card);
+    EXPECT_GE(top, shown.y) << Art::fileOf(card);
+    EXPECT_LE(bottom, shown.y + shown.height) << Art::fileOf(card);
+    const bool wide =
+        card == Art::Card::InterstellarCartel || card == Art::Card::CharterThreeOfAKind;
+    const float now = (wide ? right - left : bottom - top) / Art::kCardHeight;
+    const float before = (wide ? kOldWideWidth : kOldHeight) / kOldCardHeight;
+    EXPECT_GE(now, before) << Art::fileOf(card);
+  }
+}
+
+// The shown part's pixels: the drawing cut to it, its middle the
+// drawing's (a resource's mark drawn there), `width` x `height`
+TEST(CardFaceTest, AnIconsPixelsAreItsShownPart) {
+  const CardFace::IconCut cut = CardFace::iconCutOf(Art::Card::Food);
+  EXPECT_GT(cut.left, 0); // (its ground past the band cut off)
+  EXPECT_LT(cut.right, 1);
+  EXPECT_NEAR(cut.left + cut.right, 1, 1e-4); // (as much off each side)
+  const auto pixels = CardFace::iconPixels(Art::Card::Food, 64, 56);
+  ASSERT_EQ(pixels.size(), 64u * 56u);
+  EXPECT_GT(pixels[28u * 64u + 32u].a, 200); // (its mark in the middle)
+  EXPECT_EQ(pixels.front().a, 0);            // (its ground at the corner)
 }
 
 // A card turning over: its back, narrowing to its edge at halfway, then

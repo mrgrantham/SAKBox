@@ -17,6 +17,7 @@
 
 #include <ScratchPadd/Scene/MeshData.hpp>
 #include <ScratchPadd/Scene/Types.hpp>
+#include <ScratchPadd/TextureRecipe/TextureRecipe.hpp>
 
 #include <array>
 #include <cmath>
@@ -46,13 +47,39 @@ constexpr float widthToFit(float width, float height) {
 }
 
 // Where a card's art band and its icon are, in its units. An action card
-// keeps Art's (kCardArt, kCardIcon), its words in the cream under them
+// keeps Art's art band (kCardArt), its words in the cream under it
 // (kCardWords); a resource card has no words, so its art band goes down to
 // its foot and its icon sits in the card's middle (the user's: no empty
 // cream under it)
 bool hasWords(Art::Card card);
 Art::CardArea artOf(Art::Card card);
+
+// The icon: its drawing (Art's, kCardIcon's shape, 2:1, on a see-through
+// ground) drawn kIconScale bigger than Art's area for it, a resource's
+// bigger still (its drawing is a round mark in the middle of its ground,
+// and its art band is tall), centred where Art's area is (a resource's in
+// the card's middle): the user's, the icons a little larger than the
+// layered cards first drew them. The drawing's ground spills past the art
+// band, so only its part inside the band, kIconMargin in from its edges,
+// is shown (iconOf), the drawing itself inside that (CardFace_test)
+inline constexpr float kIconScale = 1.2f, kResourceIconScale = 1.65f;
+inline constexpr float kIconMargin = 2;
+// The whole drawing's area on the card (past the band where its ground
+// is), and the part of it shown, both in the card's units
+Art::CardArea iconDrawingOf(Art::Card card);
 Art::CardArea iconOf(Art::Card card);
+// The part shown as a share of the drawing, 0 to 1 each way from its top
+// left: where a texture or the pixels of it are cut from
+struct IconCut {
+  float left = 0, top = 0, right = 1, bottom = 1;
+};
+IconCut iconCutOf(Art::Card card);
+// The shown part's pixels, `width` x `height` (RGBA, rows from the top):
+// the drawing drawn at the size that makes its shown part that big, and
+// that part cut out
+std::vector<Colour> iconPixels(
+    Art::Card card, int width, int height,
+    ScratchPadd::TextureRecipe::Smoothing smoothing = ScratchPadd::TextureRecipe::Smoothing::Fine);
 
 // The card's colours: its title band's (cards.txt), and its title's letters
 // on it (Palette::inkOnBand: dark on a light band)
@@ -100,15 +127,15 @@ inline constexpr float kCardStep = kIconLift + kLayerStep;
 // (one draw a card, four quads)
 ScratchPadd::Scene::MeshBuilder layersMesh(Art::Card card);
 
-// Where `card`'s icon goes on it `width` wide, in whole pixels from its
-// top left
+// Where `card`'s icon's shown part goes on it `width` wide, in whole
+// pixels from its top left
 struct PixelArea {
   int x, y, width, height;
 };
 PixelArea iconPixelsOn(Art::Card card, int width);
 // The whole card as pixels (RGBA, rows from the top), `width` x
-// heightOf(width): its layers and `icon` (drawn iconPixelsOn's size) over
-// them; its words are the caller's
+// heightOf(width): its layers and `icon` (iconPixels at iconPixelsOn's
+// size) over them; its words are the caller's
 std::vector<Colour> pixelsOf(Art::Card card, int width, std::span<const Colour> icon);
 
 // A card turning over, from its back (`turned` 0) to its face (1), about
