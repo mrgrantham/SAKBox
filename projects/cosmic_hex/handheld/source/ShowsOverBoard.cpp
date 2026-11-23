@@ -53,7 +53,13 @@ void ScreenPadd::drawShowsOverBoard(const TopFrame &frame) {
       drawOtherPlayer(frame, viewOf(state, drawn.which), drawn.down, drawn.across);
     break;
   case GameShows::OverBoard::Discovery:
-    drawDiscovery(frame, shows_.discovery(), closeUps_.face, closeUps_.back);
+    // (salvage's cards over its find, the find's words dimmed under them)
+    drawDiscovery(frame, shows_.discovery(), closeUps_.face, closeUps_.back,
+                  shows_.salvage().dim(t));
+    drawSalvage(frame, shows_.salvage(), state, you);
+    break;
+  case GameShows::OverBoard::Salvage:
+    drawSalvage(frame, shows_.salvage(), state, you);
     break;
   case GameShows::OverBoard::Pick:
     drawPick(frame, shows_.pick(), bottomScreen_->resourceChoice()->title,

@@ -4,7 +4,10 @@
 // TopViews.hpp, so these are tested without a screen.
 //
 //   DiscoveryShow  tiles turned over, each lifted, turned and set back
-//                  (Discovery.hpp's timeline), the game held meanwhile
+//                  (Discovery.hpp's timeline), the game held meanwhile; a
+//                  find bringing a choice waits for it, facing you
+//   SalvageShow    salvage's cards over its find, side by side as they're
+//                  picked, then off to their player
 //   DealtShow      the two cards dealt after buying, thrown in and turned
 //   PanelShow      a view sliding down over the board and back up (another
 //                  player's)
@@ -71,6 +74,16 @@ public:
   // nothing once the tile showing has started
   void waitFor(double until);
 
+  // A find bringing a choice (Found::choiceAfter: salvage). Until its words
+  // are in, the choice waits (choiceStillToShow: the picker doesn't open
+  // yet); from then the game is let go, for the choice to be made in it
+  // (waitingForChoice), and at the end of its hold the tile waits, facing
+  // you, until release() (the choice made and shown: SalvageShow), then goes
+  // back down as ever
+  bool choiceStillToShow(double now) const;
+  bool waitingForChoice(double now) const;
+  void release(double now);
+
   // For drawing the board: a tile turned over but not back in its place
   // yet (face down there), off the board now (flying: drawn by the show),
   // and shown big since the last move (so it doesn't flip on the board too)
@@ -87,10 +100,104 @@ public:
   std::optional<Revealing> revealing(double now) const;
 
 private:
+  // How far into the current tile's show it is at `now`: its time since
+  // it started, stopped at the end of the hold while its choice waits
+  float elapsed(double now) const;
+  bool started(double now) const; // (the current tile's show has begun)
+
   std::vector<Discovery::Found> queue_;
   std::optional<double> startsAt_;
   bool closeUpDrawn_ = false, held_ = false;
+  bool released_ = false; // (the current tile's choice made and shown)
+  double waited_ = 0;     // (...and how long it waited for it, facing you)
   std::vector<Hex> shownBig_;
+};
+
+// ---------------------------------------------------------------------------
+// Salvage: a find giving resources of the player's choice
+// (Settings::salvageResources of them). Over the find's tile, facing you,
+// each card picked comes up from the bottom screen into its place, side by
+// side, with a pop, its name fading in, and the find's words under them dim
+// so they can be seen (on a DS the words are a layer over every shape). Once
+// all are taken, a moment to see them, then each flies off to its player
+// (CardPlaces), one a little after the other. Yours follow the picker as you
+// pick (a card changed there changes here); a bot's come as its moves do,
+// the show a little faster. The find's tile waits for it
+// (DiscoveryShow::release)
+
+class SalvageShow {
+public:
+  static constexpr float kSecondsIn = 0.4f;   // a card up into its place
+  static constexpr float kSecondsRead = 0.5f; // all taken and in: seen a moment
+  static constexpr float kSecondsAway = 0.5f; // a card off to its player
+  static constexpr float kStagger = 0.15f;    // each off a little after the last
+  static constexpr float kBotPace = 1.4f;     // a bot's: this many times as fast
+  static constexpr float kWordsDim = 0.8f;    // how far the find's words dim
+
+  // The moves made since the last look and the game they made: a salvage
+  // begun (the phase turned Salvage, or a pick came: whose, and how many it
+  // takes), and each pick taken (TakeSalvage), in order; `you` the player
+  // picking on this console's picker (-1 watching: every pick a bot's)
+  void saw(const std::vector<TableGame::Played> &moves, const State &state, int you, double now);
+  // From `now` its cards can show (the find's tile facing you, its words
+  // in): picks made before then come in from then
+  void begin(double now);
+  // Your picks on the picker as they are now (each frame while it's open,
+  // till they're taken): a new one comes in, one changed comes in afresh,
+  // one taken back goes
+  void choosing(const std::vector<Resource> &picked, double now);
+
+  // A salvage under way: from its start until its cards have landed
+  bool on() const { return player_ >= 0; }
+  int player() const { return player_; }
+  int howMany() const { return howMany_; } // (the places side by side)
+  // Begun, and nothing picked yet ("Choosing...")
+  bool waitingForChoice(double now) const;
+  // The cards showing: each one's place (`slot`, 0 the first picked), its
+  // resource, how far it's come up (0 to 1), its name faded in, and how far
+  // it's flown off to its player (0 to 1)
+  struct Card {
+    int slot = 0;
+    Resource resource{};
+    float in = 0, words = 0, away = 0;
+  };
+  std::vector<Card> cards(double now) const;
+  // How far the find's words are dimmed (0 to kWordsDim): down as the first
+  // card comes up, back as the last flies off
+  float dim(double now) const;
+  // A card coming up, being seen, or flying
+  bool moving(double now) const;
+  // From the last pick taken until its cards have landed: the game waits
+  // (a bot's turn goes on only then)
+  bool holding() const;
+
+  // Each frame: the game held from the last pick taken until its cards
+  // have landed (a bot's turn goes on only then), and let go; once they
+  // have, it's over (on() false)
+  struct Step {
+    bool hold = false, letGo = false;
+  };
+  Step update(double now);
+
+private:
+  struct Pick {
+    Resource resource{};
+    double at = 0;                 // (picked, or seen taken)
+    std::optional<double> takenAt; // (its move came)
+  };
+  void start(int player, int howMany, int you);
+  // `seconds` at this salvage's pace (a bot's quicker)
+  double paced(float seconds) const { return seconds / (player_ == you_ ? 1.0f : kBotPace); }
+  double inAt(std::size_t pick) const; // (when it starts up: once begun)
+  // When the cards start off (all taken and in, and seen a moment), and
+  // when the last lands: once known
+  std::optional<double> awayAt() const;
+  std::optional<double> endAt() const;
+
+  int player_ = -1, howMany_ = 0, you_ = -1;
+  std::vector<Pick> picks_;
+  std::optional<double> begunAt_;
+  bool held_ = false;
 };
 
 // ---------------------------------------------------------------------------

@@ -122,6 +122,48 @@ TEST_F(TopViewsTest, ADiscoveryFromStartToEnd) {
   });
 }
 
+// Salvage over its find, yours and a bot's: the find turning over, its
+// words dimming as the cards come up side by side, then off to their
+// player; the tile back down once they've landed
+TEST_F(TopViewsTest, ASalvageFromStartToEnd) {
+  for (const int player : {0, 2}) {
+    State before = state;
+    before.turn = player;
+    State after = before;
+    for (ZoneSite &site : after.zone)
+      if (!site.flipped) {
+        site.flipped = true;
+        site.find = Find::Salvage;
+        break;
+      }
+    after.phase = Phase::Salvage;
+    after.salvageLeft = 2;
+    DiscoveryShow discovery;
+    discovery.arrived(before, after, 0);
+    SalvageShow salvage;
+    salvage.saw({}, after, 0, 0);
+    frames(every(0, 9), [&](const TopFrame &f) {
+      discovery.update(f.now, nullptr);
+      if (!discovery.choiceStillToShow(f.now))
+        salvage.begin(f.now);
+      // (the picks: yours on the picker, a bot's as its moves)
+      if (player == 0 && f.now > 2 && f.now < 3)
+        salvage.choosing({Resource::Water, Resource::Water}, f.now);
+      if (f.now >= 3 && f.now < 3.05)
+        salvage.saw({{player, Action{Action::Kind::TakeSalvage, 3}},
+                     {player, Action{Action::Kind::TakeSalvage, 3}}},
+                    after, 0, f.now);
+      salvage.update(f.now);
+      if (!salvage.on())
+        discovery.release(f.now);
+      drawDiscovery(f, discovery, noCloseUp, noCloseUp, salvage.dim(f.now));
+      drawSalvage(f, salvage, after, 0);
+    });
+    EXPECT_FALSE(salvage.on());
+    EXPECT_FALSE(discovery.waiting());
+  }
+}
+
 TEST_F(TopViewsTest, DealtCardsOtherPlayersAndTheFirstRoll) {
   DealtShow dealt;
   dealt.deal({Art::Card::Enforcer, Art::Card::CharterOccupier}, 0);

@@ -14,6 +14,8 @@ std::string_view nameOf(ShowKind kind) {
     return "pieces";
   case ShowKind::Discovery:
     return "discovery";
+  case ShowKind::Salvage:
+    return "salvage";
   case ShowKind::HomePay:
     return "home pay";
   case ShowKind::CardFlights:

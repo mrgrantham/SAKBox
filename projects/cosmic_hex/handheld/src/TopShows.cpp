@@ -31,25 +31,26 @@ DiscoveryShow::Step DiscoveryShow::update(double now,
     closeUpDrawn_ = true;
     startsAt_ = now; // (the show starts after the drawing)
   }
-  if (!held_) {
-    held_ = true;
-    step.hold = true;
-  }
-  const Discovery::Moment m = Discovery::at(static_cast<float>(now - *startsAt_));
+  const Discovery::Moment m = Discovery::at(elapsed(now));
   step.redrawMap = m.fade > 0;
-  if (!m.done)
-    return step;
-  shownBig_.push_back(queue_.front().hex);
-  queue_.erase(queue_.begin());
-  closeUpDrawn_ = false;
-  if (!queue_.empty()) {
-    startsAt_ = now;
-    return step;
+  if (m.done) {
+    shownBig_.push_back(queue_.front().hex);
+    queue_.erase(queue_.begin());
+    closeUpDrawn_ = released_ = false;
+    waited_ = 0;
+    if (queue_.empty()) {
+      startsAt_.reset();
+      step.redrawMap = true;
+    } else {
+      startsAt_ = now;
+    }
   }
-  startsAt_.reset();
-  held_ = false;
-  step.letGo = true;
-  step.redrawMap = true;
+  // (held while a tile shows, but not while its choice is made in the game)
+  const bool busy = !queue_.empty() && !waitingForChoice(now);
+  if (busy != held_) {
+    held_ = busy;
+    (busy ? step.hold : step.letGo) = true;
+  }
   return step;
 }
 
@@ -58,14 +59,46 @@ void DiscoveryShow::waitFor(double until) {
     startsAt_ = until;
 }
 
+bool DiscoveryShow::started(double now) const {
+  return !queue_.empty() && startsAt_ && now >= *startsAt_ && closeUpDrawn_;
+}
+
+float DiscoveryShow::elapsed(double now) const {
+  const double since = now - startsAt_.value_or(now);
+  if (!queue_.front().choiceAfter)
+    return static_cast<float>(since);
+  if (!released_)
+    return static_cast<float>(std::min(since, static_cast<double>(Discovery::kSecondsToDown)));
+  return static_cast<float>(since - waited_);
+}
+
+bool DiscoveryShow::choiceStillToShow(double now) const {
+  for (std::size_t i = 0; i < queue_.size(); ++i)
+    if (queue_[i].choiceAfter)
+      return i > 0 || !started(now) || elapsed(now) < Discovery::kSecondsToWords;
+  return false;
+}
+
+bool DiscoveryShow::waitingForChoice(double now) const {
+  return started(now) && queue_.front().choiceAfter && !released_ &&
+         elapsed(now) >= Discovery::kSecondsToWords;
+}
+
+void DiscoveryShow::release(double now) {
+  if (!started(now) || !queue_.front().choiceAfter || released_)
+    return;
+  released_ = true;
+  waited_ = std::max(0.0, now - startsAt_.value_or(now) - Discovery::kSecondsToDown);
+}
+
 const Discovery::Found *DiscoveryShow::current() const {
   return queue_.empty() ? nullptr : &queue_.front();
 }
 
 std::optional<Discovery::Moment> DiscoveryShow::moment(double now) const {
-  if (queue_.empty() || !startsAt_ || now < *startsAt_ || !closeUpDrawn_)
+  if (!started(now))
     return std::nullopt;
-  return Discovery::at(static_cast<float>(now - *startsAt_));
+  return Discovery::at(elapsed(now));
 }
 
 bool DiscoveryShow::stillToShow(Hex hex, double now) const {
@@ -613,6 +646,150 @@ bool HomePayShow::waitingForChoice(double now) const {
     if (!spin.cardAt)
       return now >= spin.at + kSecondsSpin;
   return false;
+}
+
+// ---------------------------------------------------------------- Salvage
+
+void SalvageShow::start(int player, int howMany, int you) {
+  player_ = player;
+  howMany_ = std::max(1, howMany);
+  you_ = you;
+  picks_.clear();
+  begunAt_.reset();
+}
+
+void SalvageShow::saw(const std::vector<TableGame::Played> &moves, const State &state, int you,
+                      double now) {
+  for (const TableGame::Played &move : moves) {
+    if (move.action.kind != Action::Kind::TakeSalvage)
+      continue;
+    if (!on())
+      start(move.player, state.settings.salvageResources, you);
+    if (move.player != player_)
+      continue;
+    const auto resource = static_cast<Resource>(move.action.a);
+    // (the first pick not taken yet: yours, as picked, unless it differs;
+    // else a new one)
+    const auto open = std::ranges::find_if(picks_, [](const Pick &p) { return !p.takenAt; });
+    if (open != picks_.end()) {
+      if (open->resource != resource)
+        *open = Pick{.resource = resource, .at = now};
+      open->takenAt = now;
+    } else if (static_cast<int>(picks_.size()) < howMany_) {
+      picks_.push_back({.resource = resource, .at = now, .takenAt = now});
+    }
+  }
+  if (state.phase == Phase::Salvage && !on())
+    start(state.turn, state.settings.salvageResources, you);
+}
+
+void SalvageShow::begin(double now) {
+  if (on() && !begunAt_)
+    begunAt_ = now;
+}
+
+void SalvageShow::choosing(const std::vector<Resource> &picked, double now) {
+  if (!on() || player_ != you_ ||
+      std::ranges::any_of(picks_, [](const Pick &p) { return p.takenAt.has_value(); }))
+    return;
+  // (those still picked as they were stay; from the first changed on, afresh)
+  std::size_t same = 0;
+  while (same < picks_.size() && same < picked.size() && picks_[same].resource == picked[same])
+    ++same;
+  picks_.erase(picks_.begin() + static_cast<std::ptrdiff_t>(same), picks_.end());
+  for (std::size_t i = same; i < picked.size() && static_cast<int>(i) < howMany_; ++i)
+    picks_.push_back({.resource = picked[i], .at = now});
+}
+
+double SalvageShow::inAt(std::size_t pick) const {
+  return std::max(picks_[pick].at, begunAt_.value_or(picks_[pick].at));
+}
+
+std::optional<double> SalvageShow::awayAt() const {
+  if (!begunAt_ || static_cast<int>(picks_.size()) < howMany_)
+    return std::nullopt;
+  double away = 0;
+  for (std::size_t i = 0; i < picks_.size(); ++i) {
+    const std::optional<double> taken = picks_[i].takenAt;
+    if (!taken)
+      return std::nullopt;
+    away = std::max({away, *taken, inAt(i) + paced(kSecondsIn + kSecondsRead)});
+  }
+  return away;
+}
+
+std::optional<double> SalvageShow::endAt() const {
+  const std::optional<double> away = awayAt();
+  if (!away)
+    return std::nullopt;
+  return *away + paced(kStagger * static_cast<float>(howMany_ - 1) + kSecondsAway);
+}
+
+bool SalvageShow::waitingForChoice(double now) const {
+  return on() && begunAt_ && now >= *begunAt_ && picks_.empty();
+}
+
+std::vector<SalvageShow::Card> SalvageShow::cards(double now) const {
+  std::vector<Card> shown;
+  if (!begunAt_)
+    return shown;
+  const std::optional<double> away = awayAt();
+  for (std::size_t i = 0; i < picks_.size(); ++i) {
+    const double in = inAt(i);
+    const float gone = away ? partOf(now, *away + paced(kStagger * static_cast<float>(i)),
+                                     static_cast<float>(paced(kSecondsAway)))
+                            : 0.0f;
+    if (now < in || gone >= 1)
+      continue;
+    shown.push_back(
+        {.slot = static_cast<int>(i),
+         .resource = picks_[i].resource,
+         .in = partOf(now, in, static_cast<float>(paced(kSecondsIn))),
+         .words = partOf(now, in + paced(kSecondsIn), static_cast<float>(paced(kSecondsWordsIn))),
+         .away = gone});
+  }
+  return shown;
+}
+
+float SalvageShow::dim(double now) const {
+  if (!begunAt_ || picks_.empty())
+    return 0;
+  double first = inAt(0);
+  for (std::size_t i = 1; i < picks_.size(); ++i)
+    first = std::min(first, inAt(i));
+  const float in = partOf(now, first, static_cast<float>(paced(kSecondsIn)));
+  const std::optional<double> away = awayAt();
+  const float gone = away ? partOf(now, *away + paced(kStagger * static_cast<float>(howMany_ - 1)),
+                                   static_cast<float>(paced(kSecondsAway)))
+                          : 0.0f;
+  return kWordsDim * in * (1 - gone);
+}
+
+bool SalvageShow::moving(double now) const {
+  if (!begunAt_ || picks_.empty())
+    return false;
+  for (std::size_t i = 0; i < picks_.size(); ++i)
+    if (now < inAt(i) + paced(kSecondsIn + kSecondsWordsIn))
+      return true;
+  const std::optional<double> end = endAt();
+  return end && now < *end;
+}
+
+bool SalvageShow::holding() const { return on() && awayAt().has_value(); }
+
+SalvageShow::Step SalvageShow::update(double now) {
+  if (const std::optional<double> end = endAt(); end && now >= *end) {
+    player_ = -1; // (landed: over)
+    picks_.clear();
+    begunAt_.reset();
+  }
+  Step step;
+  const bool busy = holding();
+  if (busy != held_) {
+    held_ = busy;
+    (busy ? step.hold : step.letGo) = true;
+  }
+  return step;
 }
 
 // --------------------------------------------------------------- Roll pay

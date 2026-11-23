@@ -79,6 +79,193 @@ TEST(TopShowsTest, TwoTilesOneAfterTheOther) {
   EXPECT_TRUE(show.waitingAfterCurrent().empty());
 }
 
+namespace {
+// A game, and the same with a deep-space find turned over by player
+// `by`: salvage (its choice of resources to come), or ruins
+std::pair<State, State> aFindTurnedOver(Find find, int by = 0) {
+  State before = newGame(4, agreedRules(boardR3()));
+  before.turn = by;
+  State after = before;
+  for (ZoneSite &site : after.zone)
+    if (!site.flipped) {
+      site.flipped = true;
+      site.find = find;
+      break;
+    }
+  if (find == Find::Salvage) {
+    after.phase = Phase::Salvage;
+    after.salvageLeft = after.settings.salvageResources;
+  }
+  return {before, after};
+}
+} // namespace
+
+// A salvage find: the choice waits until its words are in (the picker
+// stays shut); from then the game's let go, for the choice to be made; at
+// the end of its hold the tile waits, facing you, until it's released;
+// then back down as ever, the game held again. Another find never waits
+TEST(TopShowsTest, ASalvageFindWaitsForItsChoice) {
+  const auto [before, after] = aFindTurnedOver(Find::Salvage);
+  DiscoveryShow show;
+  show.arrived(before, after, 0);
+  ASSERT_NE(show.current(), nullptr);
+  EXPECT_TRUE(show.current()->choiceAfter);
+  EXPECT_TRUE(show.choiceStillToShow(0));
+  EXPECT_TRUE(show.update(0, nullptr).hold);
+  EXPECT_TRUE(show.choiceStillToShow(Discovery::kSecondsToWords - 0.01));
+  EXPECT_FALSE(show.waitingForChoice(Discovery::kSecondsToWords - 0.01));
+  // Its words in: the game let go; the picker can open
+  const double words = Discovery::kSecondsToWords + 0.01;
+  EXPECT_FALSE(show.choiceStillToShow(words));
+  EXPECT_TRUE(show.waitingForChoice(words));
+  EXPECT_TRUE(show.update(words, nullptr).letGo);
+  // Long past its hold: still facing you, not on its way down
+  const double long_ = Discovery::kSeconds + 5;
+  show.update(long_, nullptr);
+  ASSERT_TRUE(show.moment(long_).has_value());
+  EXPECT_FLOAT_EQ(show.moment(long_)->down, 0);
+  EXPECT_FLOAT_EQ(show.moment(long_)->lifted(), 1);
+  // Released: down from where it waited, the game held till it's done
+  show.release(long_);
+  EXPECT_FALSE(show.waitingForChoice(long_));
+  EXPECT_TRUE(show.update(long_ + 0.01, nullptr).hold);
+  const double downAt = long_ + 0.1;
+  EXPECT_GT(show.moment(downAt)->down, 0);
+  const double ends = long_ + (Discovery::kSeconds - Discovery::kSecondsToDown);
+  EXPECT_FALSE(show.update(ends - 0.05, nullptr).letGo);
+  EXPECT_TRUE(show.update(ends + 0.01, nullptr).letGo);
+  EXPECT_FALSE(show.waiting());
+  // Ruins: no choice; the game held throughout
+  const auto [plain, ruins] = aFindTurnedOver(Find::Ruins);
+  DiscoveryShow other;
+  other.arrived(plain, ruins, 0);
+  EXPECT_FALSE(other.choiceStillToShow(0));
+  other.update(0, nullptr);
+  EXPECT_FALSE(other.waitingForChoice(Discovery::kSecondsToDown + 0.5));
+  EXPECT_TRUE(other.update(Discovery::kSeconds + 0.01, nullptr).letGo);
+}
+
+// Released before its hold ends (the choice made quickly): no wait at all
+TEST(TopShowsTest, ASalvageFindChosenQuicklyDoesntWait) {
+  const auto [before, after] = aFindTurnedOver(Find::Salvage);
+  DiscoveryShow show;
+  show.arrived(before, after, 0);
+  show.update(0, nullptr);
+  show.release(Discovery::kSecondsToWords + 0.2);
+  EXPECT_TRUE(show.update(Discovery::kSeconds + 0.01, nullptr).letGo);
+}
+
+// Your salvage: begun when the find's words are in; your picks shown as you
+// make them (one changed comes in afresh, the order kept), the words
+// dimming; taken, the game held while they're seen and fly off one after
+// the other; landed, it's over and the game let go
+TEST(TopShowsTest, YourSalvageFollowsThePickerThenFlies) {
+  const auto [before, after] = aFindTurnedOver(Find::Salvage, 0);
+  SalvageShow show;
+  show.saw({}, after, 0, 1);
+  ASSERT_TRUE(show.on());
+  EXPECT_EQ(show.player(), 0);
+  EXPECT_EQ(show.howMany(), 2);
+  EXPECT_TRUE(show.cards(2).empty()); // (not begun: the find still turning)
+  EXPECT_FALSE(show.waitingForChoice(2));
+  show.begin(3);
+  EXPECT_TRUE(show.waitingForChoice(3));
+  EXPECT_FLOAT_EQ(show.dim(3), 0);
+  // Picked: Fuel, then Water instead of a second Fuel
+  show.choosing({Resource::Fuel}, 4);
+  EXPECT_FALSE(show.waitingForChoice(4));
+  ASSERT_EQ(show.cards(4.1).size(), 1u);
+  EXPECT_EQ(show.cards(4.1)[0].slot, 0);
+  EXPECT_GT(show.cards(4.1)[0].in, 0);
+  EXPECT_LT(show.cards(4.1)[0].in, 1);
+  EXPECT_FLOAT_EQ(show.dim(4 + SalvageShow::kSecondsIn), SalvageShow::kWordsDim);
+  show.choosing({Resource::Fuel, Resource::Fuel}, 5);
+  show.choosing({Resource::Fuel, Resource::Water}, 6);
+  auto shown = show.cards(6.1);
+  ASSERT_EQ(shown.size(), 2u);
+  EXPECT_EQ(shown[0].resource, Resource::Fuel);
+  EXPECT_FLOAT_EQ(shown[0].in, 1); // (the first kept as it was)
+  EXPECT_EQ(shown[1].resource, Resource::Water);
+  EXPECT_EQ(shown[1].slot, 1);
+  EXPECT_LT(shown[1].in, 1);         // (the changed one afresh)
+  EXPECT_FALSE(show.update(7).hold); // (picked, not taken: the game isn't held)
+  // Taken, a move each, in order: held
+  show.saw({{0, Action{Action::Kind::TakeSalvage, static_cast<int>(Resource::Fuel)}}}, after, 0, 8);
+  EXPECT_FALSE(show.update(8).hold); // (one of two)
+  show.choosing({}, 8.05);           // (the picker closed: ignored, once taken)
+  show.saw({{0, Action{Action::Kind::TakeSalvage, static_cast<int>(Resource::Water)}}}, after, 0,
+           8.1);
+  EXPECT_TRUE(show.update(8.1).hold);
+  shown = show.cards(8.1);
+  ASSERT_EQ(shown.size(), 2u);
+  EXPECT_FLOAT_EQ(shown[0].away, 0);
+  // Off one after the other, at your pace
+  const double off = 8.1 + 0.01;
+  EXPECT_GT(show.cards(off + SalvageShow::kSecondsAway / 2)[0].away, 0);
+  EXPECT_GT(show.cards(off + SalvageShow::kSecondsAway / 2)[0].away,
+            show.cards(off + SalvageShow::kSecondsAway / 2)[1].away);
+  EXPECT_TRUE(show.moving(off));
+  const double landed = 8.1 + SalvageShow::kStagger + SalvageShow::kSecondsAway;
+  EXPECT_TRUE(show.on());
+  const auto last = show.update(landed + 0.01);
+  EXPECT_TRUE(last.letGo);
+  EXPECT_FALSE(show.on());
+  EXPECT_TRUE(show.cards(landed + 0.01).empty());
+}
+
+// A bot's salvage: "Choosing..." until its first pick; its picks as its
+// moves come (the first with the find itself), shown once the find's
+// words are in; held from the last until they land; the same show a
+// little faster than yours
+TEST(TopShowsTest, ABotsSalvageComesWithItsMovesAndIsQuicker) {
+  const auto [before, after] = aFindTurnedOver(Find::Salvage, 2);
+  const auto end = [&](int you) {
+    SalvageShow show;
+    // (the find and the bot's first pick in one look)
+    State one = after;
+    one.salvageLeft = 1;
+    show.saw({{2, Action{Action::Kind::TakeSalvage, 4}}}, one, you, 0);
+    EXPECT_EQ(show.player(), 2);
+    EXPECT_TRUE(show.cards(0.5).empty()); // (the find still turning over)
+    show.begin(2);
+    EXPECT_EQ(show.cards(2.05).size(), 1u);
+    EXPECT_FALSE(show.update(2.5).hold); // (the game let go for its second)
+    State done = after;
+    done.phase = Phase::Main;
+    show.saw({{2, Action{Action::Kind::TakeSalvage, 4}}}, done, you, 3);
+    EXPECT_TRUE(show.update(3).hold);
+    double t = 3;
+    while (show.on() && t < 10) {
+      t += 0.01;
+      show.update(t);
+    }
+    return t;
+  };
+  // (watching, every player a bot; and playing, with the bot not you)
+  const double watching = end(-1), playing = end(0);
+  EXPECT_NEAR(watching, playing, 0.02);
+  const double yours = 3 + SalvageShow::kSecondsIn + SalvageShow::kSecondsRead +
+                       SalvageShow::kStagger + SalvageShow::kSecondsAway;
+  EXPECT_LT(watching, yours - 0.2); // (quicker)
+  EXPECT_GT(watching, 3.2);         // (but still seen)
+}
+
+// B, and Animations Off (B every frame): the shows' clock jumps ahead and
+// the salvage lands at once; a choice still to make waits for it
+TEST(TopShowsTest, SkippingASalvageLandsItAtOnce) {
+  const auto [before, after] = aFindTurnedOver(Find::Salvage, 0);
+  SalvageShow show;
+  show.saw({}, after, 0, 0);
+  show.begin(0);
+  EXPECT_TRUE(show.waitingForChoice(30)); // (skipped ahead: still yours to choose)
+  show.choosing({Resource::Food, Resource::Food}, 30);
+  show.saw({{0, Action{Action::Kind::TakeSalvage, 1}}, {0, Action{Action::Kind::TakeSalvage, 1}}},
+           after, 0, 30.1);
+  EXPECT_TRUE(show.update(30.1).hold);
+  EXPECT_TRUE(show.update(60).letGo);
+  EXPECT_FALSE(show.on());
+}
+
 // The cards dealt: thrown from when they're dealt (no close-ups to wait
 // for: their icons are loaded sharp), then turned
 TEST(TopShowsTest, DealtCardsThrownThenTurned) {

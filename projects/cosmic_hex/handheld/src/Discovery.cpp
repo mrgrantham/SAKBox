@@ -61,13 +61,15 @@ std::vector<Found> between(const State &before, const State &after) {
     const ZoneSite &site = after.zone[i];
     if (!site.flipped || before.zone[i].flipped)
       continue;
-    found.push_back({.hex = site.hex,
-                     .planet = false,
-                     .faceDown = Art::Face::FindFaceDown,
-                     .face = faceOf(site),
-                     .by = by,
-                     .name = std::string(GameWords::of(site.find)),
-                     .gives = givesOf(site.find, after.settings)});
+    found.push_back(
+        {.hex = site.hex,
+         .planet = false,
+         .faceDown = Art::Face::FindFaceDown,
+         .face = faceOf(site),
+         .by = by,
+         .name = std::string(GameWords::of(site.find)),
+         .gives = givesOf(site.find, after.settings),
+         .choiceAfter = site.find == Find::Salvage && after.settings.salvageResources > 0});
   }
   return found;
 }
@@ -77,7 +79,7 @@ Moment at(float seconds) {
   using ScratchPadd::Motion::Curve;
   constexpr float kTurnFrom = kSecondsUp;
   constexpr float kChipFrom = kTurnFrom + kSecondsTurn;
-  constexpr float kDownFrom = kChipFrom + kSecondsChip + kSecondsHold;
+  constexpr float kDownFrom = kSecondsToDown;
   constexpr float kFadeFrom = kDownFrom + kSecondsDown;
   // The lift: a dip into the board over its first fifth (the wind-up),
   // then up, gently

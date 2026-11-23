@@ -30,6 +30,7 @@ enum class ShowKind : std::uint8_t {
   Dice,        // the roll's physics dice, thrown to pulled away
   Pieces,      // the board's pieces moving (BoardMotion)
   Discovery,   // a tile turned over, shown big
+  Salvage,     // salvage's cards over its find, then off to their player
   HomePay,     // a home's pay on its die
   CardFlights, // cards flying: a roll's pay, the starting hands, steals, trades, spending
   CardPlay,    // an action card played, a Charter revealed
@@ -38,7 +39,7 @@ enum class ShowKind : std::uint8_t {
   Hand,        // your cards gained, dropping into your hand
   Celebration  // the winner's ships flying round
 };
-inline constexpr std::size_t kShowKinds = 11;
+inline constexpr std::size_t kShowKinds = 12;
 std::string_view nameOf(ShowKind kind);
 
 // How a show stands this frame (GameShows::seen)

@@ -77,6 +77,7 @@ public:
     OtherPlayers,
     Discovery,
     Pick,
+    Salvage,
     HomePay,
     CardPlay,
     Dealt,
@@ -182,6 +183,7 @@ public:
   // clock (gameNow)
   const TradeArrival &tradeArrival() const { return tradeArrival_; }
   const DiscoveryShow &discovery() const { return discovery_; }
+  const SalvageShow &salvage() const { return salvage_; }
   const DealtShow &dealt() const { return dealt_; }
   const PanelShow &others() const { return others_; }
   const CardsShow &cards() const { return cards_; }
@@ -218,6 +220,7 @@ private:
   void updateCardPlay();
   void updateHomePay();
   void updateDiscovery();
+  void updateSalvage();
   void sendHold();
   void sendYourMove();
   void updateHolds();
@@ -274,6 +277,7 @@ private:
   int outlineFrom_ = 0;
   // What shows over the board for a while, each on the shows' clock
   DiscoveryShow discovery_;
+  SalvageShow salvage_; // (salvage's cards over its find, then off)
   DealtShow dealt_;
   FirstRollShow firstRoll_;
   HomePayShow homePay_;

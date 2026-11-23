@@ -91,13 +91,21 @@ void drawBuild(Canvas &canvas, const std::vector<BuildRow> &rows, int chosen,
                const Press &press = {});
 std::optional<Touch> buildTouch(int width, std::size_t rows, int x, int y);
 
+// How far each of the resource picker's cards has risen into its place,
+// by resource (0 below the screen, 1 in place): as it opens they come up
+// one after another (BottomScreen times them)
+using CardsIn = std::array<float, kResources>;
+inline constexpr CardsIn kCardsInPlace{1, 1, 1, 1, 1};
+
 // The resource picker: the five resource cards with how many you hold
 // under each, those picked outlined (a resource picked twice, twice);
 // Take once enough are picked, Back when it can be left
-// (`focus`: the D-pad's card, underlined; -1 for none)
+// (`focus`: the D-pad's card, underlined; -1 for none; `in`: each card's
+// way up into its place)
 void drawResources(Canvas &canvas, const Pickers::ResourceChoice &choice,
                    const std::vector<Resource> &picked, const Resources &held, bool canGoBack,
-                   CardSprites &cards, int focus = -1, const Press &press = {});
+                   CardSprites &cards, int focus = -1, const Press &press = {},
+                   const CardsIn &in = kCardsInPlace);
 std::optional<Touch> resourcesTouch(int width, int x, int y);
 
 // The player picker: a row for each player the rules allow, their name in

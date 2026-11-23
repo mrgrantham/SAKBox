@@ -25,6 +25,7 @@
 #include <CosmicHex/Handheld/ChoiceScreens.hpp>
 #include <CosmicHex/Handheld/OtherPlayers.hpp>
 #include <CosmicHex/Handheld/Pickers.hpp>
+#include <CosmicHex/Handheld/TopShows.hpp>
 #include <CosmicHex/Handheld/TradeRoom.hpp>
 
 #include <ScratchPadd/Buttons/Buttons.hpp>
@@ -72,6 +73,14 @@ public:
   std::optional<Resource> resourceInFocus() const;
   // The picker's choice, while it's open (its title: "Your home pays 1")
   const std::optional<Pickers::ResourceChoice> &resourceChoice() const { return resources_; }
+  // The cards picked on it so far, in the order picked (salvage's two shown
+  // on the top screen as they're picked); nothing when it isn't open
+  const std::vector<Resource> &resourcesPicked() const;
+  // While the top screen still shows what brings a choice of resources (a
+  // find turning over, its words not in yet), the picker waits to open;
+  // let go, it opens, its cards coming up into place (ScreenPadd says)
+  // (true if the screen changed: draw it again)
+  bool setPickerWaits(bool waits);
 
   // What's shown on the top screen for looking at, any time (// the user's: they pause the game
   // while open): your resources and cards (Show resources); another tap closes it
@@ -124,14 +133,20 @@ public:
   const std::string &message() const { return buttons_.message(); }
   bool showingFeedback() const { return buttons_.showingFeedback(); }
   // The time now (seconds, the app's clock), each frame: a pressed
-  // button glows a moment, and pressing() says to draw again meanwhile
-  void setTime(double now) { now_ = now; }
+  // button glows a moment, and pressing() says to draw again meanwhile;
+  // and the shows' clock (the Animations setting's pace, jumping ahead when
+  // B skips): the resource picker's cards come up on it
+  void setTime(double now, double shows) {
+    now_ = now;
+    showsNow_ = shows;
+  }
   // Who's who at the table (the tabs and the trade room say names)
   void setNames(PlayerNames names) { trade_.setNames(std::move(names)); }
   // Whether to draw again soon: a button glowing from a press, or fading in
   // or out (BoardButtons::Fades)
   bool pressing() const {
-    return buttons_.pressing(now_) || fades_.fading(now_) || actionPress().showing();
+    return buttons_.pressing(now_) || fades_.fading(now_) || actionPress().showing() ||
+           pickerArriving();
   }
   void clearFeedback();
 
@@ -195,11 +210,17 @@ private:
   int resourceFocus_ = 0; // (the D-pad's card on the resource picker)
   void openPicker(Pickers::ResourceChoice choice, bool canGoBack);
   void focusNextResource(int direction);
+  Outcome takePicked();   // (Take, or A once enough are picked: their moves)
+  CardsShow resourcesIn_; // (the picker's cards coming up as it opens)
+  bool pickerArriving() const;
+  bool pickerWaits_ = false;   // (setPickerWaits)
+  bool yourRollWaits_ = false; // (as last followed)
+  bool queuedReady() const;    // (a queued move the rules allow now: sent next)
   std::vector<HeldCard> held_; // (the cards screen: your cards)
   int heldChosen_ = -1;
   std::optional<KeepChoice> keep_; // (after buying: the two to keep one of)
   int keepChosen_ = -1;
-  double now_ = 0;                                 // (setTime)
+  double now_ = 0, showsNow_ = 0;                  // (setTime)
   bool moveListButton_ = false, moveList_ = false; // (debug builds' list of moves)
   TradeRoom trade_;                                // (the trade room)
   std::vector<Action> queued_;                     // (its moves still to make)

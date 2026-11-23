@@ -256,6 +256,15 @@ The choosing screens (`ChoiceScreens`, drawn on a `Canvas`) take the board's pla
 - **The resource picker** (`Pickers`): the home's pay and salvage open it by themselves; the Cartel and the Supply drop open it from the cards screen. The card in focus is the pick, and Take always shows (A takes it at once).
   - **Each choice opens afresh:** a home paying 2 is two choices in a row, each opened anew (nothing carried over) and saying how many are left ("(2 to choose)"; `ResourceChoice::left`, `sameAs`).
   - **The top screen:** the CHOOSE A RESOURCE banner first, for each choice; once it's gone, the card in focus big, sliding in from the side you moved to, its name fading in, with what you could build with it, dimmed if even with it you couldn't (`PickShow`, `drawPick`).
+  - **Its cards come up as it opens,** one after another from below the screen, on the shows' clock (`CardsShow`), so Quick, B and Animations Off pace them as every show.
+- **Salvage** (a find giving resources of your choice, `Settings::salvageResources` of them):
+  - The find's discovery shows as any find's; the picker waits until its words are in, then comes up (`DiscoveryShow::choiceStillToShow`, `BottomScreen::setPickerWaits`).
+  - Every resource is picked on one screen, the same one more than once if wanted (tap it again); nothing is picked to start, and Take stays dimmed until all are.
+  - Take sends a `TakeSalvage` for each card, in the order picked: the first at once, the rest as the rules allow each (`ResourceChoice::movePerPick`, `movesFor`, `BottomScreen::nextQueued`).
+  - On the top screen each card picked comes up from the bottom over the find's tile, side by side, drawn as every card is at 2:3, as large as fit between the find's name and what it gives (`salvageCardWidth`, `salvageCardMiddles`), the find's words dimming so the cards can be seen; changing a pick changes its card. Once taken, a moment to see them, then they fly to your hand (`CardPlaces`), one after the other (`SalvageShow`, `drawSalvage`).
+  - The find's tile waits, facing you, until the cards have landed, then goes back down (`DiscoveryShow::release`); the game is let go while the choice is made and held while the cards fly (`GameShows::updateHolds`); the cards take the stage as the other shows over the board do, and the scripted runs log them as `salvage`.
+  - A bot's salvage plays the same, its cards coming as its moves do, a little faster (`SalvageShow::kBotPace`); "Choosing..." shows until its first pick.
+  - B, Quick and Animations Off act on it as on every show (the shows' clock).
 - **The player picker:** whom to steal from, when the blockade stands by more than one player.
 - **Keeping a card:** after buying, the two cards dealt are thrown onto the top screen and turned over one after the other, their words on them, and the choice opens by itself.
 - **Shipyard Surplus** is played by touching a colony.

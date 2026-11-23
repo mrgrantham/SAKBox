@@ -33,6 +33,9 @@ struct Found {
   int by = 0;        // the player whose ship turned it over
   std::string name;  // "Gas giant", "Ancient ruins"
   std::string gives; // "Fuel on a 6", "+2 badges"
+  // A find that brings a choice (salvage: resources of the player's
+  // choosing): its show waits for it (DiscoveryShow, SalvageShow)
+  bool choiceAfter = false;
 };
 
 // The tiles turned over from `before` to `after`, planets first
@@ -48,6 +51,10 @@ inline constexpr float kSecondsDown = 0.6f;     // back down flat in its place
 inline constexpr float kSecondsFade = 0.4f;     // the bottom screen's tile fading in
 inline constexpr float kSeconds =
     kSecondsUp + kSecondsTurn + kSecondsChip + kSecondsHold + kSecondsDown + kSecondsFade;
+// When its name and what it gives are all in, and when its hold ends and
+// it starts back down
+inline constexpr float kSecondsToWords = kSecondsUp + kSecondsTurn + kSecondsWordsIn;
+inline constexpr float kSecondsToDown = kSecondsUp + kSecondsTurn + kSecondsChip + kSecondsHold;
 
 // Where the show is, `seconds` in: each part 0 (not begun) to 1 (done),
 // eased (Motion)

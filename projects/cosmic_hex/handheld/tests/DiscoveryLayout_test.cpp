@@ -2,6 +2,7 @@
 // font: the discovery's words and tile (no two may overlap, and all stay
 // on the screen), and the resource cards' names
 #include <CosmicHex/Handheld/BoardView.hpp>
+#include <CosmicHex/Handheld/CardFace.hpp>
 #include <CosmicHex/Handheld/GameWords.hpp>
 #include <CosmicHex/Handheld/TopViews.hpp>
 
@@ -110,6 +111,30 @@ TEST_P(DiscoveryLayoutTest, ResourceCardNamesAreAsLargeAsTheirCards) {
     EXPECT_GE(screen.font.ink(name, 1.5f * k).height, 1.4f * screen.font.ink(name, k).height)
         << name;
   }
+}
+
+// Salvage's two cards over the find's tile: side by side, apart, centred,
+// on the screen, and between the find's name and what it gives (whose ink
+// they must not cover)
+TEST_P(DiscoveryLayoutTest, SalvagesTwoCardsSitSideBySideOverTheTile) {
+  const Screen &screen = GetParam();
+  const DiscoveryLayout layout = discoveryLayout(screen.width, screen.height, screen.lineHeight);
+  const auto middles = salvageCardMiddles(screen.width, screen.height, 2, screen.lineHeight);
+  ASSERT_EQ(middles.size(), 2u);
+  const float w = salvageCardWidth(screen.width, screen.height, screen.lineHeight);
+  const float h = CardFace::heightOf(w);
+  EXPECT_FLOAT_EQ(middles[0].y, middles[1].y);
+  EXPECT_GT(middles[1].x - middles[0].x, w); // (apart)
+  EXPECT_NEAR(middles[0].x + middles[1].x, screen.width, 0.01f);
+  EXPECT_GE(middles[0].x - w / 2, 0);
+  EXPECT_LE(middles[1].x + w / 2, screen.width);
+  const Scene::LineBox title = inkIn(screen, layout.title, kTitle, layout.titleScale);
+  const Scene::LineBox gives = inkIn(screen, layout.gives, kGives, layout.givesScale);
+  EXPECT_GT(middles[0].y - h / 2, title.bottom) << screen.name;
+  EXPECT_LT(middles[0].y + h / 2, gives.top) << screen.name;
+  // (one alone: in the middle)
+  EXPECT_FLOAT_EQ(salvageCardMiddles(screen.width, screen.height, 1, screen.lineHeight)[0].x,
+                  screen.width / 2);
 }
 
 INSTANTIATE_TEST_SUITE_P(OnEachHandheld, DiscoveryLayoutTest, testing::Values(kDs, k3ds),

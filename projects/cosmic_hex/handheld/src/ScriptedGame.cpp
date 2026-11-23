@@ -152,7 +152,7 @@ bool ScriptedGame::frame() {
         shows_.celebrate(snapshot.state);
     }
   }
-  screen_.setTime(now_);
+  screen_.setTime(now_, shows_.showsNow());
   if (onFrame_)
     onFrame_(*this);
   // The player: B now and then while something animates (when impatient),

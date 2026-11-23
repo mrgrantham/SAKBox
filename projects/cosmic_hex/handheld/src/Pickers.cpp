@@ -14,26 +14,51 @@ std::vector<Action> ofKind(const std::vector<Action> &legal, Kind kind) {
                [&](const Action &a) { return a.kind == kind; });
   return out;
 }
+
+// What the picker says to do when more than one is picked on it
+std::string pickSeveralNote(int howMany) {
+  return "Tap " + (howMany == 2 ? std::string("two") : std::to_string(howMany)) +
+         " (the same twice: tap it again)";
+}
 } // namespace
 
-std::optional<Action> ResourceChoice::actionFor(const std::vector<Resource> &picked) const {
-  if (static_cast<int>(picked.size()) != howMany)
+std::vector<Action> ResourceChoice::movesFor(const std::vector<Resource> &picked) const {
+  if (static_cast<int>(picked.size()) != howMany || picked.empty())
+    return {};
+  const auto moveNaming = [&](int first, int second) -> std::optional<Action> {
+    for (const Action &a : actions)
+      if (a.a == first && (second < 0 || a.b == second))
+        return a;
     return std::nullopt;
-  const int first = static_cast<int>(picked[0]);
-  const int second = howMany == 2 ? static_cast<int>(picked[1]) : -1;
-  for (const Action &a : actions) {
-    if (howMany == 1 && a.a == first)
-      return a;
-    if (howMany == 2 && ((a.a == first && a.b == second) || (a.a == second && a.b == first)))
-      return a;
+  };
+  std::vector<Action> moves;
+  if (movePerPick) {
+    for (const Resource r : picked)
+      if (const auto move = moveNaming(static_cast<int>(r), -1))
+        moves.push_back(*move);
+      else
+        return {};
+    return moves;
   }
-  return std::nullopt;
+  const int first = static_cast<int>(picked[0]);
+  if (howMany == 1)
+    if (const auto move = moveNaming(first, -1))
+      return {*move};
+  if (howMany == 2) {
+    const int second = static_cast<int>(picked[1]);
+    if (const auto move = moveNaming(first, second))
+      return {*move};
+    if (const auto move = moveNaming(second, first))
+      return {*move};
+  }
+  return {};
 }
 
 bool ResourceChoice::offers(Resource resource) const {
   const int r = static_cast<int>(resource);
-  return std::any_of(actions.begin(), actions.end(),
-                     [&](const Action &a) { return a.a == r || (howMany == 2 && a.b == r); });
+  return std::any_of(actions.begin(), actions.end(), [&](const Action &a) {
+    return a.a == r || (howMany == 2 && !movePerPick && a.b == r);
+  });
 }
 
 std::optional<ResourceChoice> resourceChoiceOf(const State &state,
@@ -46,8 +71,13 @@ std::optional<ResourceChoice> resourceChoiceOf(const State &state,
   }
   if (state.phase == Phase::Salvage) {
     auto actions = ofKind(legal, Kind::TakeSalvage);
+    const int howMany = std::max(1, state.salvageLeft);
     if (!actions.empty())
-      return ResourceChoice{"Salvage", "Take one resource", 1, std::move(actions)};
+      return ResourceChoice{.title = "Salvage: any " + std::to_string(howMany),
+                            .note = howMany == 1 ? "Take one resource" : pickSeveralNote(howMany),
+                            .howMany = howMany,
+                            .actions = std::move(actions),
+                            .movePerPick = true};
   }
   return std::nullopt;
 }
@@ -59,8 +89,7 @@ std::optional<ResourceChoice> cardChoiceOf(const std::vector<Action> &legal, Act
   if (card == Kind::PlayCartel)
     return ResourceChoice{"Interstellar Cartel", "Name a resource", 1, std::move(actions)};
   if (card == Kind::PlaySupplyDrop)
-    return ResourceChoice{"Supply drop: any 2", "Tap two (the same twice: tap it again)", 2,
-                          std::move(actions)};
+    return ResourceChoice{"Supply drop: any 2", pickSeveralNote(2), 2, std::move(actions)};
   return std::nullopt;
 }
 

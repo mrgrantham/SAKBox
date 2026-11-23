@@ -226,7 +226,7 @@ DiscoveryDepths discoveryDepths(float tileShare, float fieldOfView, float tileRa
 
 void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
                    const ScratchPadd::PictureSlot &closeUp,
-                   const ScratchPadd::PictureSlot &closeUpBack) {
+                   const ScratchPadd::PictureSlot &closeUpBack, float wordsDim) {
   const auto moment = show.moment(f.now);
   const Discovery::Found *found = show.current();
   if (!moment || !found)
@@ -282,16 +282,17 @@ void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
     f.renderer.draw(f.pictures.numberChip, pose * Scene::Transform::translation({0, 0, -drop}),
                     Scene::Material{.shading = Scene::Material::Shading::Toon, .texture = chip});
   }
-  // Its words, while it faces you
+  // Its words, while it faces you (dimmed under salvage's cards)
   if (lifted > 0.98f) {
+    const float shown = 1 - std::clamp(wordsDim, 0.0f, 1.0f);
     f.overlay.textCentred(f.width / 2, layout.heading.middle(), f.names[found->by] + " discovers",
-                          BoardColours::ofPlayer(found->by), layout.headingScale);
+                          fadedIn(BoardColours::ofPlayer(found->by), shown), layout.headingScale);
     // (once it's turned over, fading in)
     if (moment->named > 0) {
       f.overlay.textCentred(f.width / 2, layout.title.middle(), found->name,
-                            fadedIn(Palette::kWords, moment->named), layout.titleScale);
+                            fadedIn(Palette::kWords, moment->named * shown), layout.titleScale);
       f.overlay.textCentred(f.width / 2, layout.gives.middle(), found->gives,
-                            fadedIn(Palette::kSoftWords, moment->named), layout.givesScale);
+                            fadedIn(Palette::kSoftWords, moment->named * shown), layout.givesScale);
     }
     // The token's number written sharp over its picture once it's landed
     // (the user's A: a small texture's digits blur; the words are crisp
@@ -310,6 +311,41 @@ namespace {
 constexpr float kDealtTop = 8, kDealtGap = 16; // (a DS's pixels)
 // The hint under the cards dealt: its line's middle
 float dealtHintY(float height, float k) { return height - 6 * k; }
+
+// While a player chooses resources: what the screen says
+std::string_view choiceWords(bool yours) { return yours ? "Your choice: below" : "Choosing..."; }
+
+// A resource card shown big, then flown to its player (a home's pay,
+// salvage): it grows out of `from` up to `held` (its middle; a pop:
+// Settle), `width` wide when full size, its name on its band once it is;
+// then winds up and goes off along an arc bowing by `bow` to `to`
+// (CardPlaces), shrinking
+struct FlyingCard {
+  Resource resource{};
+  float width = 0;
+  ScreenPoint from, held, to, bow;
+  float grown = 0, away = 0, words = 0; // (each 0 to 1, through time)
+};
+void flyingCard(const TopFrame &f, const FlyingCard &card) {
+  const float grown = Motion::along(Motion::Curve::Settle, card.grown);
+  const float leave = Motion::along(Motion::Curve::Anticipate, card.away);
+  const float w = card.width * grown * (1 - 0.8f * std::max(0.0f, leave));
+  const float h = CardFace::heightOf(w);
+  const float rose = std::min(1.0f, grown);
+  const float riseX = card.from.x + (card.held.x - card.from.x) * rose;
+  const float riseY = card.from.y + (card.held.y - card.from.y) * rose;
+  const float cx = Motion::arc(riseX, card.to.x, card.bow.x, leave);
+  const float cy = Motion::arc(riseY, card.to.y, card.bow.y, leave);
+  // (its name on its band once it's full size, fading in)
+  if (w > 1)
+    cardFace(f, static_cast<Art::Card>(card.resource), cx - w / 2, cy - h / 2, w,
+             {.title = card.away <= 0 ? card.words : 0});
+}
+// How a card's flight off to its player bows: down to your hand below, a
+// swing out and up; up to a bot's row of the points bars, out sideways
+ScreenPoint flightBow(bool toYourHand, float k) {
+  return toYourHand ? ScreenPoint{18 * k, -30 * k} : ScreenPoint{-24 * k, 0};
+}
 } // namespace
 
 CardBox dealtCardBox(float width, float height, std::size_t i, std::size_t count) {
@@ -1230,32 +1266,27 @@ void homeDie(const TopFrame &f, const HomePayShow::Die &die, Hex hex, Art::Face 
 // What a home's card gives, written under it: its scale (a DS's)
 constexpr float kGivesScale = 1.5f;
 
-// The card out of the die (a pop: Settle), held big with its name, then
-// winding up and off along an arc to its player (CardPlaces), shrinking
+// The card out of the die, held big with its name, then off to its player
+// (flyingCard), what it gives under it
 void homePayCard(const TopFrame &f, const HomePayShow::Card &card, const State &state, int player,
                  bool yours) {
   const float k = f.k();
-  const float grown = Motion::along(Motion::Curve::Settle, card.grown);
-  const float leave = Motion::along(Motion::Curve::Anticipate, card.away);
   const CardBox big = homePayCardBox(f.width, f.height);
-  const float givesScale = kGivesScale * k, heldTop = big.y, bigW = big.width, bigH = big.height;
-  const float w = bigW * grown * (1 - 0.8f * std::max(0.0f, leave));
-  const float h = CardFace::heightOf(w);
+  const float givesScale = kGivesScale * k, heldX = f.width / 2;
   // (rising out of the die to under it as it grows)
-  const float dieY = kDieY * homePayScale(f.width, f.height), heldX = f.width / 2;
-  const float heldY = heldTop + bigH / 2;
-  const float riseY = dieY + (heldY - dieY) * std::min(1.0f, grown);
-  const auto [toX, toY] = CardPlaces::at(f, state, player, yours ? player : -1);
-  const float cx = Motion::arc(heldX, toX, yours ? 18 * k : -24 * k, leave);
-  const float cy = Motion::arc(riseY, toY, yours ? -30 * k : 0, leave);
-  // (its name on its band, and what it gives under it, once it's full
-  // size, fading in)
-  const bool held = card.away <= 0 && card.words > 0;
-  if (w > 1)
-    cardFace(f, static_cast<Art::Card>(card.resource), cx - w / 2, cy - h / 2, w,
-             {.title = held ? card.words : 0});
-  if (held) {
-    const auto [gives] = Scene::stackDown(heldTop + bigH + 4 * k, std::array{givesScale}, 0);
+  const float dieY = kDieY * homePayScale(f.width, f.height);
+  flyingCard(f, {.resource = card.resource,
+                 .width = big.width,
+                 .from = {heldX, dieY},
+                 .held = {heldX, big.y + big.height / 2},
+                 .to = CardPlaces::at(f, state, player, yours ? player : -1),
+                 .bow = flightBow(yours, k),
+                 .grown = card.grown,
+                 .away = card.away,
+                 .words = card.words});
+  // (what it gives under it, once it's full size, fading in)
+  if (card.away <= 0 && card.words > 0) {
+    const auto [gives] = Scene::stackDown(big.y + big.height + 4 * k, std::array{givesScale}, 0);
     f.overlay.textCentred(f.width / 2, gives.middle(),
                           "+1 " + std::string(GameWords::of(card.resource)),
                           fadedIn(Palette::kWords, card.words), givesScale);
@@ -1297,10 +1328,62 @@ void drawHomePay(const TopFrame &f, const HomePayShow &show, const State &state,
                           k);
   }
   if (show.waitingForChoice(f.now))
-    f.overlay.textCentred(f.width / 2, (kDieY + kCardBelowDie + 8) * dk,
-                          yours ? "Your choice: below" : "Choosing...", Palette::kHighlight,
-                          1.5f * k);
+    f.overlay.textCentred(f.width / 2, (kDieY + kCardBelowDie + 8) * dk, choiceWords(yours),
+                          Palette::kHighlight, 1.5f * k);
   if (const auto card = show.card(f.now))
     homePayCard(f, *card, state, pay->player, yours);
+}
+
+// ----------------------------------------------------------------- Salvage
+
+float salvageCardWidth(float width, float height, Scene::LineHeight lineHeight) {
+  // (a DS's 64 at most, and 2:3 between the find's name and what it gives,
+  // clear of both)
+  const DiscoveryLayout layout = discoveryLayout(width, height, lineHeight);
+  const float k = width / 256;
+  return std::min(kSalvageCardWidth * k,
+                  CardFace::widthToFit(width, layout.gives.top - layout.title.bottom - 4 * k));
+}
+
+std::vector<ScreenPoint> salvageCardMiddles(float width, float height, int cards,
+                                            Scene::LineHeight lineHeight) {
+  const DiscoveryLayout layout = discoveryLayout(width, height, lineHeight);
+  const float k = width / 256;
+  const float w = salvageCardWidth(width, height, lineHeight), gap = 12 * k;
+  const float y = (layout.title.bottom + layout.gives.top) / 2;
+  const float left =
+      width / 2 -
+      (static_cast<float>(cards) * w + static_cast<float>(std::max(0, cards - 1)) * gap) / 2;
+  std::vector<ScreenPoint> middles;
+  middles.reserve(static_cast<std::size_t>(std::max(0, cards)));
+  for (int i = 0; i < cards; ++i)
+    middles.push_back({left + w / 2 + static_cast<float>(i) * (w + gap), y});
+  return middles;
+}
+
+void drawSalvage(const TopFrame &f, const SalvageShow &show, const State &state, int you) {
+  if (!show.on())
+    return;
+  const float k = f.k();
+  const std::vector<ScreenPoint> middles = salvageCardMiddles(f.width, f.height, show.howMany());
+  const bool yours = you >= 0 && show.player() == you;
+  if (show.waitingForChoice(f.now))
+    f.overlay.textCentred(f.width / 2, middles.front().y, choiceWords(yours), Palette::kHighlight,
+                          1.5f * k);
+  const float w = salvageCardWidth(f.width, f.height), h = CardFace::heightOf(w);
+  const CardPlaces::Point to = CardPlaces::at(f, state, show.player(), you);
+  for (const SalvageShow::Card &card : show.cards(f.now)) {
+    const ScreenPoint held = middles[static_cast<std::size_t>(card.slot) % middles.size()];
+    // (up from below the screen, where it was picked)
+    flyingCard(f, {.resource = card.resource,
+                   .width = w,
+                   .from = {held.x, f.height + h},
+                   .held = held,
+                   .to = to,
+                   .bow = flightBow(yours, k),
+                   .grown = card.in,
+                   .away = card.away,
+                   .words = card.words});
+  }
 }
 } // namespace CosmicHex::Handheld

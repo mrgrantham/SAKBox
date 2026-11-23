@@ -112,10 +112,28 @@ DiscoveryDepths discoveryDepths(float tileShare, float fieldOfView, float tileRa
 // A discovered tile flying up from the board, turned over and set back
 // (its face from `closeUp` when that holds it, and its back from
 // `closeUpBack`: PictureSlot ids, the faces), its words placed by
-// discoveryLayout
+// discoveryLayout and dimmed by `wordsDim` (0 to 1: salvage's cards over
+// them, SalvageShow::dim)
 void drawDiscovery(const TopFrame &frame, const DiscoveryShow &show,
                    const ScratchPadd::PictureSlot &closeUp,
-                   const ScratchPadd::PictureSlot &closeUpBack);
+                   const ScratchPadd::PictureSlot &closeUpBack, float wordsDim = 0);
+
+// Salvage's cards' width on a screen `width` x `height` (a DS's
+// kSalvageCardWidth at most, scaled; 2:3 between the find's name and what
+// it gives: discoveryLayout), and where their middles go: `cards` side by
+// side over the find's tile, centred
+inline constexpr float kSalvageCardWidth = 64;
+float salvageCardWidth(
+    float width, float height,
+    ScratchPadd::Scene::LineHeight lineHeight = ScratchPadd::Scene::Overlay::lineHeight);
+std::vector<ScreenPoint> salvageCardMiddles(
+    float width, float height, int cards,
+    ScratchPadd::Scene::LineHeight lineHeight = ScratchPadd::Scene::Overlay::lineHeight);
+// Salvage (SalvageShow) over its find: "Choosing..." (yours: "Your choice:
+// below") until a card's picked; each card up from below into its place,
+// then off to its player (CardPlaces; `you`: the player whose hand is
+// below, -1 watching), drawn as every card is (CardFace, 2:3)
+void drawSalvage(const TopFrame &frame, const SalvageShow &show, const State &state, int you);
 // The two cards dealt, thrown in and turned, the one `chosen` below
 // outlined
 void drawDealtCards(const TopFrame &frame, const DealtShow &show, int chosen);

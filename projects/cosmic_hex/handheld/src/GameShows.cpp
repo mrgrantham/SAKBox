@@ -55,6 +55,7 @@ void GameShows::stopGame() {
   rollPay_ = RollPayShow();
   scorePops_ = ScorePops();
   cardPlay_ = CardPlayShow();
+  salvage_ = SalvageShow();
   pick_ = PickShow();
   hand_ = HandShow();
   celebration_.reset();
@@ -112,6 +113,12 @@ void GameShows::arrive(const TableSnapshot &snapshot) {
   const bool moved = startMotion(snapshot);
   startBanners(snapshot);
   startShows(snapshot);
+  // (a show this brings waits at once while another has the stage: a find
+  // waiting for its salvage lets the game go on under it, and a B before
+  // the next frame would have taken a home's pay due now for one showing)
+  takeTurn(ShowKind::Discovery);
+  takeTurn(ShowKind::HomePay);
+  takeTurn(ShowKind::CardPlay);
   if (moved)
     motionStarted_ = gameNow();
   showGains(snapshot);
@@ -184,6 +191,8 @@ void GameShows::startShows(const TableSnapshot &snapshot) {
     rollPay_.saw(snapshot.played, latest_->state, showsNow());
   // An action card played, or a Charter revealed: shown big (CardPlayShow)
   cardPlay_.saw(snapshot.played, showsNow());
+  // Salvage: its picks over its find's tile (SalvageShow)
+  salvage_.saw(snapshot.played, snapshot.state, playing_ ? 0 : -1, showsNow());
   // Your two cards dealt after buying: thrown onto the stage
   const bool keeping = playing_ && snapshot.yourMove && snapshot.state.phase == Phase::KeepContract;
   const auto choice = keeping ? keepChoiceOf(snapshot.state, snapshot.moves) : std::nullopt;
@@ -225,6 +234,9 @@ void GameShows::showGains(const TableSnapshot &snapshot) {
 void GameShows::followOnTouchPanel(const TableSnapshot &snapshot) {
   if (!bottomScreen_)
     return;
+  // (a find bringing a choice, just turned over: the picker waits for the
+  // top screen to show it, from this snapshot on: updateSalvage)
+  bottomScreen_->setPickerWaits(discovery_.choiceStillToShow(showsNow()));
   bottomScreen_->update(snapshot.state, snapshot.moves, playing_ && snapshot.yourMove,
                         yourRollWaits(snapshot));
   // (a move the touch panel queued, once the rules allow it: a bank
@@ -325,6 +337,7 @@ void GameShows::frame() {
   // waits while another has the stage)
   takeTurn(ShowKind::Discovery);
   updateDiscovery();
+  updateSalvage();
   takeTurn(ShowKind::HomePay);
   updateHomePay();
   updateRollPay();
@@ -415,7 +428,8 @@ void GameShows::updatePick() {
   const bool dieLanded = !homePay_.current() || homePay_.waitingForChoice(showsNow());
   const std::optional<Pickers::ResourceChoice> open =
       bottomScreen_ ? bottomScreen_->resourceChoice() : std::nullopt;
-  const bool choosing = playing_ && latest_ && latest_->yourMove && open &&
+  // (not salvage's: its picks show over its find, SalvageShow)
+  const bool choosing = playing_ && latest_ && latest_->yourMove && open && !open->movePerPick &&
                         bottomScreen_->mode() == BottomScreen::Mode::Resources && dieLanded;
   if (!choosing) {
     // (the choice made: its banner goes, its question answered, rather than
@@ -440,8 +454,8 @@ void GameShows::updatePick() {
 // (the roll's pay, the home's, choosing one, a discovery)
 void GameShows::updateHand() {
   const double t = showsNow();
-  const bool busy =
-      showsPlaying() || rollPay_.waiting() || pick_.at(t) || bannerFor_ || cards_.showing(t);
+  const bool busy = showsPlaying() || rollPay_.waiting() || pick_.at(t) || bannerFor_ ||
+                    cards_.showing(t) || salvage_.on();
   if (hand_.waiting() && !hand_.showing(t) && !busy)
     hand_.start(t);
 }
@@ -456,6 +470,25 @@ void GameShows::updateDiscovery() {
   const DiscoveryShow::Step step = discovery_.update(showsNow(), hooks_.closeUpTile);
   if (step.redrawMap)
     touchChanged_ = true;
+}
+
+// Salvage over its find's tile (SalvageShow): the picker waits until the
+// find's words are in, and the show begins then; your picks followed as
+// you make them; once its cards have landed, the find's tile let go back
+// down
+void GameShows::updateSalvage() {
+  const double t = showsNow();
+  const bool findToCome = discovery_.choiceStillToShow(t);
+  if (bottomScreen_ && bottomScreen_->setPickerWaits(findToCome))
+    touchChanged_ = true;
+  if (!findToCome)
+    salvage_.begin(t);
+  if (bottomScreen_ && bottomScreen_->mode() == BottomScreen::Mode::Resources &&
+      bottomScreen_->resourceChoice() && bottomScreen_->resourceChoice()->movePerPick)
+    salvage_.choosing(bottomScreen_->resourcesPicked(), t);
+  salvage_.update(t);
+  if (!salvage_.on())
+    discovery_.release(t);
 }
 
 // ------------------------------------------------------------ Holding
@@ -475,15 +508,16 @@ void GameShows::togglePaused() {
 }
 
 // The table held from the moment a move brings something to show until it's
-// shown: a discovery, a home's pay (not while it waits for the game: the
-// star's choice, the next roll), the cards flying (from when they're
-// queued, as the dice go), a card played; and while the board's pieces
-// move or a banner sweeps (or waits for the stage). Without it the table
-// made its next move meanwhile, and that move's banner, pieces or show cut
-// short or covered the last's
+// shown: a discovery (not while it waits for a choice it brings: salvage's,
+// made in the game), salvage's cards once taken until they land, a home's pay (not while it waits
+// for the game: the star's choice, the next roll), the cards flying (from when they're queued, as
+// the dice go), a card played; and while the board's pieces move or a banner sweeps (or waits for
+// the stage). Without it the table made its next move meanwhile, and that move's banner, pieces or
+// show cut short or covered the last's
 void GameShows::updateHolds() {
   const double t = showsNow();
-  holdFor(Hold::Discovery, discovery_.waiting());
+  holdFor(Hold::Discovery,
+          (discovery_.waiting() && !discovery_.waitingForChoice(t)) || salvage_.holding());
   holdFor(Hold::HomePay, homePay_.current() && !homePay_.waitingForGame(t));
   holdFor(Hold::RollPay, rollPay_.waiting() || rollPay_.moving(t));
   holdFor(Hold::CardPlay, cardPlay_.current() != nullptr);
@@ -491,12 +525,12 @@ void GameShows::updateHolds() {
           (latest_ && piecesMoving()) || banner_.moving(gameNow()) || bannerWaiting_.has_value());
 }
 
-// Whether a show over the board has the stage now (a discovery, a home's
-// pay that isn't waiting for the game, a card played)
+// Whether a show over the board has the stage now (a discovery, salvage's
+// cards, a home's pay that isn't waiting for the game, a card played)
 bool GameShows::stageTaken() const {
   const double t = showsNow();
-  return discovery_.moving(t) || (homePay_.moving(t) && !homePay_.waitingForGame(t)) ||
-         cardPlay_.moving(t);
+  return discovery_.moving(t) || salvage_.moving(t) ||
+         (homePay_.moving(t) && !homePay_.waitingForGame(t)) || cardPlay_.moving(t);
 }
 
 // A show still to start waits while another has the stage or a banner
@@ -504,7 +538,7 @@ bool GameShows::stageTaken() const {
 // home's die spun unseen under a discovery and then appeared half done)
 void GameShows::takeTurn(ShowKind kind) {
   const double t = showsNow();
-  const bool discovery = discovery_.moving(t);
+  const bool discovery = discovery_.moving(t) || salvage_.moving(t);
   const bool home = homePay_.moving(t) && !homePay_.waitingForGame(t);
   const bool card = cardPlay_.moving(t);
   // (the dice too: thrown, they're seen till they've gone)
@@ -597,8 +631,8 @@ bool GameShows::use(const BottomScreen::Outcome &outcome) {
 
 // Whether something is animating that B (Back) can skip to its end: the
 // dice, who goes first, the board's pieces moving, the turn's banner, the
-// trade screen coming in, a tile turned over, a home's or a roll's pay, the
-// cards dealt coming in
+// trade screen coming in, a tile turned over, salvage's cards, a home's or a
+// roll's pay, the cards dealt coming in
 bool GameShows::skippable() const {
   if (!inGame_ || !latest_)
     return false;
@@ -612,8 +646,8 @@ bool GameShows::skippable() const {
   const double t = showsNow();
   const bool dealing =
       dealt_.on() && !dealt_.cards().empty() && dealt_.turned(dealt_.cards().size() - 1, t) < 1;
-  return dealing || discovery_.moving(t) || homePay_.moving(t) || rollPay_.moving(t) ||
-         cardPlay_.moving(t);
+  return dealing || discovery_.moving(t) || salvage_.moving(t) || homePay_.moving(t) ||
+         rollPay_.moving(t) || cardPlay_.moving(t);
 }
 
 // Every animation straight to its end frame (the user's: B, or every
@@ -626,6 +660,11 @@ void GameShows::skip(bool pressed) {
   // start afresh after it: B ends what's animating, not what's to come
   // (jumped past too, a home's pay skipped by B on the banner before it
   // showed its die at its end, or not at all)
+  // (one due this moment while another has the stage waits its turn first:
+  // it's still to come, not what's animating)
+  takeTurn(ShowKind::Discovery);
+  takeTurn(ShowKind::HomePay);
+  takeTurn(ShowKind::CardPlay);
   const double before = showsNow();
   const bool discoveryToCome = discovery_.waiting() && !discovery_.moving(before);
   const bool homeToCome = homePay_.current() && !homePay_.moving(before);
@@ -677,6 +716,8 @@ GameShows::OverBoard GameShows::overBoard() const {
     return OverBoard::OtherPlayers;
   if (discovery_.moving(t))
     return OverBoard::Discovery;
+  if (salvage_.moving(t) && latest_)
+    return OverBoard::Salvage;
   if (pick_.at(t) && latest_ && bottomScreen_ && bottomScreen_->resourceChoice())
     return OverBoard::Pick;
   if (homePay_.moving(t) && latest_)
@@ -691,8 +732,10 @@ GameShows::OverBoard GameShows::overBoard() const {
 bool GameShows::showsPlaying() const {
   const double t = showsNow();
   const bool homePay = homePay_.moving(t) && !homePay_.waitingForGame(t);
-  return !roll_.idle() || piecesMoving() || discovery_.moving(t) || homePay || rollPay_.moving(t) ||
-         cardPlay_.moving(t) || dealt_.on() || firstRoll_.on();
+  // (a find waiting for its choice: the game goes on, for it to be made)
+  const bool discovery = discovery_.moving(t) && !discovery_.waitingForChoice(t);
+  return !roll_.idle() || piecesMoving() || discovery || salvage_.moving(t) || homePay ||
+         rollPay_.moving(t) || cardPlay_.moving(t) || dealt_.on() || firstRoll_.on();
 }
 
 bool GameShows::moving() const {
@@ -766,6 +809,14 @@ std::array<ShowSeen, kShowKinds> GameShows::seen() const {
       discovery.key = (found->hex.q + 50) * 100 + (found->hex.r + 50);
     discovery.elapsed = t - discovery_.startsAt().value_or(t);
     discovery.rate = showsRate;
+  }
+  {
+    ShowSeen &salvage = at(ShowKind::Salvage);
+    salvage.on = salvage_.on();
+    salvage.moving = salvage_.moving(t);
+    salvage.visible = top == OverBoard::Discovery || top == OverBoard::Salvage;
+    salvage.key = 1; // (one at a time, each from its start to its cards landed)
+    salvage.rate = showsRate;
   }
   {
     ShowSeen &home = at(ShowKind::HomePay);
@@ -844,6 +895,9 @@ void GameShows::log() {
     break;
   case OverBoard::Discovery:
     onTop = ShowKind::Discovery;
+    break;
+  case OverBoard::Salvage:
+    onTop = ShowKind::Salvage;
     break;
   case OverBoard::HomePay:
     onTop = ShowKind::HomePay;

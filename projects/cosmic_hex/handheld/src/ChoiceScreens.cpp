@@ -225,7 +225,7 @@ std::optional<Touch> buildTouch(int width, std::size_t rows, int x, int y) {
 
 void drawResources(Canvas &canvas, const Pickers::ResourceChoice &choice,
                    const std::vector<Resource> &picked, const Resources &held, bool canGoBack,
-                   CardSprites &cards, int focus, const Press &press) {
+                   CardSprites &cards, int focus, const Press &press, const CardsIn &in) {
   const float k = scaleOf(canvas);
   canvas.clear(kBackground);
   canvas.text(8 * k, 8 * k, choice.title, kWords);
@@ -236,7 +236,9 @@ void drawResources(Canvas &canvas, const Pickers::ResourceChoice &choice,
               kDim);
   for (int r = 0; r < kResources; ++r) {
     const auto resource = static_cast<Resource>(r);
-    const Box box = resourceBox(canvas.width(), r, cards.width(), cards.height());
+    Box box = resourceBox(canvas.width(), r, cards.width(), cards.height());
+    // (on its way up: from below the screen, with what's under it)
+    box.y += (1 - in[static_cast<std::size_t>(r)]) * (static_cast<float>(canvas.height()) - box.y);
     const bool offered = choice.offers(resource);
     canvas.blend(cards.card(cardOf(resource)), cards.width(), cards.height(),
                  static_cast<int>(box.x), static_cast<int>(box.y), offered ? 1.0f : 0.35f);
@@ -254,8 +256,7 @@ void drawResources(Canvas &canvas, const Pickers::ResourceChoice &choice,
   if (canGoBack)
     actions.push_back(backButton(canvas.width()));
   // (Take always there, the user's: dim until enough are picked)
-  const bool ready =
-      static_cast<int>(picked.size()) == choice.howMany && choice.actionFor(picked).has_value();
+  const bool ready = !choice.movesFor(picked).empty();
   actions.push_back(goButton(canvas.width(), "Take", ready));
   drawActions(canvas, std::move(actions), press);
 }

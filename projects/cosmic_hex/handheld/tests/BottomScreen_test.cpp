@@ -80,6 +80,85 @@ TEST(BottomScreenTest, TheNextOfTwoHomeChoicesOpensAfresh) {
   EXPECT_NE(screen.resourceInFocus(), std::optional<Resource>(Resource::Fuel));
 }
 
+// Salvage: the picker opens with nothing picked (Take dimmed), two of the
+// same kind picked on one screen, and Take sends a TakeSalvage for each, in
+// the order picked: the first now, the second queued for once the rules
+// allow it (the picker doesn't open again for it)
+TEST(BottomScreenTest, SalvagesTwoArePickedOnOneScreenAndSentInOrder) {
+  // Fuel is the third card, Crystals the fifth (6 + 49 * r across, 40 down)
+  const auto cardAt = [](Resource r) { return 6 + 49 * static_cast<int>(r) + 20; };
+  for (const auto &[first, second] :
+       {std::pair{Resource::Fuel, Resource::Fuel}, std::pair{Resource::Crystals, Resource::Fuel}}) {
+    State state = newGame(4, agreedRules(boardR3(), 4));
+    state.phase = Phase::Salvage;
+    state.salvageLeft = 2;
+    BottomScreen screen(kWidth, kHeight);
+    screen.update(state, Game::legalActions(state), true);
+    ASSERT_EQ(screen.mode(), Mode::Resources);
+    EXPECT_TRUE(screen.resourcesPicked().empty()); // (nothing picked to start)
+    EXPECT_FALSE(screen.tap(220, 178, std::nullopt).play.has_value());
+    screen.tap(cardAt(first), 60, std::nullopt);
+    EXPECT_FALSE(screen.tap(220, 178, std::nullopt).play.has_value()); // (one isn't enough)
+    screen.tap(cardAt(second), 60, std::nullopt);
+    EXPECT_EQ(screen.resourcesPicked(), (std::vector<Resource>{first, second}));
+    const auto taken = screen.tap(220, 178, std::nullopt);
+    ASSERT_TRUE(taken.play.has_value());
+    EXPECT_EQ(*taken.play, (Action{Kind::TakeSalvage, static_cast<int>(first)}));
+    EXPECT_EQ(screen.mode(), Mode::Board);
+    // The game after the first: still salvage, one left; the second goes
+    // next, by itself
+    ASSERT_TRUE(Game::apply(state, *taken.play));
+    ASSERT_EQ(state.phase, Phase::Salvage);
+    screen.update(state, Game::legalActions(state), true);
+    EXPECT_EQ(screen.mode(), Mode::Board);
+    const auto next = screen.nextQueued();
+    ASSERT_TRUE(next.has_value());
+    EXPECT_EQ(*next, (Action{Kind::TakeSalvage, static_cast<int>(second)}));
+    EXPECT_FALSE(screen.nextQueued().has_value()); // (taken once)
+    ASSERT_TRUE(Game::apply(state, *next));
+    EXPECT_EQ(state.phase, Phase::Main);
+  }
+}
+
+// ...and by the buttons: A picks the card in focus (twice: two of it), then
+// A takes them
+TEST(BottomScreenTest, SalvageByTheButtons) {
+  State state = newGame(4, agreedRules(boardR3(), 4));
+  state.phase = Phase::Salvage;
+  state.salvageLeft = 2;
+  BottomScreen screen(kWidth, kHeight);
+  screen.update(state, Game::legalActions(state), true);
+  ASSERT_EQ(screen.mode(), Mode::Resources);
+  screen.press(BottomScreen::Key::Right); // (from Minerals to Food)
+  EXPECT_TRUE(screen.resourcesPicked().empty());
+  screen.press(BottomScreen::Key::Confirm);
+  screen.press(BottomScreen::Key::Confirm);
+  EXPECT_EQ(screen.resourcesPicked(), (std::vector<Resource>{Resource::Food, Resource::Food}));
+  const auto taken = screen.press(BottomScreen::Key::Confirm);
+  ASSERT_TRUE(taken.play.has_value());
+  EXPECT_EQ(*taken.play, (Action{Kind::TakeSalvage, static_cast<int>(Resource::Food)}));
+}
+
+// While the top screen still shows the find, the picker waits; let go, it
+// opens, its cards coming up into place on the shows' clock, the screen
+// drawn again meanwhile
+TEST(BottomScreenTest, ThePickerWaitsForTheFindThenComesUp) {
+  State state = newGame(4, agreedRules(boardR3(), 4));
+  state.phase = Phase::Salvage;
+  state.salvageLeft = 2;
+  BottomScreen screen(kWidth, kHeight);
+  screen.setTime(0, 10);
+  EXPECT_TRUE(screen.setPickerWaits(true));
+  screen.update(state, Game::legalActions(state), true);
+  EXPECT_EQ(screen.mode(), Mode::Board);
+  EXPECT_TRUE(screen.setPickerWaits(false));
+  EXPECT_FALSE(screen.setPickerWaits(false)); // (no change)
+  EXPECT_EQ(screen.mode(), Mode::Resources);
+  EXPECT_TRUE(screen.pressing()); // (its cards on their way up)
+  screen.setTime(0, 10 + 1);
+  EXPECT_FALSE(screen.pressing());
+}
+
 // Every build that goes on the board is placed there, never played the
 // moment Build is pressed (the user's: a single place was chosen for you,
 // with no say and no sign of where): its places marked (a station's, the

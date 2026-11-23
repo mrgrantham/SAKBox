@@ -188,7 +188,7 @@ void ScreenPadd::followTouchPanel() {
   if (flow_.screen() == ScreenFlow::Screen::Settings && menus_.settingsPressing(now()))
     touchDirty_ = true; // (a key's glow fading)
   if (bottomScreen_) {
-    bottomScreen_->setTime(secondsSince(startedAt_));
+    bottomScreen_->setTime(secondsSince(startedAt_), showsNow());
     if (bottomScreen_->pressing() || pressDrawn_)
       touchDirty_ = true;
     pressDrawn_ = bottomScreen_->pressing(); // (and once more, to clear it)

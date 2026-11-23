@@ -60,6 +60,7 @@ void BottomScreen::follow(const State &state, const std::vector<Action> &legal, 
   state_ = state;
   legal_ = legal;
   yourMove_ = yourMove;
+  yourRollWaits_ = yourRollWaits;
   situation_ = BoardButtons::situationOf(state, legal, yourMove, yourRollWaits);
   situation_.moveListButton = moveListButton_;
   // (before the roll too: each row then says it waits for the roll)
@@ -90,6 +91,10 @@ void BottomScreen::follow(const State &state, const std::vector<Action> &legal, 
   }
   // A choice of resources the rules ask for now: the picker, by itself
   if (auto choice = Pickers::resourceChoiceOf(state, legal)) {
+    // (the rest of a choice made already, queued: sent next, nothing to
+    // open; and while what brings it still shows on the top screen, it waits)
+    if (queuedReady() || (pickerWaits_ && mode_ != Mode::Resources))
+      return;
     // (each choice its own: the next of two in a row opens afresh)
     if (mode_ != Mode::Resources || !resources_ || !resources_->sameAs(*choice))
       openPicker(std::move(*choice), false);
@@ -394,10 +399,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
         picked_.push_back(resource);
       }
     } else if (touch->what == What::Confirm) {
-      if (const auto action = resources_->actionFor(picked_)) {
-        mode_ = Mode::Board;
-        return {action, true};
-      }
+      return takePicked();
     }
     return {std::nullopt, true};
   }
@@ -545,8 +547,13 @@ BottomScreen::Outcome BottomScreen::confirmTrade() {
   return {first, true};
 }
 
+bool BottomScreen::queuedReady() const {
+  return !queued_.empty() &&
+         std::find(legal_.begin(), legal_.end(), queued_.front()) != legal_.end();
+}
+
 std::optional<Action> BottomScreen::nextQueued() {
-  if (queued_.empty() || std::find(legal_.begin(), legal_.end(), queued_.front()) == legal_.end())
+  if (!queuedReady())
     return std::nullopt;
   const Action next = queued_.front();
   queued_.erase(queued_.begin());
@@ -694,15 +701,14 @@ BottomScreen::Outcome BottomScreen::press(Key key) {
       mode_ = Mode::Cards; // (opened from the cards screen: back to it)
     } else if (key == Key::Confirm) {
       // A picks the card in focus; once enough are picked, A takes them
-      if (static_cast<int>(picked_.size()) == resources_->howMany) {
-        if (const auto action = resources_->actionFor(picked_)) {
-          mode_ = Mode::Board;
-          return {action, true};
-        }
-      }
+      const int howMany = resources_->howMany;
       const auto resource = static_cast<Resource>(resourceFocus_);
-      if (resources_->offers(resource)) {
-        if (static_cast<int>(picked_.size()) >= resources_->howMany)
+      const bool offered = resources_->offers(resource);
+      if (static_cast<int>(picked_.size()) == howMany)
+        if (Outcome taken = takePicked(); taken.play)
+          return taken;
+      if (offered) {
+        if (static_cast<int>(picked_.size()) >= howMany)
           picked_.clear();
         picked_.push_back(resource);
       }
@@ -898,10 +904,14 @@ void BottomScreen::draw(Canvas &canvas) {
     ChoiceScreens::drawBuild(canvas, rows_, buildChosen_, actionPress());
     return;
   case Mode::Resources:
-    if (resources_)
+    if (resources_) {
+      ChoiceScreens::CardsIn in{};
+      for (int r = 0; r < kResources; ++r)
+        in[static_cast<std::size_t>(r)] = resourcesIn_.arrived(r, showsNow_);
       ChoiceScreens::drawResources(canvas, *resources_, picked_,
                                    state_.player[static_cast<std::size_t>(state_.turn)].resources,
-                                   resourcesCanGoBack_, cards_, resourceFocus_, actionPress());
+                                   resourcesCanGoBack_, cards_, resourceFocus_, actionPress(), in);
+    }
     return;
   case Mode::Players:
     if (players_)
@@ -998,6 +1008,7 @@ void BottomScreen::openPicker(Pickers::ResourceChoice choice, bool canGoBack) {
   picked_.clear();
   resourcesCanGoBack_ = canGoBack;
   mode_ = Mode::Resources;
+  resourcesIn_.open(showsNow_); // (its cards up into place, one after another)
   // (the focus on the first card it offers; for a single card, that card
   // picked: A takes it at once, the user's)
   resourceFocus_ = kResources - 1;
@@ -1016,6 +1027,41 @@ void BottomScreen::focusNextResource(int direction) {
   }
   if (resources_->howMany == 1)
     picked_ = {static_cast<Resource>(resourceFocus_)};
+}
+
+BottomScreen::Outcome BottomScreen::takePicked() {
+  if (!resources_)
+    return {std::nullopt, true};
+  const std::vector<Action> moves = resources_->movesFor(picked_);
+  if (moves.empty())
+    return {std::nullopt, true};
+  mode_ = Mode::Board;
+  // (a move for each pick, salvage's: the first now, the rest in order as
+  // the rules allow each: nextQueued)
+  queued_.assign(moves.begin() + 1, moves.end());
+  return {moves.front(), true};
+}
+
+bool BottomScreen::pickerArriving() const {
+  return mode_ == Mode::Resources && resourcesIn_.arrived(kResources - 1, showsNow_) < 1;
+}
+
+const std::vector<Resource> &BottomScreen::resourcesPicked() const {
+  static const std::vector<Resource> kNone;
+  return mode_ == Mode::Resources ? picked_ : kNone;
+}
+
+bool BottomScreen::setPickerWaits(bool waits) {
+  if (waits == pickerWaits_)
+    return false;
+  pickerWaits_ = waits;
+  // (let go: the game followed again, as it is, so a choice waiting opens)
+  if (!waits) {
+    const State state = state_;
+    const std::vector<Action> legal = legal_;
+    update(state, legal, yourMove_, yourRollWaits_);
+  }
+  return true;
 }
 
 std::optional<Resource> BottomScreen::resourceInFocus() const {

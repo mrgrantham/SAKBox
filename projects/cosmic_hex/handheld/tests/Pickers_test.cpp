@@ -122,15 +122,13 @@ TEST(PickersTest, TheHomesPayIsAResourceChoice) {
   const auto choice = Pickers::resourceChoiceOf(state, legal);
   ASSERT_TRUE(choice.has_value());
   EXPECT_EQ(choice->howMany, 1);
-  const auto action = choice->actionFor({Resource::Fuel});
-  ASSERT_TRUE(action.has_value());
-  if (action) {
-    EXPECT_EQ(action->kind, Kind::ChooseHome);
-    EXPECT_EQ(action->a, static_cast<int>(Resource::Fuel));
-    State played = state;
-    EXPECT_TRUE(Game::apply(played, *action));
-  }
-  EXPECT_FALSE(choice->actionFor({}).has_value());
+  const auto moves = choice->movesFor({Resource::Fuel});
+  ASSERT_EQ(moves.size(), 1u);
+  EXPECT_EQ(moves[0].kind, Kind::ChooseHome);
+  EXPECT_EQ(moves[0].a, static_cast<int>(Resource::Fuel));
+  State played = state;
+  EXPECT_TRUE(Game::apply(played, moves[0]));
+  EXPECT_TRUE(choice->movesFor({}).empty());
 }
 
 TEST(PickersTest, TheSupplyDropTakesTwoInEitherOrder) {
@@ -143,12 +141,52 @@ TEST(PickersTest, TheSupplyDropTakesTwoInEitherOrder) {
   const auto choice = Pickers::cardChoiceOf(legal, Kind::PlaySupplyDrop);
   ASSERT_TRUE(choice.has_value());
   EXPECT_EQ(choice->howMany, 2);
-  const auto both = choice->actionFor({Resource::Water, Resource::Food});
-  ASSERT_TRUE(both.has_value());
-  EXPECT_EQ(both, (Action{Kind::PlaySupplyDrop, 1, 3}));
-  EXPECT_EQ(choice->actionFor({Resource::Food, Resource::Food}),
-            (Action{Kind::PlaySupplyDrop, 1, 1}));
+  EXPECT_EQ(choice->movesFor({Resource::Water, Resource::Food}),
+            (std::vector<Action>{{Kind::PlaySupplyDrop, 1, 3}})); // (one move for both)
+  EXPECT_EQ(choice->movesFor({Resource::Food, Resource::Food}),
+            (std::vector<Action>{{Kind::PlaySupplyDrop, 1, 1}}));
   EXPECT_FALSE(Pickers::cardChoiceOf(legal, Kind::PlayCartel).has_value());
+}
+
+// Salvage: both resources picked on one screen (the same one twice if
+// wanted), each sent as its own TakeSalvage, in the order picked; with one
+// left, a single pick
+TEST(PickersTest, SalvageTakesTwoOnOneScreenAMoveEach) {
+  State state = newGame(4, agreedRules(boardR3(), 4));
+  state.phase = Phase::Salvage;
+  state.salvageLeft = state.settings.salvageResources;
+  ASSERT_EQ(state.salvageLeft, 2);
+  const auto choice = Pickers::resourceChoiceOf(state, Game::legalActions(state));
+  ASSERT_TRUE(choice.has_value());
+  EXPECT_EQ(choice->howMany, 2);
+  EXPECT_TRUE(choice->movePerPick);
+  EXPECT_EQ(choice->title, "Salvage: any 2");
+  for (int r = 0; r < kResources; ++r)
+    EXPECT_TRUE(choice->offers(static_cast<Resource>(r)));
+  // Two of the same kind: two moves, both played in turn by the rules
+  const auto same = choice->movesFor({Resource::Fuel, Resource::Fuel});
+  ASSERT_EQ(same.size(), 2u);
+  State played = state;
+  const int fuelBefore = played.player[0].resources[static_cast<std::size_t>(Resource::Fuel)];
+  for (const Action &move : same) {
+    EXPECT_EQ(move, (Action{Kind::TakeSalvage, static_cast<int>(Resource::Fuel)}));
+    EXPECT_TRUE(Game::apply(played, move));
+  }
+  EXPECT_EQ(played.player[0].resources[static_cast<std::size_t>(Resource::Fuel)], fuelBefore + 2);
+  EXPECT_EQ(played.phase, Phase::Main);
+  // Two kinds: in the order picked
+  EXPECT_EQ(choice->movesFor({Resource::Crystals, Resource::Minerals}),
+            (std::vector<Action>{{Kind::TakeSalvage, static_cast<int>(Resource::Crystals)},
+                                 {Kind::TakeSalvage, static_cast<int>(Resource::Minerals)}}));
+  // Too few or too many picked: nothing to send
+  EXPECT_TRUE(choice->movesFor({Resource::Food}).empty());
+  EXPECT_TRUE(choice->movesFor({Resource::Food, Resource::Food, Resource::Food}).empty());
+  // One left: one pick
+  state.salvageLeft = 1;
+  const auto last = Pickers::resourceChoiceOf(state, Game::legalActions(state));
+  ASSERT_TRUE(last.has_value());
+  EXPECT_EQ(last->howMany, 1);
+  EXPECT_EQ(last->movesFor({Resource::Water}).size(), 1u);
 }
 
 TEST(PickersTest, StealingNeedsAChoiceOnlyWithTwoOrMore) {
